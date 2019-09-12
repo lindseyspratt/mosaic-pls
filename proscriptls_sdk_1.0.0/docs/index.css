@@ -1,0 +1,157 @@
+body {
+    margin: 0;
+    font-family: arial, verdana, sans-serif;
+    font-size: 22px;
+    color: #666666;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: arial, verdana, sans-serif;
+}
+
+header {
+    height: 4em;
+    flex-shrink: 0;
+}
+.body{
+    flex-grow: 1;
+    overflow: auto;
+    height: 100%;
+    min-height: 2em;
+}
+footer{
+    height: 3em;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+
+footer td{
+    font-size: 12px;
+}
+code {
+    font-family: monospace, courier, serif;
+    font-size: 20px;
+}
+
+code.html {
+    background: #CCC;
+}
+code.prolog {
+    background: #dedede;
+}
+code.cli {
+    background: #dedbc8;
+}
+code.inline {
+    padding: 1px 5px;
+                   font-size: 15px;
+                   border: 1px solid #e8e8e8;
+                   border-radius: 3px;
+                   background: #eef;
+               }
+/* xmp formatting from https://stackoverflow.com/a/32935618/302650 */
+
+pre { margin: 5px 0; padding: 0 5px 5px 5px; white-space:pre-wrap; word-wrap:break-word; }
+pre:before { content: ""; display: block; height: 1em; margin: 0 -5px -2em -5px; }
+
+.caret {
+    cursor: pointer;
+    -webkit-user-select: none; /* Safari 3.1+ */
+    -moz-user-select: none; /* Firefox 2+ */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none;
+}
+
+.caret::before {
+    content: "\25B6";
+    color: black;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.caret-down::before {
+    -ms-transform: rotate(90deg); /* IE 9 */
+    -webkit-transform: rotate(90deg); /* Safari */'
+transform: rotate(90deg);
+}
+
+.nested {
+    display: none;
+}
+
+.active {
+    display: block;
+}
+
+/*
+sidenav formatting from https://www.w3schools.com/howto/howto_css_fixed_sidebar.asp
+ */
+ul.sidenav ul {
+    list-style-type: none;
+}
+
+ul.sidenav {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    width: 18em;
+    font-size: 16px;
+    background-color: #dedbc8;
+    position: fixed;
+    height: 100%;
+    overflow: auto;
+}
+
+ul.sidenav li a {
+    display: inline-block;
+    color: #000;
+    padding: 8px 16px;
+    text-decoration: none;
+}
+
+ul.sidenav li a.active {
+    background-color: rgba(95, 185, 95, 0.4);
+    color: white;
+}
+
+ul.sidenav li a.visible {
+    font-style: italic;
+}
+
+
+ul.sidenav li a:hover:not(.active) {
+    background-color: #555;
+    color: white;
+}
+
+div.content {
+    margin-left: 14em;
+    padding: 1px 16px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+}
+
+@media screen and (max-width: 900px) {
+    ul.sidenav {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    ul.sidenav li a {
+        float: left;
+        padding: 15px;
+    }
+
+    div.content {margin-left: 0;}
+}
+
+@media screen and (max-width: 400px) {
+    ul.sidenav li a {
+        text-align: center;
+        float: none;
+    }
+}
+

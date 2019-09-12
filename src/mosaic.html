@@ -1,0 +1,32 @@
+<html lang="en">
+<head>
+    <title>Mosaic</title>
+    <link rel="StyleSheet" href="mosaic.css" type="text/css" media="ALL">
+    <!-- proscriptls interpreter
+    <script src="../proscriptls_sdk_1.0.0/terminal/jquery-3.3.1.js"></script>
+    <script src="../proscriptls_sdk_1.0.0/terminal/jquery_terminal.js"></script>
+    <link href="../proscriptls_sdk_1.0.0/terminal/jquery_terminal.css" rel="stylesheet"/>
+     -->
+</head>
+<body onload="proscriptls_init ('tiles:select_test.');">
+<div class="mosaic-description">
+    <h2>Mosaic</h2>
+    <p>
+        Clicking on the non-grayed-out squares places marker ('+') on the selected square.
+    </p>
+</div>
+<div id="tiles" class="mosaic-label">
+    Tiles
+    <canvas id="canvas" width="300" height="600">
+    </canvas>
+</div>
+<!--suppress JSUnresolvedLibraryURL -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.0.0/dist/proscriptls_engine.js"></script>
+<script type="text/javascript" src="proscriptls_state_tiles.js"></script>
+<!--
+<script type="text/javascript" src="../proscriptls_sdk_1.0.0/terminal/proscript_interpreter_terminal.js"></script>
+<div id="proscriptinterpreter">
+</div>
+ -->
+</body>
+</html>
