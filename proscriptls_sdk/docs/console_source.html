@@ -1,7 +1,7 @@
 <html lang="en">
 <head>
     <title>
-        Consult console source
+        Console button test source
     </title>
     <link rel="stylesheet" href="index.css"/>
     <script type="text/javascript" src="../dist/proscriptls.js"></script>
@@ -95,7 +95,7 @@
                     </li>
                     <li><span class="caret"></span><a   id="console_example_index" href="index_doc.html#console_example"> Console Button </a>
                         <ul class="nested">
-                            <li><a   id="console_example_source_index" href="console_source.html#console_example_source"> Console Example Source </a></li>
+                            <li><a class="active index"  id="console_example_source_index" href="#console_example_source"> Console Example Source </a></li>
                         </ul>
                     </li>
                     <li><span class="caret"></span><a   id="simple_example_index" href="index_doc.html#simple_example"> Simple </a>
@@ -110,7 +110,7 @@
                     </li>
                     <li><span class="caret"></span><a   id="consult_console_example_index" href="index_doc.html#consult_console_example"> Consult console </a>
                         <ul class="nested">
-                            <li><a class="active index"  id="consult_console_example_source_index" href="#consult_console_example_source"> Consult Console Example Source </a></li>
+                            <li><a   id="consult_console_example_source_index" href="consult_console_source.html#consult_console_example_source"> Consult Console Example Source </a></li>
                         </ul>
                     </li>
                     <li><span class="caret"></span><a   id="tiles_example_index" href="index_doc.html#tiles_example"> Tiles </a>
@@ -129,15 +129,16 @@
 <!-- Page content -->
 <div class="content">
     <header>
-        <h1>Consult console source</h1>
+        <h1>Console button test source</h1>
         <hr>
     </header>
 
-    <div class="body" id="consult_console_example_source">
+    <div class="body" id="console_example_source">
     <p>
-        The source used in the Consult console example.
-        This is the same source as used in the 'Console Button Test' example.
-        Link to this source file is:
+        The source used in the Console example.
+        Links to these source files are:
+        <a href="../examples/console_button_test.pl">console_button_test.pl</a>
+        and
         <a href="../examples/test.js">test.js</a>.
         Eventually test.js may be implemented using Prolog, but there are complications with having ProscriptLS
         run the HTML for an interpreter that evaluates ProscriptLS queries and keeping the two levels of ProscriptLS evaluation
@@ -146,7 +147,81 @@
     <p>
         Javascript source for the 'terminal' is shown in the test.js file.
     </p>
-    <div id="test_js" style='vertical-align:top;white-space:nowrap;width:100%;height:100%;background-color:#ddd;overflow:auto;float:right'>
+    <div id="prolog" style='white-space:nowrap;width:48%;height:100%;background-color:#eee;overflow:auto;float:left'>
+    <div id="console_pl" >
+        <h2 id='console_pl_header'>console_button_test.pl</h2>
+        <code class='content'>
+        /*<br>
+<i>The</i>&nbsp;<i>Console</i>&nbsp;<i>Button</i>&nbsp;<i>Test</i>&nbsp;uses&nbsp;console_button_test.html&nbsp;and&nbsp;console_button_test.pl&nbsp;to&nbsp;create&nbsp;a<br>
+web&nbsp;page&nbsp;for&nbsp;testing&nbsp;a&nbsp;dynamic&nbsp;<i>Prolog</i>&nbsp;console.<br>
+<i>There</i>&nbsp;is&nbsp;initially&nbsp;only&nbsp;a&nbsp;single&nbsp;button&nbsp;name&nbsp;'Create Console'&nbsp;that&nbsp;when&nbsp;clicked&nbsp;renames&nbsp;that<br>
+button&nbsp;'Remove Console'&nbsp;and&nbsp;creates&nbsp;a&nbsp;prolog&nbsp;'console'&nbsp;<i>DIV</i>&nbsp;on&nbsp;that&nbsp;page&nbsp;(if&nbsp;it&nbsp;does&nbsp;not&nbsp;already&nbsp;exist)<br>
+in&nbsp;which&nbsp;there&nbsp;is&nbsp;a&nbsp;'stdout'&nbsp;<i>DIV</i>&nbsp;in&nbsp;which&nbsp;the&nbsp;user&nbsp;can&nbsp;run&nbsp;<i>Prolog</i>&nbsp;queries.<br>
+<i>Clicking</i>&nbsp;the&nbsp;'Remove Console'&nbsp;button&nbsp;renames&nbsp;the&nbsp;button&nbsp;'Create Console'&nbsp;and&nbsp;removes&nbsp;the&nbsp;'stdout'&nbsp;<i>DIV</i>.<br>
+*/<br>
+<br>
+<span style='color:red'>:-</span>&nbsp;initialization(console_button_test).<br>
+<br>
+console_button_test&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;dom_element_attribute_value(<i>E</i>,&nbsp;id,&nbsp;simpletest),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;create_dom_element('BUTTON',&nbsp;<i>Button</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;set_dom_element_attribute_value(<i>Button</i>,&nbsp;id,&nbsp;console_button),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;set_dom_element_attribute_value(<i>Button</i>,&nbsp;class,&nbsp;'example-button'),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;create_dom_text_node("<i>Create</i>&nbsp;<i>Console</i>",&nbsp;<i>NewContent</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;append_dom_node_child(<i>Button</i>,&nbsp;<i>NewContent</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;dom_object_method(<i>Button</i>,&nbsp;addEventListener(click,&nbsp;setup_div_and_console)),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;append_dom_node_child(<i>E</i>,&nbsp;<i>Button</i>).<br>
+<br>
+setup_div_and_console&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;dom_element_attribute_value(<i>Button</i>,&nbsp;id,&nbsp;console_button),<br>
+&nbsp;&nbsp;dom_object_property(<i>_</i>,&nbsp;<i>Button</i>,&nbsp;innerText,&nbsp;<i>Text</i>),<br>
+&nbsp;&nbsp;setup_div_and_console(<i>Text</i>,&nbsp;<i>Button</i>).<br>
+<br>
+setup_div_and_console("<i>Create</i>&nbsp;<i>Console</i>",&nbsp;<i>Button</i>)&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;set_dom_object_property(<i>Button</i>,&nbsp;innerText,&nbsp;"<i>Remove</i>&nbsp;<i>Console</i>"),<br>
+&nbsp;&nbsp;setup_console_div,<br>
+&nbsp;&nbsp;setup_console.<br>
+<br>
+setup_div_and_console("<i>Remove</i>&nbsp;<i>Console</i>",&nbsp;<i>Button</i>)&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;set_dom_object_property(<i>Button</i>,&nbsp;innerText,&nbsp;"<i>Create</i>&nbsp;<i>Console</i>"),<br>
+&nbsp;&nbsp;remove_console_div.<br>
+<br>
+<span style='color:green'>%&nbsp;&lt;div&nbsp;style="border:&nbsp;1px&nbsp;solid&nbsp;black;&nbsp;height:&nbsp;50%;&nbsp;width:&nbsp;100%;&nbsp;overflow:&nbsp;scroll;"&nbsp;id="stdout"&nbsp;onKeyPress="keypress(event)"&nbsp;onKeyDown="keydown(event)"&nbsp;tabindex="0">&lt;/div></span><br>
+setup_console_div&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;create_dom_element('DIV',&nbsp;<i>Div</i>),<br>
+&nbsp;&nbsp;set_dom_element_attribute_value(<i>Div</i>,&nbsp;style,&nbsp;'border: 1px solid black; height: 50%; width: 100%; overflow: scroll;'),<br>
+&nbsp;&nbsp;set_dom_element_attribute_value(<i>Div</i>,&nbsp;id,&nbsp;stdout),<br>
+&nbsp;&nbsp;set_dom_element_attribute_value(<i>Div</i>,&nbsp;onkeypress,&nbsp;'keypress(event)'),<br>
+&nbsp;&nbsp;set_dom_element_attribute_value(<i>Div</i>,&nbsp;onkeydown,&nbsp;'keydown(event)'),<br>
+<span style='color:green'>%&nbsp;&nbsp;dom_element_add_event_listener(Div,&nbsp;keypress,&nbsp;eval_javascript("keypress(event)")),</span><br>
+<span style='color:green'>%&nbsp;&nbsp;dom_element_add_event_listener(Div,&nbsp;keydown,&nbsp;eval_javascript("keydown(event)")),</span><br>
+&nbsp;&nbsp;set_dom_element_attribute_value(<i>Div</i>,&nbsp;tabindex,&nbsp;'0'),<br>
+&nbsp;&nbsp;lookup_console_div(<i>OuterDiv</i>),<br>
+&nbsp;&nbsp;append_dom_node_child(<i>OuterDiv</i>,&nbsp;<i>Div</i>),<br>
+&nbsp;&nbsp;dom_object_property(element,&nbsp;<i>Body</i>,&nbsp;tag,&nbsp;body),<br>
+&nbsp;&nbsp;append_dom_node_child(<i>Body</i>,&nbsp;<i>OuterDiv</i>).<br>
+<br>
+lookup_console_div(<i>Div</i>)&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;dom_element_attribute_value(<i>Div</i>,&nbsp;id,&nbsp;console)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;->&nbsp;true<br>
+&nbsp;&nbsp;;<br>
+&nbsp;&nbsp;create_dom_element('DIV',&nbsp;<i>Div</i>),<br>
+&nbsp;&nbsp;set_dom_element_attribute_value(<i>Div</i>,&nbsp;id,&nbsp;console).<br>
+<br>
+remove_console_div&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;dom_element_attribute_value(<i>Div</i>,&nbsp;id,&nbsp;console),<br>
+&nbsp;&nbsp;set_dom_object_property(<i>Div</i>,&nbsp;innerText,&nbsp;"").<br>
+<br>
+setup_console&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;dom_object_property(element,&nbsp;<i>Body</i>,&nbsp;tag,&nbsp;body),<br>
+&nbsp;&nbsp;set_dom_element_attribute_value(<i>Body</i>,&nbsp;onkeydown,&nbsp;'return preventBackspace(event);'),<br>
+<span style='color:green'>%&nbsp;&nbsp;dom_element_add_event_listener(Body,&nbsp;keydown,&nbsp;eval_javascript("preventBackspace(event);")),</span><br>
+&nbsp;&nbsp;eval_javascript("onload();").<br>
+
+        </code>
+    </div>
+    </div>
+    <div id="test_js" style='vertical-align:top;white-space:nowrap;width:48%;height:100%;background-color:#ddd;overflow:auto;float:right'>
         <h2>test.js</h2>
         <code>
         var&nbsp;x_history&nbsp;=&nbsp;[];<br>
@@ -234,7 +309,7 @@ var&nbsp;stdout_buffer;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;call_directives();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;initialize();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;let&nbsp;atom&nbsp;=&nbsp;lookup_atom(code_atom);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;let&nbsp;ftor&nbsp;=&nbsp;VAL(lookup_functor("bootstrap_js:consult_atom",&nbsp;1));<br>
+&nbsp;&nbsp;&nbsp;&nbsp;let&nbsp;ftor&nbsp;=&nbsp;VAL(lookup_functor("wam_compiler:consult_atom",&nbsp;1));<br>
 &nbsp;&nbsp;&nbsp;&nbsp;allocate_first_frame();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var&nbsp;pred&nbsp;=&nbsp;predicates[ftor];<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var&nbsp;pi&nbsp;=&nbsp;predicates[ftor].clause_keys[0];<br>
@@ -425,7 +500,7 @@ var&nbsp;stdout_buffer;<br>
         <hr>
         <table style="width:100%">
         <tr>
-        <td>Version 1.0.0, September 2019.</td>
+        <td>Version 1.1.0, September 2019.</td>
         <td style="text-align:right">Powered by ProscriptLS Prolog - Logic at Your Service.</td>
         </tr>
         </table>

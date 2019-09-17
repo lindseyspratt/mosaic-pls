@@ -1,4 +1,4 @@
-PLS_DIST = ../proscriptls_sdk_1.0.0/dist
+PLS_DIST = ../proscriptls_sdk/dist
 
 all:	proscriptls_state_tiles.js
 
