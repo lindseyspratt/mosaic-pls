@@ -2,6 +2,8 @@
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module('../proscriptls_sdk/library/data_predicates').
+:- use_module(model_basics).
+
 :- ensure_loaded('../proscriptls_sdk/library/listut2'). % for append_lists/2
 :- ensure_loaded('../proscriptls_sdk/library/dom'). % for dom_page_offset/2
 
@@ -76,8 +78,10 @@ select_test :-
         @ dom_page_offset(PTop, PLeft),
         addEventListener(click, [object-E]^select(E, PTop, PLeft))],
 
+    init_model_basics(2, 4, [a,b,c,d]),
     assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
-    initial_hands_expanded(2, Hands),
+    get_number_of_players(NumberOfPlayers),
+    initial_hands_expanded(NumberOfPlayers, Hands),
     setup_hands(Hands, TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
@@ -191,36 +195,32 @@ abstract_color(c, blue).
 abstract_color(d, yellow).
 
 initial_hands(2, [1+Player1Tiles, 2+Player2Tiles]) :-
-   Col1 is 1,
-   Col2 is Col1 + 1,
-   hand_origin(Origin1),
-   Player1Row1 is Origin1,
-   Player1Row2 is Origin1 + 1,
-   Player1Row3 is Origin1 + 2,
-   Player1Row4 is Origin1 + 3,
-   Origin2 is Origin1 + 5,
-   Player2Row1 is Origin2,
-   Player2Row2 is Origin2 + 1,
-   Player2Row3 is Origin2 + 2,
-   Player2Row4 is Origin2 + 3,
-   Player1Tiles = [ t(Col1, Player1Row1,[a,a,a,a], t01),
-                            t(Col1, Player1Row2,[b,a,a,a], t02),
-                            t(Col1, Player1Row3,[b,b,a,a], t03),
-                            t(Col1, Player1Row4,[b,a,b,a], t04),
-                            t(Col2, Player1Row1,[a,a,a,a], t05),
-                            t(Col2, Player1Row2,[b,a,a,a], t06),
-                            t(Col2, Player1Row3,[b,b,a,a], t07),
-                            t(Col2, Player1Row4,[b,a,b,a], t08)
-                           ],
-   Player2Tiles = [t(Col1, Player2Row1,[b,b,b,b], t09),
-                            t(Col1, Player2Row2,[a,b,b,b], t10),
-                            t(Col1, Player2Row3,[a,a,b,b], t11),
-                            t(Col1, Player2Row4,[a,b,a,b], t12),
-                            t(Col2, Player2Row1,[b,b,b,b], t13),
-                            t(Col2, Player2Row2,[a,b,b,b], t14),
-                            t(Col2, Player2Row3,[a,a,b,b], t15),
-                            t(Col2, Player2Row4,[a,b,a,b], t16)
-                           ].
+    hand_origin(Origin1),
+    Origin2 is Origin1 + 5,
+    get_hand_color_ids([ModelHand1, ModelHand2]),
+    place_hand(ModelHand1, 1, Origin1, 0, 2, 4, Player1Tiles),
+    length(Player1Tiles, Player1TilesLength),
+    place_hand(ModelHand2, 1, Origin2, Player1TilesLength, 2, 4, Player2Tiles).
+
+% place_hand(Hand, BaseCol, BaseRow, PlacedSoFar, MaxColumns, MaxRows, PlacedHand).
+place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, MaxColumns, MaxRows, PlacedHand) :-
+    place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, PlacedSoFar, MaxColumns, MaxRows, PlacedHand).
+
+place_hand([], _BaseCol, _BaseRow, _Counter, _InitialCounter, _MaxColumns, _MaxRows, []).
+place_hand([H|T], BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, [HP|TP]) :-
+    place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, HP),
+    CounterNEXT is Counter + 1,
+    place_hand(T, BaseCol, BaseRow, CounterNEXT, InitialCounter, MaxColumns, MaxRows, TP).
+
+place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, t(Col, Row, H, ID)) :-
+    RowIncrement is (Counter-InitialCounter) mod MaxRows,
+    ColIncrement is (Counter-InitialCounter) // MaxRows,
+    Col is BaseCol + ColIncrement,
+    Row is BaseRow + RowIncrement,
+    NewCounter is Counter + 1,
+    number_codes(NewCounter, CounterCodes),
+    append("t", CounterCodes, IDCodes),
+    atom_codes(ID, IDCodes).
 
 % (X > Y) is a point (X,Y).
 % Web API method arguments of type number or integer accept arithmetic
