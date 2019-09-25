@@ -41,6 +41,7 @@
     edge_neighbor_offset/2, values/1]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
+:- use_module(library).
 
 :- initialization(initdyn).
 
@@ -223,7 +224,7 @@ edge_hex_neighbor_offset(5, -1 / -1).
  * get_number_of_players, and get_triangles_per_tile.
  * @type {function(): {get_hand_color_ids : number[], get_number_of_players:number, get_triangles_per_tile:number}}
  */
-values([hand_color_ids-HCI, number_of_players-NOP, triangles_per_tile-TPT]) :-
+values([number_of_players-NOP, triangles_per_tile-TPT, hand_color_ids-HCI]) :-
     data_handColorIDSequences(HCI),
     data_numberOfPlayers(NOP),
     data_trianglesPerTile(TPT).

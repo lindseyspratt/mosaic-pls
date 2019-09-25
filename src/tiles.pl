@@ -1,11 +1,9 @@
-:- module(tiles, [select_test/0]).
+:- module(tiles, [select_test/0, rotate_test/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
-
-:- ensure_loaded('../proscriptls_sdk/library/listut2'). % for append_lists/2
-:- ensure_loaded('../proscriptls_sdk/library/dom'). % for dom_page_offset/2
+:- use_module(library).
 
 :- dynamic(is_selected/1).
 
@@ -71,13 +69,32 @@ display_hands_test :-
     draw_all_tiles(TileIDs, Ctx, W, H).
 
 select_test :-
+    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Select Test</h2>"],
     _Canvas >> [id -:> canvas,
         getContext('2d') *:> Ctx,
         width +:> W,
         height +:> H,
         @ dom_page_offset(PTop, PLeft),
+        removeEventListener(click, [object-E]^rotate(E, PTop, PLeft)),
         addEventListener(click, [object-E]^select(E, PTop, PLeft))],
+    retractall(is_selected(_)),
+    init_model_basics(2, 4, [a,b,c,d]),
+    assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
+    get_number_of_players(NumberOfPlayers),
+    initial_hands_expanded(NumberOfPlayers, Hands),
+    setup_hands(Hands, TileIDs),
+    draw_all_tiles(TileIDs, Ctx, W, H).
 
+rotate_test :-
+    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Rotate Test</h2>"],
+    _Canvas >> [id -:> canvas,
+        getContext('2d') *:> Ctx,
+        width +:> W,
+        height +:> H,
+        @ dom_page_offset(PTop, PLeft),
+        removeEventListener(click, [object-E]^select(E, PTop, PLeft)),
+        addEventListener(click, [object-E]^rotate(E, PTop, PLeft))],
+    retractall(is_selected(_)),
     init_model_basics(2, 4, [a,b,c,d]),
     assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
     get_number_of_players(NumberOfPlayers),
@@ -98,6 +115,23 @@ select(Event, PTop, PLeft) :-
     % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
     (point_in_tile(ID, X, Y)
       -> on_click_tile(ID, X, Y)  % at most one tile contains (X, Y).
+    ;
+     legal_position_bx(ID, BX),
+     legal_position_by(ID, BY),
+     point_in_board_position(BX, BY, X, Y)
+      -> true
+    ;
+     true
+    ).
+
+rotate(Event, PTop, PLeft) :-
+    Event >> [pageX +:> PageX, pageY +:> PageY],
+    dom_release_object(Event),
+    X is PageX - PLeft,
+    Y is PageY - PTop,
+    % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
+    (point_in_tile(ID, X, Y)
+      -> on_click_tile_rotate(ID, X, Y)  % at most one tile contains (X, Y).
     ;
      legal_position_bx(ID, BX),
      legal_position_by(ID, BY),
@@ -142,6 +176,21 @@ on_click_active_hand_tile(ID) :-
     true
     ),
     asserta(is_selected(ID)),
+    draw_all_tile(ID, Ctx).
+
+on_click_tile_rotate(ID, _X, _Y) :-
+    %writeln(click(ID, X, Y)),
+    (tile_in_active_hand(ID)
+      -> on_click_active_hand_tile_rotate(ID)
+    ;
+    true % writeln(not_active)
+    ).
+
+on_click_active_hand_tile_rotate(ID) :-
+    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    retract(tile_colors(ID, Colors)),
+    rotate_right(Colors, RotatedColors),
+    asserta(tile_colors(ID, RotatedColors)),
     draw_all_tile(ID, Ctx).
 
 
@@ -236,7 +285,7 @@ draw_tile(Ctx, Tile) :-
     draw_triangles(Corners, Colors, Center, Ctx),
     tile_bx(Tile, BX),
     tile_by(Tile, BY),
-    tile_label(BX, BY, Text),
+    board_hash_key_coords(BX, BY, Text),
     Ctx >> [
         save,
         fillStyle <:+ '#000',
@@ -422,11 +471,11 @@ get_top_left_board_tile_coords(BX > BY, TileSize, X > Y) :-
 container_id(container(ID, _Type), ID).
 container_type(container(_ID, Type), Type).
 
-tile_label(BoardX, BoardY, Text) :-
-    number_codes(BoardX, BXCodes),
-    number_codes(BoardY, BYCodes),
-    append_lists(["x", BXCodes, "y", BYCodes], TextCodes),
-    atom_codes(Text, TextCodes).
+%tile_label(BoardX, BoardY, Text) :-
+%    number_codes(BoardX, BXCodes),
+%    number_codes(BoardY, BYCodes),
+%    append_lists(["x", BXCodes, "y", BYCodes], TextCodes),
+%    atom_codes(Text, TextCodes).
 
 tile_in_inactive_hand(Tile) :-
     tile_container(Tile, Container),

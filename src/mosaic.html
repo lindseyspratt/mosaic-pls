@@ -8,12 +8,19 @@
     <link href="../proscriptls_sdk/terminal/jquery_terminal.css" rel="stylesheet"/>
      -->
 </head>
-<body onload="proscriptls_init ('tiles:select_test.');">
+<body onload="proscriptls_init ();">
 <div class="mosaic-description">
     <h2>Mosaic</h2>
-    <p>
-        Clicking on the non-grayed-out squares places marker ('+') on the selected square.
-    </p>
+    <button class="mosaic-button" onclick="proscriptls ('tiles:rotate_test.');">
+        Rotate Test: Clicking on the non-grayed-out squares rotates the selected square to the right.
+    </button>
+    <br>
+    <button class="mosaic-button" onclick="proscriptls ('tiles:select_test.');">
+        Select Test: Clicking on the non-grayed-out squares places marker ('+') on the selected square.
+    </button>
+    <div id="current_test">
+        <h1>No test in progress.</h1>
+    </div>
 </div>
 <div id="tiles" class="mosaic-label">
     Tiles
