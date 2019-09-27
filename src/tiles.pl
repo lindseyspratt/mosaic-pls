@@ -2,8 +2,9 @@
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module('../proscriptls_sdk/library/data_predicates').
-:- use_module(model_basics).
 :- use_module(library).
+:- use_module(model_basics).
+:- use_module(view_basics).
 
 :- dynamic(is_selected/1).
 
@@ -68,16 +69,51 @@ display_hands_test :-
     setup_hands(Hands, TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
+clear_tests :-
+    clear_select_test,
+    clear_rotate_test,
+    clear_view_basics_test.
+
+view_basics_test :-
+    clear_tests,
+    create_view_basics,
+    view_basics_values(V),
+    display_key_values(V).
+
+clear_view_basics_test :-
+    clear_display_key_values.
+
+
+clear_display_key_values :-
+    _Elements >> [id -:> display_elements, innerHTML <:+ ""].
+
+display_key_values(V) :-
+    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: View Basics Test</h2>"],
+    Elements >-> id :> display_elements,
+    create_dom_element(ul, ULElement),
+    append_dom_node_child(Elements, ULElement),
+    display_key_values(V, ULElement).
+
+
+display_key_values([], _).
+display_key_values([H|T], Elements) :-
+    display_key_value(H, Elements),
+    display_key_values(T, Elements).
+
+display_key_value(Key - Value, Elements) :-
+    format(atom(HTML), '<li>~w: ~w</li>\n', [Key, Value]),
+    atom_codes(HTML, HTMLCodes),
+    Elements >*> insertAdjacentHTML(beforeEnd, HTMLCodes).
+
 select_test :-
+    clear_tests,
     _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Select Test</h2>"],
     _Canvas >> [id -:> canvas,
         getContext('2d') *:> Ctx,
         width +:> W,
         height +:> H,
         @ dom_page_offset(PTop, PLeft),
-        removeEventListener(click, [object-E]^rotate(E, PTop, PLeft)),
         addEventListener(click, [object-E]^select(E, PTop, PLeft))],
-    retractall(is_selected(_)),
     init_model_basics(2, 4, [a,b,c,d]),
     assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
     get_number_of_players(NumberOfPlayers),
@@ -85,22 +121,38 @@ select_test :-
     setup_hands(Hands, TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
+clear_select_test :-
+    _Canvas >> [id -:> canvas,
+        removeEventListener(click, [object-E]^select(E, PTop, PLeft)),
+        width +:> W,
+        height +:> H,
+        getContext('2d') *:> Ctx],
+    Ctx >*> clearRect(0, 0, W, H),
+    retractall(is_selected(_)).
+
 rotate_test :-
+    clear_tests,
     _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Rotate Test</h2>"],
     _Canvas >> [id -:> canvas,
         getContext('2d') *:> Ctx,
         width +:> W,
         height +:> H,
         @ dom_page_offset(PTop, PLeft),
-        removeEventListener(click, [object-E]^select(E, PTop, PLeft)),
         addEventListener(click, [object-E]^rotate(E, PTop, PLeft))],
-    retractall(is_selected(_)),
     init_model_basics(2, 4, [a,b,c,d]),
     assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
     get_number_of_players(NumberOfPlayers),
     initial_hands_expanded(NumberOfPlayers, Hands),
     setup_hands(Hands, TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
+
+clear_rotate_test :-
+    _Canvas >> [id -:> canvas,
+        removeEventListener(click, [object-E]^rotate(E, PTop, PLeft)),
+        width +:> W,
+        height +:> H,
+        getContext('2d') *:> Ctx],
+    Ctx >*> clearRect(0, 0, W, H).
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates
