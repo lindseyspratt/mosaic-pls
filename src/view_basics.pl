@@ -22,8 +22,7 @@ create_view_basics :-
             getContext('2d') *:> Ctx,
             width +:> W,
             height +:> H,
-            offsetTop +:> OffsetTop,
-            offsetLeft +:> OffsetLeft],
+            @ dom_page_offset(OffsetTop, OffsetLeft)],
         assert_data(
             vb(W, H, OffsetTop, OffsetLeft, Ctx,
                ['#008800', '#4444FF'], ['#CCFFCC', '#CCCCFF'],

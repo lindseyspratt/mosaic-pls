@@ -140,27 +140,29 @@ clear_select_test :-
     retractall(is_selected(_)).
 
 rotate_test :-
+    setup_game_data,
     clear_tests,
     _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Rotate Test</h2>"],
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_canvas_offset_top(PTop),
+    get_canvas_offset_left(PLeft),
+    get_context(Ctx),
     _Canvas >> [id -:> canvas,
-        getContext('2d') *:> Ctx,
-        width +:> W,
-        height +:> H,
-        @ dom_page_offset(PTop, PLeft),
         addEventListener(click, [object-E]^rotate(E, PTop, PLeft))],
-    setup_game_data,
     get_number_of_players(NumberOfPlayers),
     initial_hands_expanded(NumberOfPlayers, Hands),
     setup_hands(Hands, TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
 clear_rotate_test :-
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_canvas_offset_top(PTop),
+    get_canvas_offset_left(PLeft),
+    get_context(Ctx),
     _Canvas >> [id -:> canvas,
-        @ dom_page_offset(PTop, PLeft),
-        removeEventListener(click, [object-E]^rotate(E, PTop, PLeft)),
-        width +:> W,
-        height +:> H,
-        getContext('2d') *:> Ctx],
+        removeEventListener(click, [object-E]^rotate(E, PTop, PLeft))],
     Ctx >*> clearRect(0, 0, W, H).
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
