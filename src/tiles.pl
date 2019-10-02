@@ -18,7 +18,7 @@
 
 init :-
     data_predicate_dynamics([
-        data_predicates(g, game,[tile_size, board_left, board_top, board_width, board_height, board_translate, turn, replacements]), % e.g. game_board_left(ID, X)...
+        data_predicates(g, game,[board_left, board_top, board_width, board_height, board_translate, turn, replacements]), % e.g. game_board_left(ID, X)...
         data_predicates(ts, tile,[x, y,bx,by,size,colors,container]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
         data_predicates(lp, legal_position, [bx, by])
     ]).
@@ -65,7 +65,7 @@ setup_game_data :-
 %            colors, highlightColors, handTileSize, handPadding, handMargin,
 %            boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
     create_view_basics,
-    assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1).
+    assert_data(g(10, 10, 800, 800, 1>1, 1, []), 1).
 
 
 select_test :-
@@ -171,7 +171,7 @@ in_interval(V, Low, High) :-
     V =< High.
 
 point_in_board_position(BX, BY, X, Y) :-
-    game_tile_size(Size),
+    get_board_tile_size(Size),
     board_position_top_left_coordinates(BX, BY, BCX, BCY),
     in_square(X, Y, BCX, BCY, Size).
 
@@ -231,7 +231,7 @@ expand_hands([H|T], [EH|ET]) :-
     expand_hands(T, ET).
 
 expand_hand(ID+BriefTiles, ID+ExpandedTiles) :-
-    game_tile_size(Size),
+    get_hand_tile_size(Size),
     expand_brief_tiles(BriefTiles, ID, Size, ExpandedTiles).
 
 expand_brief_tiles([], _, _, []).
@@ -391,7 +391,8 @@ draw_selected_tile_mark(Tile, Ctx) :-
 	HorizontalRightY = MidY,
 
 	game_turn(GT),
-	highlight_color(GT, Color),
+	get_highlight_color(GT, Color),
+	%highlight_color(GT, Color),
 
 	Ctx >> [
 	    save,
@@ -423,7 +424,8 @@ draw_replacement_tile_mark(Tile, Ctx) :-
     Adjust is Size / 4,
 
 	game_turn(GT),
-	highlight_color(GT, Color),
+	get_highlight_color(GT, Color),
+    %highlight_color(GT, Color),
 
 	Ctx >> [
 	    save,
@@ -449,7 +451,7 @@ draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx) :-
         globalAlpha <:+ 0.8
     ],
 
-    game_tile_size(TileSize),
+    get_board_tile_size(TileSize),
 
     draw_legal_positions_with_rotations(LegalPositionsWithRotation, Ctx, TileSize),
 
