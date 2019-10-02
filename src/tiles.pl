@@ -23,60 +23,14 @@ init :-
         data_predicates(lp, legal_position, [bx, by])
     ]).
 
-draw_tile_test :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    assert_data(ts(20, 20, 1, 1, 50, [red, red, green, green], none), 1),
-    draw_tile(Ctx, 1).
-
-draw_all_tile_test :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    assert_data(ts(20, 20, 1, 1, 50, [red, red, green, green], none), 1),
-    draw_all_tile(1, Ctx).
-
-draw_all_tiles_test :-
-    setup_draw_all_tiles_test(Ctx, W, H, Tiles),
-    draw_all_tiles(Tiles, Ctx, W, H).
-
-setup_draw_all_tiles_test(Ctx, W, H, [Tile1, Tile2]) :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx, width +:> W, height +:> H],
-
-    Tile1 = 1,
-    Tile2 = 2,
-    assert_data(ts(20, 20, 1, 1, 50, [red, red, green, green], none), 1),
-    assert_data(ts(70, 20, 2, 1, 50, [green, red, green, red], none), 2),
-% [tile_size, board_left, board_top, board_width, board_height, board_translate, turn, replacements]
-    assert_data(g(50, 0, 0, 800, 800, 0, 1, [Tile2]), 1),
-
-    retractall(is_selected(_)),
-    asserta(is_selected(Tile1)).
-
-draw_legal_moves_test :-
-    setup_legal_moves(Ctx, LPs1, LPs2),
-    draw_legal_moves(LPs1, LPs2, Ctx).
-
-setup_legal_moves(Ctx, [1],[Tile2]) :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    Tile2 = 2,
-% [tile_size, board_left, board_top, board_width, board_height, board_translate, turn, replacements]
-    assert_data(g(50, 10, 10, 200, 200, 1>1, 1, [Tile2]), 1),
-    assert_data(lp(1,1), 1),
-    assert_data(lp(1,2), 2).
-
-display_hands_test :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx, width +:> W, height +:> H],
-    assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
-    initial_hands_expanded(2, Hands),
-    setup_hands(Hands, TileIDs),
-    draw_all_tiles(TileIDs, Ctx, W, H).
-
 clear_tests :-
     clear_select_test,
     clear_rotate_test,
     clear_view_basics_test.
 
 view_basics_test :-
+    setup_game_data,
     clear_tests,
-    create_view_basics,
     view_basics_values(V),
     display_key_values(V).
 
@@ -115,27 +69,25 @@ setup_game_data :-
 
 
 select_test :-
+    setup_game_data,
     clear_tests,
     _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Select Test</h2>"],
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_context(Ctx),
     _Canvas >> [id -:> canvas,
-        getContext('2d') *:> Ctx,
-        width +:> W,
-        height +:> H,
-        @ dom_page_offset(PTop, PLeft),
-        addEventListener(click, [object-E]^select(E, PTop, PLeft))],
-    setup_game_data,
+        addEventListener(click, [object-E]^select(E))],
     get_number_of_players(NumberOfPlayers),
     initial_hands_expanded(NumberOfPlayers, Hands),
     setup_hands(Hands, TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
 clear_select_test :-
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_context(Ctx),
     _Canvas >> [id -:> canvas,
-        @ dom_page_offset(PTop, PLeft),
-        removeEventListener(click, [object-E]^select(E, PTop, PLeft)),
-        width +:> W,
-        height +:> H,
-        getContext('2d') *:> Ctx],
+        removeEventListener(click, [object-E]^select(E))],
     Ctx >*> clearRect(0, 0, W, H),
     retractall(is_selected(_)).
 
@@ -145,11 +97,9 @@ rotate_test :-
     _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Rotate Test</h2>"],
     get_canvas_width(W),
     get_canvas_height(H),
-    get_canvas_offset_top(PTop),
-    get_canvas_offset_left(PLeft),
     get_context(Ctx),
     _Canvas >> [id -:> canvas,
-        addEventListener(click, [object-E]^rotate(E, PTop, PLeft))],
+        addEventListener(click, [object-E]^rotate(E))],
     get_number_of_players(NumberOfPlayers),
     initial_hands_expanded(NumberOfPlayers, Hands),
     setup_hands(Hands, TileIDs),
@@ -158,11 +108,9 @@ rotate_test :-
 clear_rotate_test :-
     get_canvas_width(W),
     get_canvas_height(H),
-    get_canvas_offset_top(PTop),
-    get_canvas_offset_left(PLeft),
     get_context(Ctx),
     _Canvas >> [id -:> canvas,
-        removeEventListener(click, [object-E]^rotate(E, PTop, PLeft))],
+        removeEventListener(click, [object-E]^rotate(E))],
     Ctx >*> clearRect(0, 0, W, H).
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
@@ -170,9 +118,11 @@ clear_rotate_test :-
  % within the containing HTMLCanvasElement minus the canvas offset.
  % RX = clientX - offsetX.
 
-select(Event, PTop, PLeft) :-
+select(Event) :-
     Event >> [pageX +:> PageX, pageY +:> PageY],
     dom_release_object(Event),
+    get_canvas_offset_top(PTop),
+    get_canvas_offset_left(PLeft),
     X is PageX - PLeft,
     Y is PageY - PTop,
     % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
@@ -187,9 +137,11 @@ select(Event, PTop, PLeft) :-
      true
     ).
 
-rotate(Event, PTop, PLeft) :-
+rotate(Event) :-
     Event >> [pageX +:> PageX, pageY +:> PageY],
     dom_release_object(Event),
+    get_canvas_offset_top(PTop),
+    get_canvas_offset_left(PLeft),
     X is PageX - PLeft,
     Y is PageY - PTop,
     % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
