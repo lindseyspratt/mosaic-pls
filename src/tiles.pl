@@ -105,6 +105,15 @@ display_key_value(Key - Value, Elements) :-
     atom_codes(HTML, HTMLCodes),
     Elements >*> insertAdjacentHTML(beforeEnd, HTMLCodes).
 
+setup_game_data :-
+    init_model_basics(2, 4, [1,2,3,4]),
+%    canvasWidth, canvasHeight, canvasOffsetTop, canvasOffsetLeft, context,
+%            colors, highlightColors, handTileSize, handPadding, handMargin,
+%            boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
+    create_view_basics,
+    assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1).
+
+
 select_test :-
     clear_tests,
     _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Select Test</h2>"],
@@ -114,8 +123,7 @@ select_test :-
         height +:> H,
         @ dom_page_offset(PTop, PLeft),
         addEventListener(click, [object-E]^select(E, PTop, PLeft))],
-    init_model_basics(2, 4, [a,b,c,d]),
-    assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
+    setup_game_data,
     get_number_of_players(NumberOfPlayers),
     initial_hands_expanded(NumberOfPlayers, Hands),
     setup_hands(Hands, TileIDs),
@@ -123,6 +131,7 @@ select_test :-
 
 clear_select_test :-
     _Canvas >> [id -:> canvas,
+        @ dom_page_offset(PTop, PLeft),
         removeEventListener(click, [object-E]^select(E, PTop, PLeft)),
         width +:> W,
         height +:> H,
@@ -139,8 +148,7 @@ rotate_test :-
         height +:> H,
         @ dom_page_offset(PTop, PLeft),
         addEventListener(click, [object-E]^rotate(E, PTop, PLeft))],
-    init_model_basics(2, 4, [a,b,c,d]),
-    assert_data(g(50, 10, 10, 800, 800, 1>1, 1, []), 1),
+    setup_game_data,
     get_number_of_players(NumberOfPlayers),
     initial_hands_expanded(NumberOfPlayers, Hands),
     setup_hands(Hands, TileIDs),
@@ -148,6 +156,7 @@ rotate_test :-
 
 clear_rotate_test :-
     _Canvas >> [id -:> canvas,
+        @ dom_page_offset(PTop, PLeft),
         removeEventListener(click, [object-E]^rotate(E, PTop, PLeft)),
         width +:> W,
         height +:> H,
@@ -287,7 +296,7 @@ expand_brief_tile(t(BoardX, BoardY, AbstractColors, TileID),
 
 abstract_colors([], []).
 abstract_colors([AH|AT], [CH|CT]) :-
-    abstract_color(AH, CH),
+    get_player_color(AH, CH),
     abstract_colors(AT, CT).
 
 abstract_color(a, red).
