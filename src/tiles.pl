@@ -11,14 +11,14 @@
 % For tiles the shadow tile structure functor is 'ts'
 % and the arguments are 'x', 'y', etc.
 % For the game the shadow game structure functor is 'g'
-% and the arguments are 'board_left', 'turn', etc.
+% and the arguments are 'turn', etc.
 % (Note that there is currently only one 'game' so the ID is always '1'.)
 
 :- initialization(init).
 
 init :-
     data_predicate_dynamics([
-        data_predicates(g, game,[board_left, board_top, board_width, board_height, board_translate, turn, replacements]), % e.g. game_board_left(ID, X)...
+        data_predicates(g, game,[board_translate, turn, replacements]), % e.g. game_turn(ID, X)...
         data_predicates(ts, tile,[x, y,bx,by,size,colors,container]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
         data_predicates(lp, legal_position, [bx, by])
     ]).
@@ -65,7 +65,7 @@ setup_game_data :-
 %            colors, highlightColors, handTileSize, handPadding, handMargin,
 %            boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
     create_view_basics,
-    assert_data(g(10, 10, 800, 800, 1>1, 1, []), 1).
+    assert_data(g(1>1, 1, []), 1).
 
 
 select_test :-
@@ -477,11 +477,11 @@ draw_legal_positions([H|T], Ctx, TileSize) :-
     draw_legal_positions(T, Ctx, TileSize).
 
 get_top_left_board_tile_coords(BX > BY, TileSize, X > Y) :-
-    game_board_left(Left),
+    get_board_left(Left),
     game_board_translate(TX > TY),
-    game_board_width(W),
-    game_board_top(Top),
-    game_board_height(H),
+    get_board_width(W),
+    get_board_top(Top),
+    get_board_height(H),
     X  is Left + TX + (W / 2) + (BX - 0.5) * TileSize,
     Y  is Top + TY + (H / 2) + (BY - 0.5) * TileSize.
 
