@@ -24,8 +24,9 @@
  * @param {gameModelTiles} spec.model
  */
 
-:- module(tile_model, [create_tile/5, get_tile_grid_x/2, get_tile_grid_y/2,
-    update_grid_x/3, update_grid_y/3, update_container/3, update_replacements/3
+:- module(tile_model, [create_tile_model/5, create_tile_model/7, get_tile_grid_x/2, get_tile_grid_y/2,
+    get_tile_colors/2, get_tile_container/2,
+    update_grid_x/3, update_grid_y/3, update_container/3, update_replacements/3,
     tile_rotate_left/1, tile_rotate_right/1, tile_board_hash_key/2, edge_neighbor_tile/3]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
@@ -49,6 +50,9 @@ get_tile_grid_x(ID, GridX) :-
 
 get_tile_grid_y(ID, GridY) :-
     tile_model_gridY(ID, GridY).
+
+get_tile_colors(ID, Colors) :-
+    tile_model_colors(ID, Colors).
 
 get_tile_container(ID, Container) :-
     tile_model_container(ID, Container).

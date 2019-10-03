@@ -5,6 +5,7 @@
 :- use_module(library).
 :- use_module(model_basics).
 :- use_module(view_basics).
+:- use_module(tile_model).
 
 :- dynamic(is_selected/1).
 
@@ -19,7 +20,7 @@
 init :-
     data_predicate_dynamics([
         data_predicates(g, game,[board_translate, turn, replacements]), % e.g. game_turn(ID, X)...
-        data_predicates(ts, tile,[x, y,bx,by,size,colors,container]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
+        data_predicates(ts, tile,[x, y,size]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
         data_predicates(lp, legal_position, [bx, by])
     ]).
 
@@ -203,9 +204,7 @@ on_click_tile_rotate(ID, _X, _Y) :-
 
 on_click_active_hand_tile_rotate(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    retract(tile_colors(ID, Colors)),
-    rotate_right(Colors, RotatedColors),
-    asserta(tile_colors(ID, RotatedColors)),
+    tile_rotate_right(ID),
     draw_all_tile(ID, Ctx).
 
 
@@ -215,7 +214,8 @@ setup_hands([_+HandTiles|T], IDs) :-
     setup_hands(T, IDTail).
 
 setup_hand([], Tail, Tail).
-setup_hand([H-ID|T], [ID|OtherIDs], IDTail) :-
+setup_hand([x(H,GridX,GridY,Colors,Container)-ID|T], [ID|OtherIDs], IDTail) :-
+    create_tile_model(ID, GridX,GridY,Colors,Container),
     assert_data(H, ID),
     setup_hand(T, OtherIDs, IDTail).
 
@@ -243,7 +243,7 @@ expand_brief_tiles([H|T], HandID, Size, [EH|ET]) :-
 expand_brief_tile(t(BoardX, BoardY, AbstractColors, TileID),
         HandID,
         Size,
-        ts(X, Y, BoardX, BoardY, Size, Colors, container(HandID, hand))-TileID) :-
+        x(ts(X, Y, Size), BoardX, BoardY, Colors, container(HandID, hand))-TileID) :- % make the TileID and ModelID the same.
     X is BoardX * Size,
     Y is BoardY * Size,
     abstract_colors(AbstractColors, Colors).
@@ -296,10 +296,10 @@ draw_tile(Ctx, Tile) :-
     tile_size(Tile, Size),
     Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
     Center = (X + 0.5 * Size > Y + 0.5 * Size),
-    tile_colors(Tile, Colors),
+    get_tile_colors(Tile, Colors),
     draw_triangles(Corners, Colors, Center, Ctx),
-    tile_bx(Tile, BX),
-    tile_by(Tile, BY),
+    get_tile_grid_x(Tile, BX),
+    get_tile_grid_y(Tile, BY),
     board_hash_key_coords(BX, BY, Text),
     Ctx >> [
         save,
@@ -495,13 +495,13 @@ container_type(container(_ID, Type), Type).
 %    atom_codes(Text, TextCodes).
 
 tile_in_inactive_hand(Tile) :-
-    tile_container(Tile, Container),
+    get_tile_container(Tile, Container),
     container_type(Container, hand),
     game_turn(TurnID),
     \+ container_id(Container, TurnID).
 
 tile_in_active_hand(Tile) :-
-    tile_container(Tile, Container),
+    get_tile_container(Tile, Container),
     container_type(Container, hand),
     game_turn(TurnID),
     container_id(Container, TurnID).
