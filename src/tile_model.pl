@@ -27,7 +27,7 @@
 :- module(tile_model, [create_tile_model/5, create_tile_model/7, get_tile_grid_x/2, get_tile_grid_y/2,
     get_tile_colors/2, get_tile_container/2,
     update_grid_x/3, update_grid_y/3, update_container/3, update_replacements/3,
-    tile_rotate_left/1, tile_rotate_right/1, tile_board_hash_key/2, edge_neighbor_tile/3]).
+    tile_rotate_left/1, tile_rotate_right/1, tile_board_hash_key/2, edge_neighbor_position/3]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -90,11 +90,7 @@ tile_board_hash_key(ID, Key) :-
 
 edge_neighbor_position(ID, Edge, X > Y) :-
     edge_neighbor_offset(Edge, PX > PY),
-    tile_model_gridX(ID, gridX),
-    tile_model_gridY(ID, gridY),
-    X is gridX + PX,
-    Y is gridY + PY.
-%
-%edge_neighbor_tile(ID, Edge, NeighborID) :-
-%    tile_edge_neighbor_position(ID, Edge, Position),
-%    get_board_tile_by_grid(Position, NeighborID).
+    get_tile_grid_x(ID, GridX),
+    get_tile_grid_y(ID, GridY),
+    X is GridX + PX,
+    Y is GridY + PY.

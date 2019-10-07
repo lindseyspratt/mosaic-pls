@@ -6,6 +6,7 @@
 :- use_module(model_basics).
 :- use_module(view_basics).
 :- use_module(tile_model).
+:- use_module(game_model_tiles).
 
 :- dynamic(is_selected/1).
 
@@ -27,33 +28,43 @@ init :-
 clear_tests :-
     clear_select_test,
     clear_rotate_test,
-    clear_view_basics_test.
+    clear_view_basics_test,
+    clear_game_model_tiles_test.
 
 view_basics_test :-
     setup_game_data,
     clear_tests,
     view_basics_values(V),
-    display_key_values(V).
+    display_key_values("View Basics", V).
 
 clear_view_basics_test :-
     clear_display_key_values.
 
+game_model_tiles_test :-
+    setup_game_data,
+    clear_tests,
+    game_model_tiles_values(V),
+    display_key_values("Game Model Tiles", V).
+
+clear_game_model_tiles_test :-
+    clear_display_key_values.
 
 clear_display_key_values :-
     _Elements >> [id -:> display_elements, innerHTML <:+ ""].
 
-display_key_values(V) :-
-    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: View Basics Test</h2>"],
+display_key_values(LabelCodes, V) :-
+    append_lists(["<h2>Active: ", LabelCodes, " Test</h2>"], MessageCodes),
+    _TestLabel >> [id -:> current_test, innerHTML <:+ MessageCodes],
     Elements >-> id :> display_elements,
     create_dom_element(ul, ULElement),
     append_dom_node_child(Elements, ULElement),
-    display_key_values(V, ULElement).
+    display_key_values1(V, ULElement).
 
 
-display_key_values([], _).
-display_key_values([H|T], Elements) :-
+display_key_values1([], _).
+display_key_values1([H|T], Elements) :-
     display_key_value(H, Elements),
-    display_key_values(T, Elements).
+    display_key_values1(T, Elements).
 
 display_key_value(Key - Value, Elements) :-
     format(atom(HTML), '<li>~w: ~w</li>\n', [Key, Value]),
@@ -65,6 +76,7 @@ setup_game_data :-
 %    canvasWidth, canvasHeight, canvasOffsetTop, canvasOffsetLeft, context,
 %            colors, highlightColors, handTileSize, handPadding, handMargin,
 %            boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
+    init_game_model_tiles, % uses info in model_basics.
     create_view_basics,
     assert_data(g(1>1, 1, []), 1).
 
@@ -214,8 +226,10 @@ setup_hands([_+HandTiles|T], IDs) :-
     setup_hands(T, IDTail).
 
 setup_hand([], Tail, Tail).
-setup_hand([x(H,GridX,GridY,Colors,Container)-ID|T], [ID|OtherIDs], IDTail) :-
-    create_tile_model(ID, GridX,GridY,Colors,Container),
+setup_hand([x(H,GridX,GridY)-ID|T], [ID|OtherIDs], IDTail) :-
+    %create_tile_model(ID, GridX,GridY,Colors,Container),
+    update_grid_x(ID, _, GridX),
+    update_grid_y(ID, _, GridY),
     assert_data(H, ID),
     setup_hand(T, OtherIDs, IDTail).
 
@@ -240,13 +254,12 @@ expand_brief_tiles([H|T], HandID, Size, [EH|ET]) :-
     expand_brief_tiles(T, HandID, Size, ET).
 
 % [x, y,bx,by,size,colors,container]
-expand_brief_tile(t(BoardX, BoardY, AbstractColors, TileID),
+expand_brief_tile(t(BoardX, BoardY, TileID),
         HandID,
         Size,
-        x(ts(X, Y, Size), BoardX, BoardY, Colors, container(HandID, hand))-TileID) :- % make the TileID and ModelID the same.
+        x(ts(X, Y, Size), BoardX, BoardY)-TileID) :- % make the TileID and ModelID the same.
     X is BoardX * Size,
-    Y is BoardY * Size,
-    abstract_colors(AbstractColors, Colors).
+    Y is BoardY * Size.
 
 abstract_colors([], []).
 abstract_colors([AH|AT], [CH|CT]) :-
@@ -258,10 +271,16 @@ abstract_color(b, green).
 abstract_color(c, blue).
 abstract_color(d, yellow).
 
+/*
+Fill in gridX and gridY values for the tile models created by game_model_tiles:build_tiles/0
+such that the tiles for a hand are grouped together in a vertical rectangle 2 columns wide and 4
+rows deep and these two hand rectangles are placed one above the other with a small space
+separating them.
+*/
 initial_hands(2, [1+Player1Tiles, 2+Player2Tiles]) :-
     hand_origin(Origin1),
     Origin2 is Origin1 + 5,
-    get_hand_color_ids([ModelHand1, ModelHand2]),
+    get_hands([ModelHand1, ModelHand2]),
     place_hand(ModelHand1, 1, Origin1, 0, 2, 4, Player1Tiles),
     length(Player1Tiles, Player1TilesLength),
     place_hand(ModelHand2, 1, Origin2, Player1TilesLength, 2, 4, Player2Tiles).
@@ -276,15 +295,12 @@ place_hand([H|T], BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows
     CounterNEXT is Counter + 1,
     place_hand(T, BaseCol, BaseRow, CounterNEXT, InitialCounter, MaxColumns, MaxRows, TP).
 
-place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, t(Col, Row, H, ID)) :-
+place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, t(Col, Row, H)) :-
     RowIncrement is (Counter-InitialCounter) mod MaxRows,
     ColIncrement is (Counter-InitialCounter) // MaxRows,
     Col is BaseCol + ColIncrement,
     Row is BaseRow + RowIncrement,
-    NewCounter is Counter + 1,
-    number_codes(NewCounter, CounterCodes),
-    append("t", CounterCodes, IDCodes),
-    atom_codes(ID, IDCodes).
+    NewCounter is Counter + 1.
 
 % (X > Y) is a point (X,Y).
 % Web API method arguments of type number or integer accept arithmetic
@@ -296,7 +312,8 @@ draw_tile(Ctx, Tile) :-
     tile_size(Tile, Size),
     Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
     Center = (X + 0.5 * Size > Y + 0.5 * Size),
-    get_tile_colors(Tile, Colors),
+    get_tile_colors(Tile, AbstractColors),
+    abstract_colors(AbstractColors, Colors),
     draw_triangles(Corners, Colors, Center, Ctx),
     get_tile_grid_x(Tile, BX),
     get_tile_grid_y(Tile, BY),
@@ -485,8 +502,9 @@ get_top_left_board_tile_coords(BX > BY, TileSize, X > Y) :-
     X  is Left + TX + (W / 2) + (BX - 0.5) * TileSize,
     Y  is Top + TY + (H / 2) + (BY - 0.5) * TileSize.
 
-container_id(container(ID, _Type), ID).
-container_type(container(_ID, Type), Type).
+container_id(hand(ID), ID).
+container_type(hand(_ID), hand).
+container_type(board, board).
 
 %tile_label(BoardX, BoardY, Text) :-
 %    number_codes(BoardX, BXCodes),
