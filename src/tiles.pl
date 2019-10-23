@@ -20,7 +20,7 @@
 
 init :-
     data_predicate_dynamics([
-        data_predicates(g, game,[board_translate, turn, replacements]), % e.g. game_turn(ID, X)...
+        data_predicates(g, game,[board_translate, replacements]), % e.g. game_board_translate(ID, X>Y)...
         data_predicates(ts, tile,[x, y,size]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
         data_predicates(lp, legal_position, [bx, by])
     ]).
@@ -77,8 +77,10 @@ setup_game_data :-
 %            colors, highlightColors, handTileSize, handPadding, handMargin,
 %            boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
     init_game_model_tiles, % uses info in model_basics.
+    increment_turn(1), % the first increment should move the turn from the initial 0 to 1.
     create_view_basics,
-    assert_data(g(1>1, 1, []), 1).
+    assert_data(g(1>1, []), 1),
+    !.
 
 
 select_test :-
@@ -222,12 +224,14 @@ on_click_active_hand_tile_rotate(ID) :-
 
 setup_hands([], []).
 setup_hands([_+HandTiles|T], IDs) :-
+    writeln(setting_up_hand(HandTiles)),
     setup_hand(HandTiles, IDs, IDTail),
     setup_hands(T, IDTail).
 
 setup_hand([], Tail, Tail).
 setup_hand([x(H,GridX,GridY)-ID|T], [ID|OtherIDs], IDTail) :-
     %create_tile_model(ID, GridX,GridY,Colors,Container),
+    writeln(setup_hand_tile(x(H,GridX,GridY)-ID)),
     update_grid_x(ID, _, GridX),
     update_grid_y(ID, _, GridY),
     assert_data(H, ID),
@@ -246,16 +250,15 @@ expand_hands([H|T], [EH|ET]) :-
 
 expand_hand(ID+BriefTiles, ID+ExpandedTiles) :-
     get_hand_tile_size(Size),
-    expand_brief_tiles(BriefTiles, ID, Size, ExpandedTiles).
+    expand_brief_tiles(BriefTiles, Size, ExpandedTiles).
 
-expand_brief_tiles([], _, _, []).
-expand_brief_tiles([H|T], HandID, Size, [EH|ET]) :-
-    expand_brief_tile(H, HandID, Size, EH),
-    expand_brief_tiles(T, HandID, Size, ET).
+expand_brief_tiles([], _, []).
+expand_brief_tiles([H|T], Size, [EH|ET]) :-
+    expand_brief_tile(H, Size, EH),
+    expand_brief_tiles(T, Size, ET).
 
 % [x, y,bx,by,size,colors,container]
 expand_brief_tile(t(BoardX, BoardY, TileID),
-        HandID,
         Size,
         x(ts(X, Y, Size), BoardX, BoardY)-TileID) :- % make the TileID and ModelID the same.
     X is BoardX * Size,
@@ -281,26 +284,25 @@ initial_hands(2, [1+Player1Tiles, 2+Player2Tiles]) :-
     hand_origin(Origin1),
     Origin2 is Origin1 + 5,
     get_hands([ModelHand1, ModelHand2]),
-    place_hand(ModelHand1, 1, Origin1, 0, 2, 4, Player1Tiles),
+    place_hand(ModelHand1, 1, Origin1, 0, 4, Player1Tiles),
     length(Player1Tiles, Player1TilesLength),
-    place_hand(ModelHand2, 1, Origin2, Player1TilesLength, 2, 4, Player2Tiles).
+    place_hand(ModelHand2, 1, Origin2, Player1TilesLength, 4, Player2Tiles).
 
 % place_hand(Hand, BaseCol, BaseRow, PlacedSoFar, MaxColumns, MaxRows, PlacedHand).
-place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, MaxColumns, MaxRows, PlacedHand) :-
-    place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, PlacedSoFar, MaxColumns, MaxRows, PlacedHand).
+place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, MaxRows, PlacedHand) :-
+    place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, PlacedSoFar, MaxRows, PlacedHand).
 
-place_hand([], _BaseCol, _BaseRow, _Counter, _InitialCounter, _MaxColumns, _MaxRows, []).
-place_hand([H|T], BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, [HP|TP]) :-
-    place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, HP),
+place_hand([], _BaseCol, _BaseRow, _Counter, _InitialCounter, _MaxRows, []).
+place_hand([H|T], BaseCol, BaseRow, Counter, InitialCounter, MaxRows, [HP|TP]) :-
+    place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxRows, HP),
     CounterNEXT is Counter + 1,
-    place_hand(T, BaseCol, BaseRow, CounterNEXT, InitialCounter, MaxColumns, MaxRows, TP).
+    place_hand(T, BaseCol, BaseRow, CounterNEXT, InitialCounter, MaxRows, TP).
 
-place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxColumns, MaxRows, t(Col, Row, H)) :-
+place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxRows, t(Col, Row, H)) :-
     RowIncrement is (Counter-InitialCounter) mod MaxRows,
     ColIncrement is (Counter-InitialCounter) // MaxRows,
     Col is BaseCol + ColIncrement,
-    Row is BaseRow + RowIncrement,
-    NewCounter is Counter + 1.
+    Row is BaseRow + RowIncrement.
 
 % (X > Y) is a point (X,Y).
 % Web API method arguments of type number or integer accept arithmetic
@@ -361,6 +363,7 @@ draw_all_tiles(AllTiles, Ctx, CW, CH) :-
 
 draw_all_tiles1([], _).
 draw_all_tiles1([H|T], Ctx) :-
+    writeln(draw_all_tile(H)),
     draw_all_tile(H, Ctx),
     draw_all_tiles1(T, Ctx).
 
@@ -407,7 +410,7 @@ draw_selected_tile_mark(Tile, Ctx) :-
 	HorizontalRightX is MidX+Adjust,
 	HorizontalRightY = MidY,
 
-	game_turn(GT),
+	get_turn(GT),
 	get_highlight_color(GT, Color),
 	%highlight_color(GT, Color),
 
@@ -440,7 +443,7 @@ draw_replacement_tile_mark(Tile, Ctx) :-
     MidY is Y + (Size / 2),
     Adjust is Size / 4,
 
-	game_turn(GT),
+	get_turn(GT),
 	get_highlight_color(GT, Color),
     %highlight_color(GT, Color),
 
@@ -456,7 +459,7 @@ draw_replacement_tile_mark(Tile, Ctx) :-
 	].
 
 draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx) :-
-	game_turn(GT),
+	get_turn(GT),
 	highlight_color(GT, Color),
 
     Ctx >> [
@@ -515,13 +518,13 @@ container_type(board, board).
 tile_in_inactive_hand(Tile) :-
     get_tile_container(Tile, Container),
     container_type(Container, hand),
-    game_turn(TurnID),
+    get_turn(TurnID),
     \+ container_id(Container, TurnID).
 
 tile_in_active_hand(Tile) :-
     get_tile_container(Tile, Container),
     container_type(Container, hand),
-    game_turn(TurnID),
+    get_turn(TurnID),
     container_id(Container, TurnID).
 
 highlight_color(1, '#CCFFCC').
