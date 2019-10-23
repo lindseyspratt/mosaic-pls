@@ -73,9 +73,6 @@ display_key_value(Key - Value, Elements) :-
 
 setup_game_data :-
     init_model_basics(2, 4, [1,2,3,4]),
-%    canvasWidth, canvasHeight, canvasOffsetTop, canvasOffsetLeft, context,
-%            colors, highlightColors, handTileSize, handPadding, handMargin,
-%            boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
     init_game_model_tiles, % uses info in model_basics.
     increment_turn(1), % the first increment should move the turn from the initial 0 to 1.
     create_view_basics,
@@ -224,14 +221,13 @@ on_click_active_hand_tile_rotate(ID) :-
 
 setup_hands([], []).
 setup_hands([_+HandTiles|T], IDs) :-
-    writeln(setting_up_hand(HandTiles)),
+    %writeln(setting_up_hand(HandTiles)),
     setup_hand(HandTiles, IDs, IDTail),
     setup_hands(T, IDTail).
 
 setup_hand([], Tail, Tail).
 setup_hand([x(H,GridX,GridY)-ID|T], [ID|OtherIDs], IDTail) :-
-    %create_tile_model(ID, GridX,GridY,Colors,Container),
-    writeln(setup_hand_tile(x(H,GridX,GridY)-ID)),
+    %writeln(setup_hand_tile(x(H,GridX,GridY)-ID)),
     update_grid_x(ID, _, GridX),
     update_grid_y(ID, _, GridY),
     assert_data(H, ID),
