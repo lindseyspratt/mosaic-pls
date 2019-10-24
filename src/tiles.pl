@@ -7,6 +7,7 @@
 :- use_module(view_basics).
 :- use_module(tile_model).
 :- use_module(game_model_tiles).
+:- use_module(tile_view).
 
 :- dynamic(is_selected/1).
 
@@ -21,7 +22,7 @@
 init :-
     data_predicate_dynamics([
         data_predicates(g, game,[board_translate, replacements]), % e.g. game_board_translate(ID, X>Y)...
-        data_predicates(ts, tile,[x, y,size]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
+        %data_predicates(ts, tile,[x, y,size]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
         data_predicates(lp, legal_position, [bx, by])
     ]).
 
@@ -29,7 +30,8 @@ clear_tests :-
     clear_select_test,
     clear_rotate_test,
     clear_view_basics_test,
-    clear_game_model_tiles_test.
+    clear_game_model_tiles_test,
+    clear_tile_view_test.
 
 view_basics_test :-
     setup_game_data,
@@ -47,6 +49,16 @@ game_model_tiles_test :-
     display_key_values("Game Model Tiles", V).
 
 clear_game_model_tiles_test :-
+    clear_display_key_values.
+
+tile_view_test :-
+    setup_game_data,
+    clear_tests,
+    create_tile_view(1, 10, 15, 55),
+    tile_view_values(1, V),
+    display_key_values("Tile View", V).
+
+clear_tile_view_test :-
     clear_display_key_values.
 
 clear_display_key_values :-
@@ -168,11 +180,11 @@ rotate(Event) :-
      true
     ).
 
-point_in_tile(ID, MX, MY) :-
-    tile_x(ID, TX),
-    tile_y(ID, TY),
-    tile_size(ID, Size),
-    in_square(MX, MY, TX, TY, Size).
+%point_in_tile(ID, MX, MY) :-
+%    tile_x(ID, TX),
+%    tile_y(ID, TY),
+%    tile_size(ID, Size),
+%    in_square(MX, MY, TX, TY, Size).
 
 in_square(X, Y, Left, Top, Size) :-
     in_interval(X, Left, Left+Size),
@@ -226,11 +238,12 @@ setup_hands([_+HandTiles|T], IDs) :-
     setup_hands(T, IDTail).
 
 setup_hand([], Tail, Tail).
-setup_hand([x(H,GridX,GridY)-ID|T], [ID|OtherIDs], IDTail) :-
+setup_hand([x(X, Y, Size,GridX,GridY)-ID|T], [ID|OtherIDs], IDTail) :-
     %writeln(setup_hand_tile(x(H,GridX,GridY)-ID)),
     update_grid_x(ID, _, GridX),
     update_grid_y(ID, _, GridY),
-    assert_data(H, ID),
+    %assert_data(H, ID),
+    create_tile_view(ID, X, Y, Size),
     setup_hand(T, OtherIDs, IDTail).
 
 hand_origin(1).
@@ -256,7 +269,7 @@ expand_brief_tiles([H|T], Size, [EH|ET]) :-
 % [x, y,bx,by,size,colors,container]
 expand_brief_tile(t(BoardX, BoardY, TileID),
         Size,
-        x(ts(X, Y, Size), BoardX, BoardY)-TileID) :- % make the TileID and ModelID the same.
+        x(X, Y, Size, BoardX, BoardY)-TileID) :- % make the TileID and ModelID the same.
     X is BoardX * Size,
     Y is BoardY * Size.
 
@@ -305,9 +318,9 @@ place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxRows, t(Col, Row, H
 % expressions; e.g. (1 + 0.5 * 50).
 
 draw_tile(Ctx, Tile) :-
-    tile_x(Tile, X),
-    tile_y(Tile, Y),
-    tile_size(Tile, Size),
+    get_tile_display_x(Tile, X),
+    get_tile_display_y(Tile, Y),
+    get_tile_size(Tile, Size),
     Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
     Center = (X + 0.5 * Size > Y + 0.5 * Size),
     get_tile_colors(Tile, AbstractColors),
@@ -389,9 +402,9 @@ draw_replacements(Tile, Ctx) :-
 center_board.
 
 draw_selected_tile_mark(Tile, Ctx) :-
-    tile_x(Tile, X),
-    tile_y(Tile, Y),
-    tile_size(Tile, Size),
+    get_tile_display_x(Tile, X),
+    get_tile_display_y(Tile, Y),
+    get_tile_size(Tile, Size),
 
     MidX is X + (Size / 2),
     MidY is Y + (Size / 2),
@@ -431,9 +444,9 @@ draw_selected_tile_mark(Tile, Ctx) :-
 	].
 
 draw_replacement_tile_mark(Tile, Ctx) :-
-    tile_x(Tile, X),
-    tile_y(Tile, Y),
-    tile_size(Tile, Size),
+    get_tile_display_x(Tile, X),
+    get_tile_display_y(Tile, Y),
+    get_tile_size(Tile, Size),
 
     MidX is X + (Size / 2),
     MidY is Y + (Size / 2),
