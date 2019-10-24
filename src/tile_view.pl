@@ -1,9 +1,10 @@
 :- module(tile_view,
     [create_tile_view/4,
-     get_id/2, get_tile_display_x/2, set_tile_display_x/2, get_tile_display_y/2, set_tile_display_y/2, get_tile_size/2, set_tile_size/2,
+     get_tile_display_x/2, set_tile_display_x/2, get_tile_display_y/2, set_tile_display_y/2, get_tile_size/2, set_tile_size/2,
      point_in_tile/3, point_in_tile_edge/4, tile_view_values/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
+:- use_module(geometry).
 
 :- initialization(initdyn).
 
@@ -38,10 +39,7 @@ point_in_tile(ID, X, Y) :-
     data_displayX(ID, DX),
     data_displayY(ID, DY),
     data_size(ID, Size),
-    X >= DX,
-    X =< (DX + Size),
-    Y >= DY,
-    Y =< DY + Size.
+    in_square(X, Y, DX, DY, Size).
 
 point_in_tile_edge(ID, X, Y, Edge) :-
     data_displayX(ID, DX),

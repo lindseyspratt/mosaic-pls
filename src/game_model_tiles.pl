@@ -156,12 +156,29 @@ last_placed_tiles(Tile1, Tile2) :-
     data_lastPlacedTile1(SortedTile1),
     data_lastPlacedTile2(SortedTile2).
 
+add_board_tile(Tile) :-
+    data_default_id(ID),
+    retractall(data_board(ID, Board)),
+    asserta(data_board(ID, [Tile|Board])).
+
+remove_tile_from_board(Tile) :-
+    data_default_id(GameModelTilesID),
+    retract(data_board(GameModelTilesID, Board)),
+    delete(Board, Tile, RemainderBoard),
+    asserta(data_board(GameModelTilesID, RemainderBoard)).
+
 remove_tile_from_board_hash(Tile) :-
     tile_board_hash_key(Tile, Key),
     data_default_id(GameModelTilesID),
     retract(data_boardHash(GameModelTilesID, BoardHash)),
     delete(BoardHash, Key-Tile, RemainderBoardHash),
     asserta(data_boardHash(GameModelTilesID, RemainderBoardHash)).
+
+add_board_hash_tile(Tile) :-
+    tile_board_hash_key(Tile, Key),
+    data_default_id(GameModelTilesID),
+    retract(data_boardHash(GameModelTilesID, BoardHash)),
+    asserta(data_boardHash(GameModelTilesID, [Key-Tile|BoardHash])).
 
 remove_tile_from_container(Tile) :-
     get_tile_container(Tile, Container),
@@ -177,7 +194,8 @@ remove_tile_from_container(Tile) :-
          retract(data_tilesOnBoard(GameModelTilesID, Board)),
          delete(Board, Tile, RemainingBoard),
          asserta(data_tilesOnBoard(GameModelTilesID, RemainingBoard)),
-         remove_tile_from_board_hash(Tile)
+         remove_tile_from_board_hash(Tile),
+         remove_tile_from_board(Tile)
     ;
      throw(mosaic_internal('invalid container type', Container))
     ).
@@ -196,6 +214,7 @@ place_tile_on_board(Tile, GridX, GridY) :-
     (Container = hand(_PlayerID)
       -> update_grid_x(Tile, _, GridX),
          update_grid_y(Tile, _, GridY),
+         add_board_tile(Tile),
          add_board_hash_tile(Tile),
          remove_tile_from_container(Tile),
          update_container(Tile, _, board),

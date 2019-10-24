@@ -8,6 +8,7 @@
 :- use_module(tile_model).
 :- use_module(game_model_tiles).
 :- use_module(tile_view).
+:- use_module(game_view_tiles).
 
 :- dynamic(is_selected/1).
 
@@ -61,6 +62,16 @@ tile_view_test :-
 clear_tile_view_test :-
     clear_display_key_values.
 
+game_view_tiles_test :-
+    setup_game_data,
+    clear_tests,
+    create_tile_view(1, 10, 15, 55),
+    game_view_tiles_values(1, V),
+    display_key_values("Game View Tiles", V).
+
+game_view_tiles_test :-
+    clear_display_key_values.
+
 clear_display_key_values :-
     _Elements >> [id -:> display_elements, innerHTML <:+ ""].
 
@@ -89,8 +100,9 @@ setup_game_data :-
     increment_turn(1), % the first increment should move the turn from the initial 0 to 1.
     create_view_basics,
     assert_data(g(1>1, []), 1),
+    create_game_view_tiles,
+    layout_hands,
     !.
-
 
 select_test :-
     setup_game_data,
@@ -101,9 +113,7 @@ select_test :-
     get_context(Ctx),
     _Canvas >> [id -:> canvas,
         addEventListener(click, [object-E]^select(E))],
-    get_number_of_players(NumberOfPlayers),
-    initial_hands_expanded(NumberOfPlayers, Hands),
-    setup_hands(Hands, TileIDs),
+    get_tiles(TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
 clear_select_test :-
@@ -124,9 +134,7 @@ rotate_test :-
     get_context(Ctx),
     _Canvas >> [id -:> canvas,
         addEventListener(click, [object-E]^rotate(E))],
-    get_number_of_players(NumberOfPlayers),
-    initial_hands_expanded(NumberOfPlayers, Hands),
-    setup_hands(Hands, TileIDs),
+    get_tiles(TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
 clear_rotate_test :-
@@ -180,25 +188,6 @@ rotate(Event) :-
      true
     ).
 
-%point_in_tile(ID, MX, MY) :-
-%    tile_x(ID, TX),
-%    tile_y(ID, TY),
-%    tile_size(ID, Size),
-%    in_square(MX, MY, TX, TY, Size).
-
-in_square(X, Y, Left, Top, Size) :-
-    in_interval(X, Left, Left+Size),
-    in_interval(Y, Top, Top+Size).
-
-in_interval(V, Low, High) :-
-    V >= Low,
-    V =< High.
-
-point_in_board_position(BX, BY, X, Y) :-
-    get_board_tile_size(Size),
-    board_position_top_left_coordinates(BX, BY, BCX, BCY),
-    in_square(X, Y, BCX, BCY, Size).
-
 on_click_tile(ID, _X, _Y) :-
     %writeln(click(ID, X, Y)),
     (tile_in_active_hand(ID)
@@ -230,49 +219,6 @@ on_click_active_hand_tile_rotate(ID) :-
     tile_rotate_right(ID),
     draw_all_tile(ID, Ctx).
 
-
-setup_hands([], []).
-setup_hands([_+HandTiles|T], IDs) :-
-    %writeln(setting_up_hand(HandTiles)),
-    setup_hand(HandTiles, IDs, IDTail),
-    setup_hands(T, IDTail).
-
-setup_hand([], Tail, Tail).
-setup_hand([x(X, Y, Size,GridX,GridY)-ID|T], [ID|OtherIDs], IDTail) :-
-    %writeln(setup_hand_tile(x(H,GridX,GridY)-ID)),
-    update_grid_x(ID, _, GridX),
-    update_grid_y(ID, _, GridY),
-    %assert_data(H, ID),
-    create_tile_view(ID, X, Y, Size),
-    setup_hand(T, OtherIDs, IDTail).
-
-hand_origin(1).
-
-initial_hands_expanded(NumberOfPlayers, ExpandedHands) :-
-    initial_hands(NumberOfPlayers, Hands),
-    expand_hands(Hands, ExpandedHands).
-
-expand_hands([], []).
-expand_hands([H|T], [EH|ET]) :-
-    expand_hand(H, EH),
-    expand_hands(T, ET).
-
-expand_hand(ID+BriefTiles, ID+ExpandedTiles) :-
-    get_hand_tile_size(Size),
-    expand_brief_tiles(BriefTiles, Size, ExpandedTiles).
-
-expand_brief_tiles([], _, []).
-expand_brief_tiles([H|T], Size, [EH|ET]) :-
-    expand_brief_tile(H, Size, EH),
-    expand_brief_tiles(T, Size, ET).
-
-% [x, y,bx,by,size,colors,container]
-expand_brief_tile(t(BoardX, BoardY, TileID),
-        Size,
-        x(X, Y, Size, BoardX, BoardY)-TileID) :- % make the TileID and ModelID the same.
-    X is BoardX * Size,
-    Y is BoardY * Size.
-
 abstract_colors([], []).
 abstract_colors([AH|AT], [CH|CT]) :-
     get_player_color(AH, CH),
@@ -282,36 +228,6 @@ abstract_color(a, red).
 abstract_color(b, green).
 abstract_color(c, blue).
 abstract_color(d, yellow).
-
-/*
-Fill in gridX and gridY values for the tile models created by game_model_tiles:build_tiles/0
-such that the tiles for a hand are grouped together in a vertical rectangle 2 columns wide and 4
-rows deep and these two hand rectangles are placed one above the other with a small space
-separating them.
-*/
-initial_hands(2, [1+Player1Tiles, 2+Player2Tiles]) :-
-    hand_origin(Origin1),
-    Origin2 is Origin1 + 5,
-    get_hands([ModelHand1, ModelHand2]),
-    place_hand(ModelHand1, 1, Origin1, 0, 4, Player1Tiles),
-    length(Player1Tiles, Player1TilesLength),
-    place_hand(ModelHand2, 1, Origin2, Player1TilesLength, 4, Player2Tiles).
-
-% place_hand(Hand, BaseCol, BaseRow, PlacedSoFar, MaxColumns, MaxRows, PlacedHand).
-place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, MaxRows, PlacedHand) :-
-    place_hand(AbstractHand, BaseCol, BaseRow, PlacedSoFar, PlacedSoFar, MaxRows, PlacedHand).
-
-place_hand([], _BaseCol, _BaseRow, _Counter, _InitialCounter, _MaxRows, []).
-place_hand([H|T], BaseCol, BaseRow, Counter, InitialCounter, MaxRows, [HP|TP]) :-
-    place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxRows, HP),
-    CounterNEXT is Counter + 1,
-    place_hand(T, BaseCol, BaseRow, CounterNEXT, InitialCounter, MaxRows, TP).
-
-place_hand1(H, BaseCol, BaseRow, Counter, InitialCounter, MaxRows, t(Col, Row, H)) :-
-    RowIncrement is (Counter-InitialCounter) mod MaxRows,
-    ColIncrement is (Counter-InitialCounter) // MaxRows,
-    Col is BaseCol + ColIncrement,
-    Row is BaseRow + RowIncrement.
 
 % (X > Y) is a point (X,Y).
 % Web API method arguments of type number or integer accept arithmetic
@@ -398,8 +314,6 @@ draw_replacements(Tile, Ctx) :-
     ;
     true
     ).
-
-center_board.
 
 draw_selected_tile_mark(Tile, Ctx) :-
     get_tile_display_x(Tile, X),
@@ -490,8 +404,8 @@ draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx) :-
 
 draw_legal_positions_with_rotations([], _, _).
 draw_legal_positions_with_rotations([H|T], Ctx, TileSize) :-
-    legal_position_b(H, B),
-    get_top_left_board_tile_coords(B, TileSize, X > Y),
+    legal_position_b(H, BX > BY),
+    get_top_left_board_tile_coords(BX, BY, X, Y),
     Ctx >*> [
         rect(X, Y, TileSize, TileSize),
         stroke
@@ -500,29 +414,14 @@ draw_legal_positions_with_rotations([H|T], Ctx, TileSize) :-
 
 draw_legal_positions([], _, _).
 draw_legal_positions([H|T], Ctx, TileSize) :-
-    legal_position_b(H, B),
-    get_top_left_board_tile_coords(B, TileSize, X > Y),
+    legal_position_b(H, BX > BY),
+    get_top_left_board_tile_coords(BX, BY, X, Y),
     Ctx >*> fillRect(X, Y, TileSize, TileSize),
     draw_legal_positions(T, Ctx, TileSize).
-
-get_top_left_board_tile_coords(BX > BY, TileSize, X > Y) :-
-    get_board_left(Left),
-    game_board_translate(TX > TY),
-    get_board_width(W),
-    get_board_top(Top),
-    get_board_height(H),
-    X  is Left + TX + (W / 2) + (BX - 0.5) * TileSize,
-    Y  is Top + TY + (H / 2) + (BY - 0.5) * TileSize.
 
 container_id(hand(ID), ID).
 container_type(hand(_ID), hand).
 container_type(board, board).
-
-%tile_label(BoardX, BoardY, Text) :-
-%    number_codes(BoardX, BXCodes),
-%    number_codes(BoardY, BYCodes),
-%    append_lists(["x", BXCodes, "y", BYCodes], TextCodes),
-%    atom_codes(Text, TextCodes).
 
 tile_in_inactive_hand(Tile) :-
     get_tile_container(Tile, Container),
