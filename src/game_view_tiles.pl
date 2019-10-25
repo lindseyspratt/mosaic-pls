@@ -1,11 +1,12 @@
 :- module(game_view_tiles, [create_game_view_tiles/0, layout_hands/0, center_board/0,
     get_translate_x/1, set_translate_x/1, get_translate_y/1, set_translate_y/1,
     get_target_translate_x/1, set_target_translate_x/1, get_target_translate_y/1, set_target_translate_y/1,
-    get_top_left_board_tile_coords/4, point_in_board_position/4,
+    get_top_left_board_tile_coords/4, point_in_board_position/4, update_board_tile_view/1,
     game_view_tiles_values/1, game_view_tiles_values/2]).
 
 :- use_module(library).
 :- use_module('../proscriptls_sdk/library/data_predicates').
+:- use_module(tile_model).
 :- use_module(game_model_tiles).
 :- use_module(tile_view).
 :- use_module(view_basics).
@@ -142,6 +143,15 @@ point_in_board_position(GridX, GridY, X, Y) :-
     get_top_left_board_tile_coords(GridX, GridY, TX, TY),
     get_board_tile_size(TileSize),
     in_square(X, Y, TX, TY, TileSize).
+
+update_board_tile_view(Tile) :-
+    get_tile_grid_x(Tile, GridX),
+    get_tile_grid_y(Tile, GridY),
+    get_board_tile_size(Size),
+    set_tile_size(Tile, Size),
+    get_top_left_board_tile_coords(GridX, GridY, ViewX, ViewY),
+    set_tile_display_x(Tile, ViewX),
+    set_tile_display_y(Tile, ViewY).
 
 game_view_tiles_values(Values) :-
     data_default_id(ID),

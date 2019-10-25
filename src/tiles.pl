@@ -29,6 +29,7 @@ init :-
 clear_tests :-
     clear_select_test,
     clear_rotate_test,
+    clear_move_to_board_test,
     clear_view_basics_test,
     clear_game_model_tiles_test,
     clear_tile_view_test.
@@ -144,6 +145,26 @@ clear_rotate_test :-
         removeEventListener(click, [object-E]^rotate(E))],
     Ctx >*> clearRect(0, 0, W, H).
 
+move_to_board_test :-
+    setup_game_data,
+    clear_tests,
+    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Select Test</h2>"],
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_context(Ctx),
+    _Canvas >> [id -:> canvas,
+        addEventListener(click, [object-E]^move_to_board(E))],
+    get_tiles(TileIDs),
+    draw_all_tiles(TileIDs, Ctx, W, H).
+
+clear_move_to_board_test :-
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_context(Ctx),
+    _Canvas >> [id -:> canvas,
+        removeEventListener(click, [object-E]^move_to_board(E))],
+    Ctx >*> clearRect(0, 0, W, H).
+
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates
  % within the containing HTMLCanvasElement minus the canvas offset.
@@ -187,6 +208,25 @@ rotate(Event) :-
      true
     ).
 
+move_to_board(Event) :-
+    Event >> [pageX +:> PageX, pageY +:> PageY],
+    dom_release_object(Event),
+    get_canvas_offset_top(PTop),
+    get_canvas_offset_left(PLeft),
+    X is PageX - PLeft,
+    Y is PageY - PTop,
+    % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
+    (point_in_tile(ID, X, Y)
+      -> on_click_tile_move(ID, X, Y)  % at most one tile contains (X, Y).
+    ;
+     legal_position_bx(ID, BX),
+     legal_position_by(ID, BY),
+     point_in_board_position(BX, BY, X, Y)
+      -> true
+    ;
+     true
+    ).
+
 on_click_tile(ID, _X, _Y) :-
     %writeln(click(ID, X, Y)),
     (tile_in_active_hand(ID)
@@ -219,3 +259,20 @@ on_click_active_hand_tile_rotate(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     tile_rotate_right(ID),
     draw_all_tile(ID, Ctx).
+
+on_click_tile_move(ID, _X, _Y) :-
+    %writeln(on_click_tile_move(ID, X, Y)),
+    (tile_in_active_hand(ID)
+      -> on_click_active_hand_tile_move(ID)
+    ;
+    true % writeln(not_active)
+    ).
+
+on_click_active_hand_tile_move(ID) :-
+    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    place_tile_on_board(ID, 1, 1),
+    update_board_tile_view(ID),
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_tiles(TileIDs),
+    draw_all_tiles(TileIDs, Ctx, W, H).

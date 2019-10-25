@@ -135,7 +135,7 @@ get_board_tile_by_grid(GridX, GridY, TileID) :-
 
 set_last_build_phase_tile_placed(ID) :-
     data_default_id(GameModelTilesID),
-    retractall(data_slastBuildPhaseTilePlacedID(GameModelTilesID, _)),
+    retractall(data_lastBuildPhaseTilePlacedID(GameModelTilesID, _)),
     asserta(data_lastBuildPhaseTilePlacedID(GameModelTilesID, ID)).
 
 last_placed_tiles(Tile1, Tile2) :-
@@ -209,7 +209,6 @@ place_tile_in_hand(Tile) :-
     add_hand_tile(Turn, Tile).
 
 place_tile_on_board(Tile, GridX, GridY) :-
-    get_view_tile(Tile, ViewTile),
     get_tile_container(Tile, Container),
     (Container = hand(_PlayerID)
       -> update_grid_x(Tile, _, GridX),
@@ -220,9 +219,9 @@ place_tile_on_board(Tile, GridX, GridY) :-
          update_container(Tile, _, board),
          get_game_phase(Phase),
          (Phase = build
-           -> set_lastBuildPhaseTilePlacedID(Tile)
+           -> set_last_build_phase_tile_placed(Tile)
           ;
-          set_lastBuildPhaseTilePlacedID(none)
+          set_last_build_phase_tile_placed(none)
          )
     ;
      Container = board
@@ -232,12 +231,7 @@ place_tile_on_board(Tile, GridX, GridY) :-
          add_board_hash_tile(Tile)
     ;
      throw(mosaic_internal('invalid container type (place_tile_on_board)', Container))
-    ),
-    board_tile_size(Size),
-    set_view_tile_size(ViewTile, Size),
-    get_top_left_board_tile_coords(GridX, GridY, ViewX, ViewY),
-    set_view_tile_grid_x(ViewTile, ViewX),
-    set_view_tile_grid_y(ViewTile, ViewY).
+    ).
 
 get_game_phase(Phase) :-
     data_gamePhase(Phase).

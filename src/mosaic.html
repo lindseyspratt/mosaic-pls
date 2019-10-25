@@ -17,6 +17,9 @@
     <button class="mosaic-button" onclick="proscriptls ('tiles:select_test.');">
         Select Test: Clicking on the non-grayed-out squares places marker ('+') on the selected square.
     </button>
+    <button class="mosaic-button" onclick="proscriptls ('tiles:move_to_board_test.');">
+        Move-to-board Test: Clicking on a non-grayed-out square moves it to (1,1) in the board.
+    </button>
     <button class="mosaic-button" onclick="proscriptls ('tiles:view_basics_test.');">
         View Basics Test: This test displays a list of values held in the view_basics module.
     </button>
@@ -38,7 +41,7 @@
 </div>
 <div id="tiles" class="mosaic-label">
     Tiles
-    <canvas id="canvas" width="300" height="600">
+    <canvas id="canvas" width="800" height="600">
     </canvas>
 </div>
 <!--suppress JSUnresolvedLibraryURL -->

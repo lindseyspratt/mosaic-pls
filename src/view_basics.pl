@@ -54,7 +54,7 @@ get_board_left(X) :- data_boardLeft(X).
 
 get_board_top(X) :- data_boardTop(X).
 
-get_board_width(X) :- data_boardWidthX(X).
+get_board_width(X) :- data_boardWidth(X).
 
 get_board_height(X) :- data_boardHeight(X).
 
