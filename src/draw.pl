@@ -1,4 +1,4 @@
-:- module(draw, [draw_all_tiles/4, draw_all_tile/2]).
+:- module(draw, [draw_all_tiles/4, draw_all_tile/2, draw_legal_moves/3]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(model_basics).
@@ -7,6 +7,7 @@
 :- use_module(view_basics).
 :- use_module(tile_view).
 :- use_module(game_view_tiles).
+:- use_module(location_model).
 
 abstract_colors([], []).
 abstract_colors([AH|AT], [CH|CT]) :-
@@ -194,7 +195,8 @@ draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx) :-
 
 draw_legal_positions_with_rotations([], _, _).
 draw_legal_positions_with_rotations([H|T], Ctx, TileSize) :-
-    legal_position_b(H, BX > BY),
+    get_location_grid_x(H, BX),
+    get_location_grid_y(H, BY),
     get_top_left_board_tile_coords(BX, BY, X, Y),
     Ctx >*> [
         rect(X, Y, TileSize, TileSize),
@@ -204,17 +206,11 @@ draw_legal_positions_with_rotations([H|T], Ctx, TileSize) :-
 
 draw_legal_positions([], _, _).
 draw_legal_positions([H|T], Ctx, TileSize) :-
-    legal_position_b(H, BX > BY),
+    get_location_grid_x(H, BX),
+    get_location_grid_y(H, BY),
     get_top_left_board_tile_coords(BX, BY, X, Y),
     Ctx >*> fillRect(X, Y, TileSize, TileSize),
     draw_legal_positions(T, Ctx, TileSize).
 
 highlight_color(1, '#CCFFCC').
 highlight_color(2, '#CCCCFF').
-
-%legal_position_bx(legal_position(BX, _BY), BX).
-%legal_position_by(legal_position(_BX, BY), BY).
-
-legal_position_b(T, BX > BY) :-
-    legal_position_bx(T, BX),
-    legal_position_by(T, BY).

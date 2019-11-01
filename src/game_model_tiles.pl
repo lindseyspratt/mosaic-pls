@@ -158,7 +158,7 @@ last_placed_tiles(Tile1, Tile2) :-
 
 add_board_tile(Tile) :-
     data_default_id(ID),
-    retractall(data_board(ID, Board)),
+    retract(data_board(ID, Board)),
     asserta(data_board(ID, [Tile|Board])).
 
 remove_tile_from_board(Tile) :-

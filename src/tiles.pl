@@ -7,6 +7,8 @@
 :- use_module(view_basics).
 :- use_module(tile_model).
 :- use_module(game_model_tiles).
+:- use_module(location_model).
+:- use_module(locations).
 :- use_module(tile_view).
 :- use_module(game_view_tiles).
 :- use_module(draw).
@@ -102,6 +104,8 @@ setup_game_data :-
     assert_data(g(1>1, []), 1),
     create_game_view_tiles,
     layout_hands,
+    create_locations,
+    set_possible_build_positions,
     !.
 
 select_test :-
@@ -173,6 +177,10 @@ clear_move_to_board_test :-
 select(Event) :-
     Event >> [pageX +:> PageX, pageY +:> PageY],
     dom_release_object(Event),
+    select1(PageX, PageY).
+
+select1(PageX, PageY) :-
+    writeln(select1(PageX, PageY)),
     get_canvas_offset_top(PTop),
     get_canvas_offset_left(PLeft),
     X is PageX - PLeft,
@@ -181,10 +189,16 @@ select(Event) :-
     (point_in_tile(ID, X, Y)
       -> on_click_tile(ID, X, Y)  % at most one tile contains (X, Y).
     ;
-     legal_position_bx(ID, BX),
-     legal_position_by(ID, BY),
+     get_legal_positions(LegalPositions),
+     member(LegalPosition, LegalPositions),
+     get_location_grid_x(LegalPosition, BX),
+     get_location_grid_y(LegalPosition, BY),
      point_in_board_position(BX, BY, X, Y)
-      -> true
+      -> clear_locations,
+         get_selected_tile_id(ID),
+         set_selected_tile_id(none),
+         _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+         place_tile_on_board_and_draw(Ctx, ID, BX, BY)
     ;
      true
     ).
@@ -245,7 +259,12 @@ on_click_active_hand_tile(ID) :-
     true
     ),
     set_selected_tile_id(ID),
-    draw_all_tile(ID, Ctx).
+    get_tile_colors(ID, Colors),
+    update_legal_positions(Colors),
+    draw_all_tile(ID, Ctx),
+    get_legal_positions(LegalPositions),
+    get_legal_positions_with_rotation(LegalPositionsWithRotation),
+    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
 
 on_click_tile_rotate(ID, _X, _Y) :-
     %writeln(click(ID, X, Y)),
@@ -270,7 +289,11 @@ on_click_tile_move(ID, _X, _Y) :-
 
 on_click_active_hand_tile_move(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    place_tile_on_board(ID, 1, 1),
+    place_tile_on_board_and_draw(Ctx, ID, 0, 0).
+
+place_tile_on_board_and_draw(Ctx, ID, X, Y) :-
+    place_tile_on_board(ID, X, Y),
+    set_possible_build_positions,
     update_board_tile_view(ID),
     get_canvas_width(W),
     get_canvas_height(H),
