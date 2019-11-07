@@ -31,7 +31,7 @@ create_locations :-
     assert_data(loc(0, [], [], [], []), 1).
 
 clear_locations :-
-    data_shapedPositions(Locations),
+    setof(Location, X^get_location_grid_x(Location, X), Locations),
     clear_locations(Locations),
     set_shaped_positions([]),
     set_legal_positions_with_rotation([]),
