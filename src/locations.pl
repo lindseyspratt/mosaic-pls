@@ -1,6 +1,7 @@
-:- module(locations, [create_locations/0, clear_locations/0,
-    get_legal_positions/1, push_legal_position/1, set_legal_positions/1, get_legal_positions_with_rotation/1,
-    set_legal_positions_with_rotation/1, get_irreplaceables/1, set_irreplaceables/1, update_legal_positions/1, set_possible_build_positions/0 ]).
+:- module(locations, [create_locations/0, clear_locations/0, get_shaped_positions/1,
+    get_legal_positions/1, set_legal_positions/1, get_legal_positions_with_rotation/1,
+    set_legal_positions_with_rotation/1, get_irreplaceables/1, set_irreplaceables/1, update_legal_positions/1,
+    find_shaped_locations/0, find_legal_with_rotation_locations/1, find_legal_locations/1, locations_values/2 ]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(location_model).
@@ -11,15 +12,30 @@
 
 :- initialization(initdyn).
 
+% shaped positions are places on the board where a tile could be placed without violating
+% the shape constraints:
+%   at least min(2,K) neighbors for board of K tiles,
+%   at least one ortho neighbor,
+%   placing a tile in this location would not create a 'hole' (an empty location with
+%     tiles on opposite sides)
+
 initdyn :-
-    data_predicate_dynamics([data_predicates(loc, data,[locationCounter, legalPositions,legalPositionsWithRotation,irreplaceables])]).
+    data_predicate_dynamics([data_predicates(loc, data,
+        [locationCounter, shapedPositions, legalPositions,legalPositionsWithRotation,irreplaceables])]).
+
+dummy_reference :-
+    dummy_reference,
+    data_locationCounter(_).
 
 create_locations :-
-    assert_data(loc(0, [], [], []), 1).
+    assert_data(loc(0, [], [], [], []), 1).
 
 clear_locations :-
-    data_legalPositionsWithRotation(Locations),
-    clear_locations(Locations).
+    data_shapedPositions(Locations),
+    clear_locations(Locations),
+    set_shaped_positions([]),
+    set_legal_positions_with_rotation([]),
+    set_legal_positions([]).
 
 clear_locations([]).
 clear_locations([H|T]) :-
@@ -32,13 +48,16 @@ increment_location_counter(NewCounter) :-
     NewCounter is Counter + 1,
     asserta(data_locationCounter(DataID, NewCounter)).
 
+get_shaped_positions(Value) :-
+    data_shapedPositions(Value).
+
+set_shaped_positions(Value) :-
+    data_default_id(ID),
+    retract(data_shapedPositions(ID, _)),
+    asserta(data_shapedPositions(ID, Value)).
+
 get_legal_positions(Value) :-
     data_legalPositions(Value).
-
-push_legal_position(Value) :-
-    data_default_id(ID),
-    retract(data_legalPositions(ID, Positions)),
-    asserta(data_legalPositions(ID, [Value|Positions])).
 
 set_legal_positions(Value) :-
     data_default_id(ID),
@@ -63,41 +82,80 @@ set_irreplaceables(Value) :-
 
 update_legal_positions(Colors) :-
     data_legalPositionsWithRotation(PositionsWithRotations),
-    update_legal_positions(PositionsWithRotations, Colors, ConstrainedPositions),
+    filter_legal_positions_with_rotation_by_tile_colors(PositionsWithRotations, Colors, ConstrainedPositions),
     set_legal_positions(ConstrainedPositions).
 
-update_legal_positions([], _Colors, []).
-update_legal_positions([H|T], Colors, Constrained) :-
-    update_legal_position(H, Colors, Constrained, NextConstrained),
-    update_legal_positions(T, Colors, NextConstrained).
+% Shaped locations are a function purely of the
+% current board tiles, independent of a particular tile being placed.
+% find_shaped_locations/0 should be invoked every time the board is changed.
 
-update_legal_position(H, Colors, Constrained, ConstrainedTail) :-
-    get_location_constraints(H, Constraints),
-    (tile_colors_match_constraint_colors(Colors, Constraints)
-      -> Constrained = [H|ConstrainedTail]
-    ;
-    Constrained = ConstrainedTail
-    ).
-
-set_possible_build_positions :-
+find_shaped_locations :-
     get_board(Board),
     (Board = []
       -> create_location(ID, 0, 0),
-         set_legal_positions_with_rotation([ID])
+         set_shaped_positions([ID])
     ;
      candidate_spaces(Board, Candidates),
-     legal_candidates(Candidates, LegalWithRotation, LegalByLastTilePlaced),
-     length(LegalByLastTilePlaced, LegalByLastLength),
-     (LegalByLastLength > 0
-        -> FinalLegalWithRotation = LegalByLastTilePlaced
-     ;
-     FinalLegalWithRotation = LegalWithRotation
-     ),
-     set_legal_positions_with_rotation(FinalLegalWithRotation)
+     shaped_candidates(Candidates, ShapedLocations),
+     set_shaped_positions(ShapedLocations)
     ).
 
+% Legal-with-rotation locations are shaped locations that
+% a particular tile can occupy in some rotation (not necessarily
+% the rotation that tile currently has).
+% If there are *any* legal-with-rotation locations that are
+% orthogonally adjacent to the last-placed tile then
+% *only* such orthogonally adjacent positions are legal.
+% find_legal_with_rotation_locations/1 should be invoked whenever the
+% tile selection is changed.
+
+find_legal_with_rotation_locations(Tile) :-
+    get_shaped_positions(ShapedLocations),
+    get_tile_colors(Tile, TileColors),
+    filter_shaped_for_legal_locations(ShapedLocations, TileColors, LegalWithRotation),
+    filter_by_last_tile_placed(LegalWithRotation, LegalByLastTilePlaced),
+    length(LegalByLastTilePlaced, LegalByLastLength),
+    (LegalByLastLength > 0
+        -> FinalLegalWithRotation = LegalByLastTilePlaced
+    ;
+     FinalLegalWithRotation = LegalWithRotation
+    ),
+    set_legal_positions_with_rotation(FinalLegalWithRotation).
+
+% Legal locations for selected Tile are those locations where Tile
+% as currently oriented may be placed on the board - it will
+% match colors, satisfy the board shape constraints, and
+% be next to the last placed tile if possible for the selected Tile.
+% find_legal_locations/1 should be invoked whenever a tile is selected
+% or rotated.
+
+find_legal_locations(Tile) :-
+    get_legal_positions_with_rotation(LegalWithRotation),
+    get_tile_colors(Tile, TileColors),
+    filter_legal_positions_with_rotation_by_tile_colors(LegalWithRotation, TileColors, Legal),
+    set_legal_positions(Legal).
+
 candidate_spaces(Board, Candidates) :-
-    candidate_spaces(Board, [], Candidates).
+    candidate_spaces(Board, [], KeyedCandidates),
+    dekey_list(KeyedCandidates, PossibleCandidates),
+    remove_nonorthogonal(PossibleCandidates, Candidates).
+
+remove_nonorthogonal([], []).
+remove_nonorthogonal([H|T], Candidates) :-
+    remove_nonorthogonal1(H, Candidates, Next),
+    remove_nonorthogonal(T, Next).
+
+remove_nonorthogonal1(PossibleCandidate, Candidates, Next) :-
+    get_location_orthogonal_neighbors(PossibleCandidate, OrthogonalNeighborsCount),
+    (OrthogonalNeighborsCount > 0
+      -> Candidates = [PossibleCandidate|Next]
+    ;
+     Candidates = Next
+    ).
+
+dekey_list([], []).
+dekey_list([_-H|T], [H|TT]) :-
+    dekey_list(T, TT).
 
 candidate_spaces([], Candidates, Candidates).
 candidate_spaces([H|T], CandidatesSoFar, CandidatesTotal) :-
@@ -122,7 +180,7 @@ check_neighbors3(DY, DX, PlacedTile, CandidatesIn, CandidatesOut) :-
     get_tile_grid_y(PlacedTile, PlacedY),
     TX is PlacedX + DX,
     TY is PlacedY + DY,
-    (\+ get_board_tile_by_grid(TX, TY, _NeighborTile)
+    (\+ get_board_tile_by_grid(TX > TY, _NeighborTile)
       -> check_neighbor(PlacedTile, TX, TY, DX, DY, CandidatesIn, CandidatesOut)
     ;
     CandidatesIn = CandidatesOut
@@ -136,7 +194,7 @@ check_neighbor(PlacedTile, TX, TY, DX, DY, CandidatesIn, CandidatesOut) :-
      create_location(ID, TX, TY),
      [Key-ID|CandidatesIn] = CandidatesOut
     ),
-    increment_location_neighbors(ID),
+    increment_location_neighbors(ID, _NewCount),
     ((DX = 0; DY = 0)
       -> check_orthogonal_neighbor(PlacedTile, DX, DY, ID)
     ;
@@ -144,14 +202,14 @@ check_neighbor(PlacedTile, TX, TY, DX, DY, CandidatesIn, CandidatesOut) :-
     ).
 
 check_orthogonal_neighbor(PlacedTile, DX, DY, ID) :-
-    increment_location_orthogonal_neighbors(ID),
+    increment_location_orthogonal_neighbors(ID, _NewCount),
     placed_position_offset(DX, DY, PlacedPositionOffset),
     ConstrainedPosition is 1 + (PlacedPositionOffset + 2) mod 4,
     get_tile_colors(PlacedTile, PlacedColors),
     nth0(PlacedPositionOffset, PlacedColors, ColorConstraint),
     set_location_constraint(ID, ConstrainedPosition, ColorConstraint),
-    (get_last_tile_placed_id(PlacedTile)
-      -> set_by_last_tile_placed(ID, true)
+    (get_last_build_phase_tile_placed(PlacedTile)
+      -> set_location_by_last_tile_placed(ID, true)
     ;
     true
     ).
@@ -174,39 +232,26 @@ create_location(ID, GridX, GridY) :-
     create_location_model(ID, GridX, GridY).
 
 
-legal_candidates([], [], []).
-legal_candidates([H|T], LegalWithRotation, LegalByLastTilePlaced) :-
-    legal_candidate(H, LegalWithRotation, LegalTail, LegalByLastTilePlaced, LegalByLastTilePlacedTail),
-    legal_candidates(T, LegalTail, LegalByLastTilePlacedTail).
+shaped_candidates([], []).
+shaped_candidates([H|T], ShapedLocations) :-
+    shaped_candidate(H, ShapedLocations, ShapedLocationsTail),
+    shaped_candidates(T, ShapedLocationsTail).
 
-legal_candidate(Candidate, LegalWithRotation, LegalTail, LegalByLastTilePlaced, LegalByLastTilePlacedTail) :-
+shaped_candidate(Candidate, ShapedLocations, ShapedLocationsTail) :-
     get_location_constraints(Candidate, Constraints),
-    (Constraints = []
-      -> LegalWithRotation = LegalTail,
-         LegalByLastTilePlaced = LegalByLastTilePlacedTail
-    ;
-    get_location_neighbors(Candidate, Neighbors),
-    get_board(Board),
-    length(Board, Length),
-    Neighbors < min(2, Length)
-      -> LegalWithRotation = LegalTail,
-         LegalByLastTilePlaced = LegalByLastTilePlacedTail
-    ;
-    candidate_would_create_hole(Constraints, Candidate)
-      -> LegalWithRotation = LegalTail,
-         LegalByLastTilePlaced = LegalByLastTilePlacedTail
-    ;
-    matching_rotations(Candidate, LegalWithRotation, LegalTail)
-      -> LegalWithRotation = [Candidate|LegalTail],
-         (get_location_by_last_tile_placed(Candidate, true)
-           -> LegalByLastTilePlaced = [Candidate|LegalByLastTilePlacedTail]
-         ;
-         LegalByLastTilePlaced = LegalByLastTilePlacedTail
-         )
+    ((Constraints = []
+     ;
+      get_location_neighbors(Candidate, Neighbors),
+      get_board(Board),
+      length(Board, Length),
+      Neighbors < min(2, Length)
+     ;
+      candidate_would_create_hole(Constraints, Candidate)
+     )
+      -> ShapedLocations = ShapedLocationsTail
     ;
     true
-      -> LegalWithRotation = LegalTail,
-         LegalByLastTilePlaced = LegalByLastTilePlacedTail
+      -> ShapedLocations = [Candidate|ShapedLocationsTail]
     ).
 
 candidate_would_create_hole(Constraints, Candidate) :-
@@ -226,6 +271,49 @@ candidate_would_create_hole([H|T], ConstraintOffset, Candidate) :-
 
 candidate_would_create_hole1(-1, ConstraintOffset, Candidate) :-
     location_edge_second_neighbor_tile(Candidate, ConstraintOffset, _).
+
+filter_shaped_for_legal_locations([], _, []).
+filter_shaped_for_legal_locations([H|T], TileColors, LegalWithRotation) :-
+    filter_shaped_for_legal_location(H, TileColors, LegalWithRotation, LegalWithRotationTail),
+    filter_shaped_for_legal_locations(T, TileColors, LegalWithRotationTail).
+
+filter_shaped_for_legal_location(H, TileColors, LegalWithRotation, LegalWithRotationTail) :-
+    get_location_constraints(H, ColorConstraint),
+    (matching_rotations(TileColors, ColorConstraint, _)
+      -> LegalWithRotation = [H|LegalWithRotationTail]
+    ;
+     LegalWithRotation = LegalWithRotationTail
+    ).
+
+% filter_by_last_tile_placed(LegalWithRotation, LegalByLastTilePlaced).
+filter_by_last_tile_placed([], []).
+filter_by_last_tile_placed([H|T], LegalByLastTilePlaced) :-
+    filter_by_last_tile_placed1(H, LegalByLastTilePlaced, LegalByLastTilePlacedTail),
+    filter_by_last_tile_placed(T, LegalByLastTilePlacedTail).
+
+filter_by_last_tile_placed1(Location, LegalByLastTilePlaced, LegalByLastTilePlacedTail) :-
+    get_location_by_last_tile_placed(Location, true)
+      -> LegalByLastTilePlaced = [Location|LegalByLastTilePlacedTail]
+    ;
+    LegalByLastTilePlaced = LegalByLastTilePlacedTail.
+
+% filter_legal_positions_with_rotation_by_tile(LegalWithRotation, Tile, Legal)
+filter_legal_positions_with_rotation_by_tile_colors([], _TileColors, []).
+filter_legal_positions_with_rotation_by_tile_colors([H|T], TileColors, Legal) :-
+    filter_legal_position_with_rotation_by_tile_colors(H, TileColors, Legal, LegalTail),
+    filter_legal_positions_with_rotation_by_tile_colors(T, TileColors, LegalTail).
+
+filter_legal_position_with_rotation_by_tile_colors(LegalWithRotationLocation, TileColors, Legal, LegalTail) :-
+    get_location_constraints(LegalWithRotationLocation, Constraints),
+    (tile_colors_match_constraint_colors(TileColors, Constraints)
+      -> Legal = [LegalWithRotationLocation|LegalTail]
+    ;
+     Legal = LegalTail
+    ).
+
+location_edge_second_neighbor_tile(ID, Edge, NeighborTile) :-
+    location_edge_second_neighbor_position(ID, Edge, Position),
+    get_board_tile_by_grid(Position, NeighborTile).
 
 matching_rotations(Colors, Constraint, Rotation) :-
     rotate_left(Colors, FinalColors),

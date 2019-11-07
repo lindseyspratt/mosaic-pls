@@ -10,9 +10,9 @@
 :- module(game_model_tiles,
     [init_game_model_tiles/0, get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
      get_turn/1, increment_turn/1, get_selected_tile_id/1, set_selected_tile_id/1,
-     get_replacements/1, set_replacements/1, get_board_tile_by_grid/3, set_last_build_phase_tile_placed/1,
+     get_replacements/1, set_replacements/1, get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1, set_last_build_phase_tile_placed/1,
      last_placed_tiles/2, place_tile_in_hand/1, place_tile_on_board/3, get_game_phase/1,
-     update_game_phase/0, edge_neighbor_tile/3, tile_in_inactive_hand/1, tile_in_active_hand/1, game_model_tiles_values/1]).
+     update_game_phase/0, update_game_phase/2, edge_neighbor_tile/3, tile_in_inactive_hand/1, tile_in_active_hand/1, get_tiles_placed/1, game_model_tiles_values/1]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -128,10 +128,13 @@ set_replacements(Replacements) :-
     retractall(data_replacements(GameModelTilesID, _)),
     asserta(data_replacements(GameModelTilesID, Replacements)).
 
-get_board_tile_by_grid(GridX, GridY, TileID) :-
+get_board_tile_by_grid(GridX > GridY, TileID) :-
     board_hash_key_coords(GridX, GridY, Key),
     data_boardHash(BoardHash),
     member(Key-TileID, BoardHash).
+
+get_last_build_phase_tile_placed(ID) :-
+    data_lastBuildPhaseTilePlacedID(ID).
 
 set_last_build_phase_tile_placed(ID) :-
     data_default_id(GameModelTilesID),
@@ -185,9 +188,8 @@ remove_tile_from_container(Tile) :-
     (Container = hand(PlayerID)
       -> data_default_id(GameModelTilesID),
          retract(data_hands(GameModelTilesID, Hands)),
-         nth1(PlayerID, Hands, Hand),
-         delete(Hand, Tile, RemainingHand),
-         asserta(data_hands(GameModelTilesID, RemainingHand))
+         remove_tile_from_hand(Hands, Tile, PlayerID, NewHands),
+         asserta(data_hands(GameModelTilesID, NewHands))
     ;
      Container = board
       -> data_default_id(GameModelTilesID),
@@ -199,6 +201,14 @@ remove_tile_from_container(Tile) :-
     ;
      throw(mosaic_internal('invalid container type', Container))
     ).
+
+remove_tile_from_hand([Hand|T], Tile, 1, [NewHand|T]) :-
+    !,
+    delete(Hand, Tile, NewHand).
+remove_tile_from_hand([H|T], Tile, PlayerCounter, [H|NewHandsTail]) :-
+    PlayerCounter > 1,
+    NextPlayerCounter is PlayerCounter - 1,
+    remove_tile_from_hand(T, Tile, NextPlayerCounter, NewHandsTail).
 
 place_tile_in_hand(Tile) :-
     remove_tile_from_container(Tile),
@@ -236,18 +246,31 @@ place_tile_on_board(Tile, GridX, GridY) :-
 get_game_phase(Phase) :-
     data_gamePhase(Phase).
 
+set_game_phase(Phase) :-
+    data_default_id(GameModelTilesID),
+    retract(data_gamePhase(GameModelTilesID, _)),
+    asserta(data_gamePhase(GameModelTilesID, Phase)).
+
 update_game_phase :-
-    data_gamePhase(build),
+    update_game_phase(_, _).
+
+update_game_phase(Old, New) :-
+    data_gamePhase(Old),
+    (Old = none
+      -> New = build,
+         set_game_phase(New)
+    ;
+    Old = build,
     data_board(Board),
     length(Board, BoardLength),
     data_tiles(Tiles),
     length(Tiles, TilesLength),
     BoardLength = TilesLength
-      -> data_default_id(GameModelTilesID),
-         retract(data_gamePhase(GameModelTilesID, _)),
-         asserta(data_board_gamePhase(GameModelTilesID, transform))
+      -> New = transform,
+         set_game_phase(New)
     ;
-    true.
+    Old = New
+    ).
 
 edge_neighbor_tile(ID, Edge, NeighborID) :-
     edge_neighbor_position(ID, Edge, Position),
@@ -268,6 +291,9 @@ tile_in_active_hand(Tile) :-
     container_type(Container, hand),
     get_turn(TurnID),
     container_id(Container, TurnID).
+
+get_tiles_placed(Placed) :-
+    data_tilesPlaced(Placed).
 
 game_model_tiles_values(Values) :-
     data_default_id(ID),

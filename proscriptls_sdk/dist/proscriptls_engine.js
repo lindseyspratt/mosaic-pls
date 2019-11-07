@@ -1939,6 +1939,10 @@ function member(element, list)
         {
             update_choicepoint_data(memory[VAL(list)+1]);
             return true;
+        } else {
+            // undo any bindings created by failed unify(head, element) call.
+            var n = memory[state.B];
+            unwind_trail(memory[state.B + n + CP_TR], state.TR);
         }
         list = memory[VAL(list)+1]
     }

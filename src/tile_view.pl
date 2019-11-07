@@ -11,6 +11,12 @@
 initdyn :-
     data_predicate_dynamics([data_predicates(tv, data,[displayX, displayY, size])]).
 
+dummy_reference :-
+    dummy_reference,
+    data_displayX(_),
+    data_displayY(_),
+    data_size(_).
+
 create_tile_view(ID, DisplayX, DisplayY, Size) :-
     assert_data(tv(DisplayX, DisplayY, Size), ID).
 

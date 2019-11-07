@@ -1,4 +1,4 @@
-:- module(draw, [draw_all_tiles/4, draw_all_tile/2, draw_legal_moves/3]).
+:- module(draw, [draw_all_tiles/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(model_basics).
@@ -14,10 +14,10 @@ abstract_colors([AH|AT], [CH|CT]) :-
     get_player_color(AH, CH),
     abstract_colors(AT, CT).
 
-abstract_color(a, red).
-abstract_color(b, green).
-abstract_color(c, blue).
-abstract_color(d, yellow).
+%abstract_color(a, red).
+%abstract_color(b, green).
+%abstract_color(c, blue).
+%abstract_color(d, yellow).
 
 % (X > Y) is a point (X,Y).
 % Web API method arguments of type number or integer accept arithmetic
@@ -68,12 +68,15 @@ draw_triangle(P1x > P1y, P2x > P2y, Color, CenterX > CenterY, Ctx) :-
         restore
     ].
 
-draw_all_tiles(AllTiles, Ctx, CW, CH) :-
-    center_board,
+clear_board_rect(Ctx, X, Y, W, H) :-
     Ctx >> [
         fillStyle <:+ '#999',
-        fillRect(0, 0, CW, CH)
-    ],
+        fillRect(X, Y, W, H)
+    ].
+
+draw_all_tiles(AllTiles, Ctx, CW, CH) :-
+    center_board,
+    clear_board_rect(Ctx, 0, 0, CW, CH),
     draw_all_tiles1(AllTiles, Ctx).
 
 draw_all_tiles1([], _).
@@ -214,3 +217,19 @@ draw_legal_positions([H|T], Ctx, TileSize) :-
 
 highlight_color(1, '#CCFFCC').
 highlight_color(2, '#CCCCFF').
+
+clear_location_views(Locations, Ctx) :-
+    get_board_tile_size(TileSize),
+    clear_location_views(Locations, Ctx, TileSize).
+
+clear_location_views([], _, _).
+clear_location_views([H|T], Ctx, TileSize) :-
+    clear_location_view(H, Ctx, TileSize),
+    clear_location_views(T, Ctx, TileSize).
+
+clear_location_view(Location, Ctx, TileSize) :-
+    get_location_grid_x(Location, BX),
+    get_location_grid_y(Location, BY),
+    get_top_left_board_tile_coords(BX, BY, X, Y),
+    clear_board_rect(Ctx, X, Y, TileSize, TileSize).
+

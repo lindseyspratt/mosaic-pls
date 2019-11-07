@@ -39,6 +39,15 @@
 initdyn :-
     data_predicate_dynamics([data_predicates(tm, tile_model,[gridX,gridY,colors,container,replacements,minimumMismatch])]).
 
+dummy_reference :-
+    dummy_reference,
+    tile_model_gridX(_),
+    tile_model_gridY(_),
+    tile_model_colors(_),
+    tile_model_container(_),
+    tile_model_replacements(_),
+    tile_model_minimumMismatch(_).
+
 create_tile_model(ID, GridX,GridY,Colors,Container) :-
     create_tile_model(ID, GridX,GridY,Colors,Container,[],[]).
 

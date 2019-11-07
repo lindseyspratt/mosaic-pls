@@ -1,7 +1,8 @@
-:- module(tiles, [select_test/0, rotate_test/0]).
+:- module(tiles, [select_test/0, rotate_test/0, view_basics_test/0,
+    game_model_tiles_test/0, tile_view_test/0, game_view_tiles_test/0, move_to_board_test/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
-:- use_module('../proscriptls_sdk/library/data_predicates').
+%:- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(library).
 :- use_module(model_basics).
 :- use_module(view_basics).
@@ -19,14 +20,20 @@
 % and the arguments are 'turn', etc.
 % (Note that there is currently only one 'game' so the ID is always '1'.)
 
-:- initialization(init).
+%:- initialization(init).
+%
+%init :-
+%    data_predicate_dynamics([
+%        %data_predicates(g, game,[board_translate, replacements]), % e.g. game_board_translate(ID, X>Y)...
+%        %data_predicates(ts, tile,[x, y,size]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
+%        %data_predicates(lp, legal_position, [bx, by])
+%    ]).
 
-init :-
-    data_predicate_dynamics([
-        data_predicates(g, game,[board_translate, replacements]), % e.g. game_board_translate(ID, X>Y)...
-        %data_predicates(ts, tile,[x, y,size]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
-        data_predicates(lp, legal_position, [bx, by])
-    ]).
+dummy_reference :-
+    dummy_reference,
+    select(_),
+    rotate(_),
+    move_to_board(_).
 
 clear_tests :-
     clear_select_test,
@@ -99,13 +106,13 @@ display_key_value(Key - Value, Elements) :-
 setup_game_data :-
     init_model_basics(2, 4, [1,2,3,4]),
     init_game_model_tiles, % uses info in model_basics.
+    update_game_phase,
     increment_turn(1), % the first increment should move the turn from the initial 0 to 1.
     create_view_basics,
-    assert_data(g(1>1, []), 1),
     create_game_view_tiles,
     layout_hands,
     create_locations,
-    set_possible_build_positions,
+    find_shaped_locations,
     !.
 
 select_test :-
@@ -194,10 +201,10 @@ select1(PageX, PageY) :-
      get_location_grid_x(LegalPosition, BX),
      get_location_grid_y(LegalPosition, BY),
      point_in_board_position(BX, BY, X, Y)
-      -> clear_locations,
-         get_selected_tile_id(ID),
+      -> get_selected_tile_id(ID),
          set_selected_tile_id(none),
          _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+         increment_turn(_),
          place_tile_on_board_and_draw(Ctx, ID, BX, BY)
     ;
      true
@@ -214,11 +221,6 @@ rotate(Event) :-
     (point_in_tile(ID, X, Y)
       -> on_click_tile_rotate(ID, X, Y)  % at most one tile contains (X, Y).
     ;
-     legal_position_bx(ID, BX),
-     legal_position_by(ID, BY),
-     point_in_board_position(BX, BY, X, Y)
-      -> true
-    ;
      true
     ).
 
@@ -233,11 +235,6 @@ move_to_board(Event) :-
     (point_in_tile(ID, X, Y)
       -> on_click_tile_move(ID, X, Y)  % at most one tile contains (X, Y).
     ;
-     legal_position_bx(ID, BX),
-     legal_position_by(ID, BY),
-     point_in_board_position(BX, BY, X, Y)
-      -> true
-    ;
      true
     ).
 
@@ -251,17 +248,27 @@ on_click_tile(ID, _X, _Y) :-
 
 on_click_active_hand_tile(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    (get_selected_tile_id(OldID),
-     OldID \= none
-      -> set_selected_tile_id(none),
-         draw_all_tile(OldID, Ctx) % de-select OldID
+    (get_selected_tile_id(OldID)
     ;
-    true
+     OldID = none
     ),
+    (OldID = ID
+      -> on_click_active_hand_tile_rotate(ID)
+    ;
+    OldID \= none
+      -> set_selected_tile_id(none),
+         draw_all_tile(OldID, Ctx), % de-select OldID
+         on_click_active_hand_tile_select(ID)
+    ;
+    on_click_active_hand_tile_select(ID)
+    ).
+
+on_click_active_hand_tile_select(ID) :-
     set_selected_tile_id(ID),
-    get_tile_colors(ID, Colors),
-    update_legal_positions(Colors),
+    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     draw_all_tile(ID, Ctx),
+    find_legal_with_rotation_locations(ID),
+    find_legal_locations(ID),
     get_legal_positions(LegalPositions),
     get_legal_positions_with_rotation(LegalPositionsWithRotation),
     draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
@@ -277,7 +284,13 @@ on_click_tile_rotate(ID, _X, _Y) :-
 on_click_active_hand_tile_rotate(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     tile_rotate_right(ID),
-    draw_all_tile(ID, Ctx).
+    draw_all_tile(ID, Ctx),
+    get_shaped_positions(OldLocations),
+    clear_location_views(OldLocations, Ctx),
+    find_legal_locations(ID),
+    get_legal_positions(LegalPositions),
+    get_legal_positions_with_rotation(LegalPositionsWithRotation),
+    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
 
 on_click_tile_move(ID, _X, _Y) :-
     %writeln(on_click_tile_move(ID, X, Y)),
@@ -293,7 +306,10 @@ on_click_active_hand_tile_move(ID) :-
 
 place_tile_on_board_and_draw(Ctx, ID, X, Y) :-
     place_tile_on_board(ID, X, Y),
-    set_possible_build_positions,
+    get_shaped_positions(OldLocations),
+    clear_location_views(OldLocations, Ctx),
+    clear_locations,
+    find_shaped_locations,
     update_board_tile_view(ID),
     get_canvas_width(W),
     get_canvas_height(H),
