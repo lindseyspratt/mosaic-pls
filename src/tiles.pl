@@ -193,19 +193,11 @@ select1(PageX, PageY) :-
     X is PageX - PLeft,
     Y is PageY - PTop,
     % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
-    (point_in_tile(ID, X, Y)
-      -> on_click_tile(ID, X, Y)  % at most one tile contains (X, Y).
+    (point_in_tile(Tile, X, Y)
+      -> on_click_tile(Tile, X, Y)  % at most one tile contains (X, Y).
     ;
-     get_legal_positions(LegalPositions),
-     member(LegalPosition, LegalPositions),
-     get_location_grid_x(LegalPosition, BX),
-     get_location_grid_y(LegalPosition, BY),
-     point_in_board_position(BX, BY, X, Y)
-      -> get_selected_tile_id(ID),
-         set_selected_tile_id(none),
-         _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-         increment_turn(_),
-         place_tile_on_board_and_draw(Ctx, ID, BX, BY)
+     point_in_legal_location(BX, BY, X, Y)
+      -> on_click_legal_location(BX, BY)
     ;
      true
     ).
@@ -273,6 +265,17 @@ on_click_active_hand_tile_select(ID) :-
     get_legal_positions_with_rotation(LegalPositionsWithRotation),
     draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
 
+on_click_legal_location(BX, BY) :-
+    wam_duration(Start),
+    get_selected_tile_id(Tile),
+    set_selected_tile_id(none),
+    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    increment_turn(_),
+    place_tile_on_board_and_draw(Ctx, Tile, BX, BY),
+    wam_duration(End),
+    !,
+    display_spans([Start, End], on_click_location).
+
 on_click_tile_rotate(ID, _X, _Y) :-
     %writeln(click(ID, X, Y)),
     (tile_in_active_hand(ID)
@@ -304,14 +307,41 @@ on_click_active_hand_tile_move(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     place_tile_on_board_and_draw(Ctx, ID, 0, 0).
 
-place_tile_on_board_and_draw(Ctx, ID, X, Y) :-
-    place_tile_on_board(ID, X, Y),
+point_in_legal_location(BX, BY, X, Y) :-
+     wam_duration(Start),
+     get_legal_positions(LegalPositions),
+     member(LegalPosition, LegalPositions),
+     get_location_grid_x(LegalPosition, BX),
+     get_location_grid_y(LegalPosition, BY),
+     point_in_board_position(BX, BY, X, Y),
+     wam_duration(End),
+     !,
+     display_spans([Start, End], point_in_board).
+
+place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
+    wam_duration(Start),
+    place_tile_on_board(Tile, X, Y),
+
+    wam_duration(Mark1),
     get_shaped_positions(OldLocations),
     clear_location_views(OldLocations, Ctx),
-    clear_locations,
-    find_shaped_locations,
-    update_board_tile_view(ID),
+    set_legal_positions_with_rotation([]),
+    set_legal_positions([]),
+    clear_shaped_location_for_tile(Tile),
+
+    wam_duration(Mark2b),
+    update_board_tile_view(Tile),
     get_canvas_width(W),
     get_canvas_height(H),
     get_tiles(TileIDs),
-    draw_all_tiles(TileIDs, Ctx, W, H).
+
+    wam_duration(Mark3),
+    draw_all_tiles(TileIDs, Ctx, W, H),
+
+    wam_duration(Mark2a),
+    incremental_find_shaped_locations(Tile),
+
+    wam_duration(End),
+    !,
+    display_spans([Start, Mark1,Mark2b, Mark3,  Mark2a, End], place_tile_on_board_and_draw).
+

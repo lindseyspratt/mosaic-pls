@@ -1,7 +1,10 @@
-:- module(locations, [create_locations/0, clear_locations/0, get_shaped_positions/1,
+:- module(locations, [create_locations/0,
+    clear_locations/0, clear_shaped_location_for_tile/1,
+    get_shaped_positions/1,
     get_legal_positions/1, set_legal_positions/1, get_legal_positions_with_rotation/1,
     set_legal_positions_with_rotation/1, get_irreplaceables/1, set_irreplaceables/1, update_legal_positions/1,
-    find_shaped_locations/0, find_legal_with_rotation_locations/1, find_legal_locations/1, locations_values/2 ]).
+    find_shaped_locations/0, incremental_find_shaped_locations/1,
+    find_legal_with_rotation_locations/1, find_legal_locations/1, locations_values/2 ]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(location_model).
@@ -37,10 +40,88 @@ clear_locations :-
     set_legal_positions_with_rotation([]),
     set_legal_positions([]).
 
+clear_unused_locations :-
+    setof(Location, X^get_location_grid_x(Location, X), Locations),
+    get_shaped_positions(UsedLocations),
+    subtract(Locations, UsedLocations, UnusedLocations),
+    clear_locations(UnusedLocations).
+
+clear_shaped_location_for_tile(Tile) :-
+    get_tile_grid_x(Tile, X),
+    get_tile_grid_y(Tile, Y),
+    get_location_grid_x(Location, X),
+    get_location_grid_y(Location, Y),
+    clear_location(Location),
+    get_shaped_positions(Shaped),
+    delete(Shaped, Location, TrimmedShaped),
+    set_shaped_positions(TrimmedShaped).
+
+clear_hole_inducing_shaped_locations(Tile) :-
+    get_tile_grid_x(Tile, TX),
+    get_tile_grid_y(Tile, TY),
+    check_tile_ortho_neighbors(TX > TY).
+
+check_tile_ortho_neighbors(TilePosition) :-
+    check_tile_ortho_neighbors([-1 > 0, 1 > 0, 0 > -1, 0 > 1], TilePosition).
+
+check_tile_ortho_neighbors([], _TilePosition).
+check_tile_ortho_neighbors([H|T], TilePosition) :-
+    check_tile_ortho_neighbor(H, TilePosition),
+    check_tile_ortho_neighbors(T, TilePosition).
+
+check_tile_ortho_neighbor(DX > DY, TX > TY) :-
+    LX is DX + TX,
+    LY is DY + TY,
+    get_location_grid_x(Location, LX),
+    get_location_grid_y(Location, LY)
+      -> (L2X is LX + DX,
+          L2Y is LY + DY,
+          get_location_grid_x(Location2, L2X),
+          get_location_grid_y(Location2, L2Y)
+           -> clear_location(Location2),
+              clear_location_references(Location2),
+              writeln(clear_hole_inducing_location(Location2))
+         ;
+           true
+         )
+    ;
+    true.
+
+clear_location_references(Location) :-
+    clear_location_from_shaped(Location),
+    clear_location_from_legal_positions_with_rotation(Location),
+    clear_location_from_legal_positions(Location).
+
+clear_location_from_shaped(Location) :-
+    get_shaped_positions(Shaped),
+    delete(Shaped, Location, OtherShaped)
+      -> set_shaped_positions(OtherShaped)
+    ;
+     true.
+
+clear_location_from_legal_positions_with_rotation(Location) :-
+    get_legal_positions_with_rotation(LPWR),
+    delete(LPWR, Location, OtherLPWR)
+      -> set_legal_positions_with_rotation(OtherLPWR)
+    ;
+    true.
+
+clear_location_from_legal_positions(Location) :-
+    get_legal_positions(LP),
+    delete(LP, Location, OtherLP)
+      -> set_legal_positions(OtherLP)
+    ;
+    true.
+
 clear_locations([]).
 clear_locations([H|T]) :-
     clear_location(H),
     clear_locations(T).
+
+reset_by_last_tile_placed([]).
+reset_by_last_tile_placed([H|T]) :-
+    set_location_by_last_tile_placed(H, false),
+    reset_by_last_tile_placed(T).
 
 increment_location_counter(NewCounter) :-
     data_default_id(DataID),
@@ -95,10 +176,44 @@ find_shaped_locations :-
       -> create_location(ID, 0, 0),
          set_shaped_positions([ID])
     ;
+     wam_duration(Start),
      candidate_spaces(Board, Candidates),
+     wam_duration(Mark1),
      shaped_candidates(Candidates, ShapedLocations),
-     set_shaped_positions(ShapedLocations)
+     wam_duration(Mark2),
+     set_shaped_positions(ShapedLocations),
+     wam_duration(End),
+     !,
+     display_spans([Start, Mark1, Mark2, End], find_shaped_locations)
     ).
+
+% if the board grew to 2 tiles with the addition of ID
+% then recalculate all shape locations - the old shape
+% locations were calculated with a neighbor count requirement
+% of at least 1 and the current shape locations must have a
+% neighbor count of at least 2.
+
+incremental_find_shaped_locations(ID) :-
+     get_board(B),
+     length(B, L),
+     (L = 2
+       -> clear_locations,
+          find_shaped_locations
+     ;
+     wam_duration(Start),
+     clear_hole_inducing_shaped_locations(ID), % some old shaped locations may have become 'hole inducing' due to new Tile on board.
+     incremental_candidate_spaces(ID, Candidates),
+     wam_duration(Mark1),
+     shaped_candidates(Candidates, NewShapedLocations),
+     wam_duration(Mark2),
+     get_shaped_positions(OldShapedLocations),
+     append(NewShapedLocations, OldShapedLocations, ShapedLocations),
+     set_shaped_positions(ShapedLocations),
+     clear_unused_locations,
+     wam_duration(End),
+     !,
+     display_spans([Start, Mark1, Mark2, End], find_shaped_locations)
+     ).
 
 % Legal-with-rotation locations are shaped locations that
 % a particular tile can occupy in some rotation (not necessarily
@@ -136,9 +251,31 @@ find_legal_locations(Tile) :-
     set_legal_positions(Legal).
 
 candidate_spaces(Board, Candidates) :-
+    wam_duration(Start),
     candidate_spaces(Board, [], KeyedCandidates),
+    wam_duration(Mark1),
     dekey_list(KeyedCandidates, PossibleCandidates),
-    remove_nonorthogonal(PossibleCandidates, Candidates).
+    wam_duration(Mark2),
+    remove_nonorthogonal(PossibleCandidates, Candidates),
+    wam_duration(End),
+    !,
+    display_spans([Start,Mark1,Mark2,End], candidate_spaces).
+
+incremental_candidate_spaces(NewBoardTile, NewCandidates) :-
+    wam_duration(Start),
+    get_shaped_positions(OldShapedPositions),
+    reset_by_last_tile_placed(OldShapedPositions),
+    key_list(OldShapedPositions, OldKeyedCandidates),
+    candidate_spaces([NewBoardTile], OldKeyedCandidates, KeyedCandidates),
+    wam_duration(Mark1),
+    dekey_list(KeyedCandidates, PossibleCandidates),
+    subtract(PossibleCandidates, OldShapedPositions, NewPossibleCandidates),
+    extend_neighbors(NewPossibleCandidates, NewBoardTile),
+    wam_duration(Mark2),
+    remove_nonorthogonal(NewPossibleCandidates, NewCandidates),
+    wam_duration(End),
+    !,
+    display_spans([Start,Mark1,Mark2,End], incremental_candidate_spaces).
 
 remove_nonorthogonal([], []).
 remove_nonorthogonal([H|T], Candidates) :-
@@ -153,6 +290,13 @@ remove_nonorthogonal1(PossibleCandidate, Candidates, Next) :-
      Candidates = Next
     ).
 
+key_list([], []).
+key_list([H|T], [K-H|TK]) :-
+    get_location_grid_x(H, X),
+    get_location_grid_y(H, Y),
+    board_hash_key_coords(X, Y, K),
+    key_list(T, TK).
+
 dekey_list([], []).
 dekey_list([_-H|T], [H|TT]) :-
     dekey_list(T, TT).
@@ -163,7 +307,11 @@ candidate_spaces([H|T], CandidatesSoFar, CandidatesTotal) :-
     candidate_spaces(T, CandidatesNext, CandidatesTotal).
 
 candidate_space(PlacedTile, CandidatesIn, CandidatesOut) :-
-    check_neighbors1([-1,0,1], PlacedTile, CandidatesIn, CandidatesOut).
+    wam_duration(Start),
+    check_neighbors1([-1,0,1], PlacedTile, CandidatesIn, CandidatesOut),
+    wam_duration(End),
+    !,
+    display_spans([Start, End], candidate_space).
 
 check_neighbors1([], _PlacedTile, Candidates, Candidates).
 check_neighbors1([H|T], PlacedTile, CandidatesIn, CandidatesOut) :-
@@ -187,6 +335,7 @@ check_neighbors3(DY, DX, PlacedTile, CandidatesIn, CandidatesOut) :-
     ).
 
 check_neighbor(PlacedTile, TX, TY, DX, DY, CandidatesIn, CandidatesOut) :-
+    wam_duration(Start),
     board_hash_key_coords(TX, TY, Key),
     (member(Key-ID, CandidatesIn)
       -> CandidatesIn = CandidatesOut
@@ -199,20 +348,28 @@ check_neighbor(PlacedTile, TX, TY, DX, DY, CandidatesIn, CandidatesOut) :-
       -> check_orthogonal_neighbor(PlacedTile, DX, DY, ID)
     ;
      true
-    ).
+    ),
+    wam_duration(End),
+    !,
+    display_spans([Start, End], check_neighbor).
 
 check_orthogonal_neighbor(PlacedTile, DX, DY, ID) :-
+    wam_duration(Start),
     increment_location_orthogonal_neighbors(ID, _NewCount),
     placed_position_offset(DX, DY, PlacedPositionOffset),
     ConstrainedPosition is 1 + (PlacedPositionOffset + 2) mod 4,
     get_tile_colors(PlacedTile, PlacedColors),
+    wam_duration(Mark),
     nth0(PlacedPositionOffset, PlacedColors, ColorConstraint),
     set_location_constraint(ID, ConstrainedPosition, ColorConstraint),
     (get_last_build_phase_tile_placed(PlacedTile)
       -> set_location_by_last_tile_placed(ID, true)
     ;
     true
-    ).
+    ),
+    wam_duration(End),
+    !,
+    display_spans([Start, Mark, End], check_orthogonal_neighbor).
 
 placed_position_offset(DX, DY, PlacedPositionOffset) :-
     DY < 0
@@ -231,6 +388,53 @@ create_location(ID, GridX, GridY) :-
     increment_location_counter(ID),
     create_location_model(ID, GridX, GridY).
 
+
+extend_neighbors([], _NewTile).
+extend_neighbors([Candidate|OtherCandidates], NewTile) :-
+    extendDX([-1,0,1], Candidate, NewTile),
+    extend_neighbors(OtherCandidates, NewTile).
+
+extendDX([], _C, _NewTile).
+extendDX([H|T], C, NewTile) :-
+    extendDY([-1,0,1], H, C, NewTile),
+    extendDX(T, C, NewTile).
+
+extendDY([], _DX, _C, _NewTile).
+extendDY([H|T], DX, C, NewTile) :-
+    extendDXDY(DX, H, C, NewTile),
+    extendDY(T, DX, C, NewTile).
+
+% check_orthogonal_neighbor(Tile, TDX, TDY, C)
+% expects that TDX and TDY are the delta X and Y
+% to transform the Candidate (C) position to the
+% Tile position.
+% The DX/DY input to extendDXDY are the delta X and Y
+% to transform C position to Tile position.
+% DX/DY is negated to create TDX/TDY for the
+% input to check_orthogonal_neighbor/4.
+
+extendDXDY(DX, DY, C, NewTile) :-
+    get_location_grid_x(C, X),
+    get_location_grid_y(C, Y),
+    TX is X + DX,
+    TY is Y + DY,
+    (get_tile_grid_x(Tile, TX),
+     get_tile_grid_y(Tile, TY),
+     (Tile \= NewTile
+      -> increment_location_neighbors(C, _NewCount),
+         ((DX = 0; DY = 0)
+           -> TDX is -1 * DX,
+              TDY is -1 * DY,
+              check_orthogonal_neighbor(Tile, TDX, TDY, C)
+         ;
+          true
+         )
+     ;
+      true
+     )
+    ;
+    true
+    ).
 
 shaped_candidates([], []).
 shaped_candidates([H|T], ShapedLocations) :-
@@ -329,167 +533,3 @@ matching_rotations(Colors, FinalColors, Constraint, Rotation) :-
 
 locations_values(ID, Values) :-
     labelled_values(data, ID, Values).
-
-/*
-mosaic_locations.gameModelLocations = function(spec) {
-	var that = {};
-
-	var legalPositions = [];
-	var legalPositionsWithRotation = [];
-    var irreplaceables = [];
-
-	var get_legal_positions = function() {
-		return legalPositions;
-	}
-
-	var push_legal_position = function(value) {
-		legalPositions.push(value);
-	}
-
-	var set_legal_positions = function(value) {
-		legalPositions = value;
-	}
-
-	var get_legal_positions_with_rotation = function() {
-		return legalPositionsWithRotation;
-	}
-
-	var set_legal_positions_with_rotation = function(value) {
-		legalPositionsWithRotation = value;
-	}
-
-	var get_irreplaceables = function() {
-		return irreplaceables;
-	}
-
-	var set_irreplaceables = function(value) {
-		irreplaceables = value;
-	}
-
-	var update_legal_positions = function(colors) {
-		legalPositions = legalPositionsWithRotation.slice(); // get copy
-	    for (var i = 0 ; i < legalPositions.length; i++) {
-	        if (!spec.gameModelBasics.tile_colors_match_constraint_colors(colors, legalPositions[i].constraints)) {
-	            legalPositions.splice(i--, 1);
-	        }
-	    }
-	}
-
-	var set_possible_build_positions = function(tile) {
-	    var candidateSpaces = {};
-	    var board = spec.gameModelTiles.get_board();
-
-	    for (var i = 0; i < board.length; i++) {
-	        var placedTileID = board[i];
-	        var placedTile = spec.gameModelTiles.get_tile(placedTileID);
-
-	        for (var dy = -1; dy <= 1; dy++) {
-	            for (var dx = -1; dx <= 1; dx++) {
-	                var tx = placedTile.get_grid_x() + dx;
-	                var ty = placedTile.get_grid_y() + dy;
-	                var tileByGrid = spec.gameModelTiles.get_board_tile_by_grid(tx, ty);
-
-	                if (!ifdefor(tileByGrid)) {
-	                	var key = spec.gameModelBasics.board_hash_key_coords(tx, ty);
-	                    var candidateSpace = ifdefor(candidateSpaces[key], locationModel({'gridX': tx, 'gridY': ty}));
-	                    candidateSpace.increment_neighbors();
-	                    if (dx === 0 || dy === 0) {
-	                        var placedPositionOffset = (dy < 0) ? 0
-	                                                         : ((dy > 0) ? 2
-	                                                                     : ((dx < 0) ? 3 : 1));
-	                        var constrainedPositionOffset = (placedPositionOffset + 2) % 4;
-	                        var colorOffset = placedTile.colors[placedPositionOffset];
-	                        candidateSpace.set_constraints(ifdefor(candidateSpace.get_constraints(), [-1,-1,-1,-1]));
-	                        candidateSpace.set_constraint(constrainedPositionOffset, colorOffset);
-	                        candidateSpace.set_by_last_tile_placed(ifdefor(candidateSpace.get_by_last_tile_placed(), false) || spec.gameModelTiles.get_last_tile_placed_id() === placedTile,get_id());
-	                    }
-	                    candidateSpaces[key] = candidateSpace;
-	                }
-	            }
-	        }
-	    }
-
-//	    console.log("findLegalPositions: candidateSpaces");
-//	    console.log(candidateSpaces);
-
-	    var legalPositions = [];
-	    var legalPositionsByLastTilePlaced = [];
-	    $.each(candidateSpaces, function (hashKey, candidateSpace) {
-	        var colorConstraints = candidateSpace.constraints;
-	        if (!colorConstraints || candidateSpace.neighbors < Math.min(2, board.length)) {
-	            return;
-	        }
-
-	        // check compactness
-	    	var spaceWouldCreateHole = false;
-	    	for(var constraintOfst = 0;constraintOfst < colorConstraints.length;constraintOfst++) {
-	    		var constraintColor = colorConstraints[constraintOfst];
-	    		if(constraintColor === -1) {
-	    			// -1 implies there is no tile on edge/constraint at constraintOfst.
-	    			// Check if there is a tile the next space beyond.
-	    			// If there is, then placing in this location would create
-	    			// a shape violation 'hole' in the board.
-	    			var firstNeighborPosition = candidateSpace.edge_neighbor_position(constraintOfst);
-//	    			console.log("firstNeighborPosition:");
-//	    			console.log(firstNeighborPosition);
-
-	    			var secondNeighborTile = firstNeighborPosition.edge_neighbor_tile(
-	    					{"edge":constraintOfst, "model":spec.gameModelTiles});
-
-	    			if(secondNeighborTile != null) {
-	    				spaceWouldCreateHole = true;
-//	    				console.log("SpaceWouldCreateHole: [candidate, firstNeighborPosition, secondNeighborTile] " );
-//	    				console.log([candidateSpace,firstNeighborPosition,secondNeighborTile]);
-	    				break;
-	    			}
-	    		}
-	    	}
-
-//	    	console.log("findLegalPositions: spaceWouldCreateHole " + spaceWouldCreateHole);
-//	    	console.log(candidateSpace);
-
-	    	if(spaceWouldCreateHole) {
-	            return;
-	    	}
-
-	        // copy so we can rotate without changing the original.
-	        var rotatedColors = tile.colors.slice();
-	        for (var rotationAttempts = 0; rotationAttempts < 4; rotationAttempts++) {
-	            if (tileColorsMatchConstraintColors(rotatedColors, colorConstraints)) {
-	                legalPositions.push(candidateSpace);
-	                if (candidateSpace.get_by_last_tile_placed()) {
-	                    legalPositionsByLastTilePlaced.push(candidateSpace);
-	                }
-	                break;
-	            }
-	            rotatedColors = rotateRight(rotatedColors);
-	        }
-	    });
-	    legalPositionsWithRotation = legalPositionsByLastTilePlaced.length ? legalPositionsByLastTilePlaced : legalPositions;
-	}
-
-	var values = function() {
-		var display = {};
-
-		display.get_legal_positions = get_legal_positions();
-		display.get_legal_positions_with_rotation = get_legal_positions_with_rotation();
-		display.get_irreplaceables=get_irreplaceables();
-
-		return display;
-	}
-
-	that.get_legal_positions = get_legal_positions;
-	that.push_legal_position = push_legal_position;
-	that.set_legal_positions = set_legal_positions;
-	that.get_legal_positions_with_rotation = get_legal_positions_with_rotation;
-	that.set_legal_positions_with_rotation = set_legal_positions_with_rotation;
-	that.get_irreplaceables = get_irreplaceables;
-	that.set_irreplaceables = set_irreplaceables;
-
-	that.update_legal_positions = update_legal_positions;
-
-	that.values = values;
-
-	return that;
-}
-*/

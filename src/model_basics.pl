@@ -23,7 +23,7 @@
  * the color constraint value is >= 0 and the tile color ID is not equal to the color constraint ID.
  * In this definition any color constraint value < 0 matches any tile color ID.
  *
- * edge_neighbor_offset : maps an 'edge' identifer (0 to 3 for squares) to a dx/dy pair to find the neighbor tile
+ * edge_neighbor_offset : maps an 'edge' identifer (0 to 3 for squares) to a dx>dy pair to find the neighbor tile
  * position across that edge from a given tile position. From a tile at grid position (1,1), the neighbor across
  * edge 0 has (dx,dy) of (0,-1). This gives the edge 0 neighbor grid position of (1, 0).
  *
@@ -38,7 +38,7 @@
 
 :- module(model_basics, [init_model_basics/3, get_hand_color_ids/1, get_number_of_players/1, get_triangles_per_tile/1,
     rotate_right/2, rotate_left/2, board_hash_key_coords/3, tile_colors_match_constraint_colors/2,
-    edge_neighbor_offset/2, values/1]).
+    edge_neighbor_offset/2, display_spans/2, values/1]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(library).
@@ -173,7 +173,7 @@ tile_colors_mismatch_constraint_colors([TC|OtherTileColors], [CC|OtherColorConst
     tile_colors_mismatch_constraint_colors(OtherTileColors, OtherColorConstraints, NextMismatchCount, MismatchCount).
 
 /**
- * edge_neighbor_offset function maps an 'edge' identifer (0 to 3 for squares) to a dx/dy pair to find the neighbor tile
+ * edge_neighbor_offset function maps an 'edge' identifer (0 to 3 for squares) to a dx>dy pair to find the neighbor tile
  * position across that edge from a given tile position. From a tile at grid position (1,1), the neighbor across
  * edge 0 has (dx,dy) of (0,-1). This gives the edge 0 neighbor grid position of (1, 0).
  * @type {function(number): {dx: number, dy: number}}
@@ -189,20 +189,20 @@ edge_neighbor_offset(6, Edge, Coordinate) :-
 
 /**
  * edge_square_neighbor_offset function maps an edge identifier 0 through 3
- * to a dX/dY displacement to shift from one tile square grid X/Y position
- * to a neighbor tile square grid X/Y position.
+ * to a dX>dY displacement to shift from one tile square grid X>Y position
+ * to a neighbor tile square grid X>Y position.
  * @param edge
  * @returns {{dx: number, dy: number}}
  */
-edge_square_neighbor_offset(0, 0 / -1).
-edge_square_neighbor_offset(1, 1 / 0).
-edge_square_neighbor_offset(2, 0 / 1).
-edge_square_neighbor_offset(3, -1 / 0).
+edge_square_neighbor_offset(0, 0 > -1).
+edge_square_neighbor_offset(1, 1 > 0).
+edge_square_neighbor_offset(2, 0 > 1).
+edge_square_neighbor_offset(3, -1 > 0).
 
 /**
  * edge_hex_neighbor_offset function maps an edge identifier 0 through 5
- * to an dX/dY displacement to shift from one tile hexagon grid X/Y
- * position to a neighbor tile hexagon grid X/Y position.
+ * to an dX>dY displacement to shift from one tile hexagon grid X>Y
+ * position to a neighbor tile hexagon grid X>Y position.
  *
  * The hexagon grid is defined by two axes at a 120 degree angle.
  * The Y axis is vertical and the X axis is 120 degrees from the Y
@@ -211,12 +211,27 @@ edge_square_neighbor_offset(3, -1 / 0).
  * @param edge
  * @returns {{dx: number, dy: number}}
  */
-edge_hex_neighbor_offset(0, 0 / -1).
-edge_hex_neighbor_offset(1, 1 / 0).
-edge_hex_neighbor_offset(2, 1 / 1).
-edge_hex_neighbor_offset(3, 1 / 0).
-edge_hex_neighbor_offset(4, -1 / 0).
-edge_hex_neighbor_offset(5, -1 / -1).
+edge_hex_neighbor_offset(0, 0 > -1).
+edge_hex_neighbor_offset(1, 1 > 0).
+edge_hex_neighbor_offset(2, 1 > 1).
+edge_hex_neighbor_offset(3, 1 > 0).
+edge_hex_neighbor_offset(4, -1 > 0).
+edge_hex_neighbor_offset(5, -1 > -1).
+
+display_spans(_Markers, _Functor).
+
+%display_spans(Markers, Functor) :-
+%    spans(Markers, Spans),
+%    Structure =.. [Functor|Spans],
+%    writeln(Structure).
+%
+%spans([H1, H2|T], Spans) :-
+%    spans([H2|T], H1, Spans).
+%
+%spans([], _, []).
+%spans([H|T], R, [Span|TS]) :-
+%    Span is H - R,
+%    spans(T, H, TS).
 
 /**
  * The 'values' function creates a displayable-on-the-console object that is the labeled values
