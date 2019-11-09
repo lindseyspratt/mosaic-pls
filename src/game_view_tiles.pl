@@ -1,7 +1,7 @@
 :- module(game_view_tiles, [create_game_view_tiles/0, layout_hands/0, center_board/0,
     get_translate_x/1, set_translate_x/1, get_translate_y/1, set_translate_y/1,
     get_target_translate_x/1, set_target_translate_x/1, get_target_translate_y/1, set_target_translate_y/1,
-    get_top_left_board_tile_coords/4, point_in_board_position/4, update_board_tile_view/1,
+    get_top_left_board_tile_coords/4, point_in_board_position/4, update_board_tile_view/1, reposition_board_toward_target_translation/0,
     game_view_tiles_values/1, game_view_tiles_values/2]).
 
 :- use_module(library).
@@ -56,6 +56,69 @@ layout_hand_tile(Tile, Offset, X, Y, TileSize, Padding) :-
     AdjustedY is Y + Offset * (TileSize + Padding),
     set_tile_display_y(Tile, AdjustedY).
 
+% fails if no repositioning to do.
+reposition_board_toward_target_translation :-
+    get_translate_x(TX),
+    get_translate_y(TY),
+    get_target_translate_x(TargetTX),
+    get_target_translate_y(TargetTY),
+    (TX =\= TargetTX; TY =\= TargetTY),
+    repo(TX, TY, TargetTX, TargetTY).
+
+repo(TX, TY, TargetTX, TargetTY) :-
+    NewTX is (TX * 3 + TargetTX) / 4,
+    NewTY is (TY * 3 + TargetTY) / 4,
+
+    (abs(NewTX - TargetTX) < 1
+      -> FinalTX = TargetTX
+    ; FinalTX = NewTX
+    ),
+    (abs(TY - TargetTY) < 1
+      -> FinalTY = TargetTY
+    ; FinalTY = NewTY
+    ),
+
+    set_translate_x(FinalTX),
+    set_translate_y(FinalTY),
+
+    get_board(Board),
+    repo1(Board).
+
+repo1([]).
+repo1([H|T]) :-
+    repo2(H),
+    repo1(T).
+
+repo2(Tile) :-
+    get_tile_grid_x(Tile, GridX),
+    get_tile_grid_y(Tile, GridY),
+    get_top_left_board_tile_coords(GridX, GridY, X, Y), % this predicate uses the translate (X/Y) values set in repo/4.
+    set_tile_display_x(Tile, X),
+    set_tile_display_y(Tile, Y).
+
+/*
+function gameLoop() {
+    if (game.board.translateX !== game.board.targetTranslateX || game.board.translateY !== game.board.targetTranslateY) {
+        game.board.translateX = (game.board.translateX * 3 + game.board.targetTranslateX) / 4;
+        game.board.translateY = (game.board.translateY * 3 + game.board.targetTranslateY) / 4;
+        if (Math.abs(game.board.translateX - game.board.targetTranslateX) < 1) {
+            game.board.translateX = game.board.targetTranslateX;
+        }
+        if (Math.abs(game.board.translateY - game.board.targetTranslateY) < 1) {
+            game.board.translateY = game.board.targetTranslateY;
+        }
+
+        for (var i = 0; i < game.tilesOnBoard.length; i++) {
+            var tile = game.tilesOnBoard[i];
+            var coords = getTopLeftBoardTileCoords(tile.boardTileX, tile.boardTileY);
+            tile.x = coords.x;
+            tile.y = coords.y;
+        }
+        drawAllTiles(context, game.allTiles);
+        drawLegalMoves(context, legalPositions, legalPositionsWithRotation);
+    }
+}
+*/
 center_board :-
     get_board(Board),
     length(Board, Length),
@@ -75,8 +138,8 @@ center_board :-
     get_board_width(BoardWidth),
     get_board_top(BoardTop),
     get_board_height(BoardHeight),
-    TargetTranslateX is TranslateX - ((AdjustRight + AdjustLeft) / 2 + (BoardLeft + BoardWidth) / 2),
-    TargetTranslateY is TranslateY - ((AdjustBottom + AdjustTop) / 2 + (BoardTop + BoardHeight) / 2),
+    TargetTranslateX is (TranslateX - (AdjustRight + AdjustLeft) / 2) + (BoardLeft + BoardWidth) / 2,
+    TargetTranslateY is (TranslateY - (AdjustBottom + AdjustTop) / 2) + (BoardTop + BoardHeight) / 2,
     set_target_translate_x(TargetTranslateX),
     set_target_translate_y(TargetTranslateY)
     ).

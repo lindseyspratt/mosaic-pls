@@ -1,5 +1,6 @@
 :- module(tiles, [select_test/0, rotate_test/0, view_basics_test/0,
-    game_model_tiles_test/0, tile_view_test/0, game_view_tiles_test/0, move_to_board_test/0]).
+    game_model_tiles_test/0, tile_view_test/0, game_view_tiles_test/0, move_to_board_test/0,
+    reposition_board_loop/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -187,7 +188,7 @@ select(Event) :-
     select1(PageX, PageY).
 
 select1(PageX, PageY) :-
-    writeln(select1(PageX, PageY)),
+    % writeln(select1(PageX, PageY)),
     get_canvas_offset_top(PTop),
     get_canvas_offset_left(PLeft),
     X is PageX - PLeft,
@@ -329,7 +330,7 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     set_legal_positions([]),
     clear_shaped_location_for_tile(Tile),
 
-    wam_duration(Mark2b),
+    wam_duration(Mark2),
     update_board_tile_view(Tile),
     get_canvas_width(W),
     get_canvas_height(H),
@@ -338,10 +339,32 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     wam_duration(Mark3),
     draw_all_tiles(TileIDs, Ctx, W, H),
 
-    wam_duration(Mark2a),
+    wam_duration(Mark4),
     incremental_find_shaped_locations(Tile),
+
+    wam_duration(Mark5),
+
+    (reposition_board_loop
+      -> true
+    ;
+     true
+    ),
 
     wam_duration(End),
     !,
-    display_spans([Start, Mark1,Mark2b, Mark3,  Mark2a, End], place_tile_on_board_and_draw).
+    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, Mark5, End], place_tile_on_board_and_draw).
 
+reposition_board_loop :-
+    reposition_board_toward_target_translation
+      -> _ >> [id -:> canvas,
+            getContext('2d') *:> Ctx,
+            width +:> W,
+            height +:> H],
+        get_tiles(TileIDs),
+        draw_all_tiles(TileIDs, Ctx, W, H),
+        get_legal_positions(LegalPositions),
+        get_legal_positions_with_rotation(LegalPositionsWithRotation),
+        draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx),
+        eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);")
+    ;
+    true.

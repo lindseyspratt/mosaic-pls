@@ -79,8 +79,8 @@ check_tile_ortho_neighbor(DX > DY, TX > TY) :-
           get_location_grid_x(Location2, L2X),
           get_location_grid_y(Location2, L2Y)
            -> clear_location(Location2),
-              clear_location_references(Location2),
-              writeln(clear_hole_inducing_location(Location2))
+              clear_location_references(Location2)
+              %writeln(clear_hole_inducing_location(Location2))
          ;
            true
          )
