@@ -14,6 +14,7 @@
 :- use_module(tile_view).
 :- use_module(game_view_tiles).
 :- use_module(draw).
+:- use_module(score).
 
 % For tiles the shadow tile structure functor is 'ts'
 % and the arguments are 'x', 'y', etc.
@@ -367,4 +368,10 @@ reposition_board_loop :-
         draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx),
         eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);")
     ;
-    true.
+    calculate_and_display_score.
+
+calculate_and_display_score :-
+    score(S),
+    format(atom(Score), '~w', [S]),
+    atom_codes(Score, ScoreCodes),
+    _ >> [id -:> score, innerHTML <:+ ScoreCodes].

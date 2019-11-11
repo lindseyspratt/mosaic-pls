@@ -4,7 +4,7 @@
     get_legal_positions/1, set_legal_positions/1, get_legal_positions_with_rotation/1,
     set_legal_positions_with_rotation/1, get_irreplaceables/1, set_irreplaceables/1, update_legal_positions/1,
     find_shaped_locations/0, incremental_find_shaped_locations/1,
-    find_legal_with_rotation_locations/1, find_legal_locations/1, locations_values/2 ]).
+    find_legal_with_rotation_locations/1, find_legal_locations/1, locations_values/2, placed_position_offset/3 ]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(location_model).

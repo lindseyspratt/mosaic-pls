@@ -14,11 +14,6 @@ abstract_colors([AH|AT], [CH|CT]) :-
     get_player_color(AH, CH),
     abstract_colors(AT, CT).
 
-%abstract_color(a, red).
-%abstract_color(b, green).
-%abstract_color(c, blue).
-%abstract_color(d, yellow).
-
 % (X > Y) is a point (X,Y).
 % Web API method arguments of type number or integer accept arithmetic
 % expressions; e.g. (1 + 0.5 * 50).

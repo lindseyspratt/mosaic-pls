@@ -218,20 +218,25 @@ edge_hex_neighbor_offset(3, 1 > 0).
 edge_hex_neighbor_offset(4, -1 > 0).
 edge_hex_neighbor_offset(5, -1 > -1).
 
-display_spans(_Markers, _Functor).
+%display_spans(_Markers, _Functor).
 
-%display_spans(Markers, Functor) :-
-%    spans(Markers, Spans),
-%    Structure =.. [Functor|Spans],
-%    writeln(Structure).
-%
-%spans([H1, H2|T], Spans) :-
-%    spans([H2|T], H1, Spans).
-%
-%spans([], _, []).
-%spans([H|T], R, [Span|TS]) :-
-%    Span is H - R,
-%    spans(T, H, TS).
+:- dynamic(display_spans_mode/1).
+
+display_spans(Markers, Functor) :-
+    (display_spans_mode(all);display_spans_mode(Functor))
+      ->  spans(Markers, Spans),
+          Structure =.. [Functor|Spans],
+          writeln(Structure)
+    ;
+    true.
+
+spans([H1, H2|T], Spans) :-
+    spans([H2|T], H1, Spans).
+
+spans([], _, []).
+spans([H|T], R, [Span|TS]) :-
+    Span is H - R,
+    spans(T, H, TS).
 
 /**
  * The 'values' function creates a displayable-on-the-console object that is the labeled values
