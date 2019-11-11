@@ -35,7 +35,8 @@ dummy_reference :-
     dummy_reference,
     select(_),
     rotate(_),
-    move_to_board(_).
+    move_to_board(_),
+    calculate_and_display_score.
 
 clear_tests :-
     clear_select_test,
@@ -115,6 +116,7 @@ setup_game_data :-
     layout_hands,
     create_locations,
     find_shaped_locations,
+    create_score,
     !.
 
 select_test :-
@@ -325,35 +327,38 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     place_tile_on_board(Tile, X, Y),
 
     wam_duration(Mark1),
+    incremental_score(Tile, Score),
+    display_score(Score),
+
+    wam_duration(Mark2),
     get_shaped_positions(OldLocations),
     clear_location_views(OldLocations, Ctx),
     set_legal_positions_with_rotation([]),
     set_legal_positions([]),
     clear_shaped_location_for_tile(Tile),
 
-    wam_duration(Mark2),
+    wam_duration(Mark3),
     update_board_tile_view(Tile),
     get_canvas_width(W),
     get_canvas_height(H),
     get_tiles(TileIDs),
 
-    wam_duration(Mark3),
+    wam_duration(Mark4),
     draw_all_tiles(TileIDs, Ctx, W, H),
 
-    wam_duration(Mark4),
+    wam_duration(Mark5),
     incremental_find_shaped_locations(Tile),
 
-    wam_duration(Mark5),
+    wam_duration(Mark6),
 
-    (reposition_board_loop
-      -> true
-    ;
-     true
-    ),
+    reposition_board_loop_delay,
 
     wam_duration(End),
     !,
-    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, Mark5, End], place_tile_on_board_and_draw).
+    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, Mark5, Mark6, End], place_tile_on_board_and_draw).
+
+reposition_board_loop_delay :-
+    eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);").
 
 reposition_board_loop :-
     reposition_board_toward_target_translation
@@ -366,12 +371,15 @@ reposition_board_loop :-
         get_legal_positions(LegalPositions),
         get_legal_positions_with_rotation(LegalPositionsWithRotation),
         draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx),
-        eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);")
+        reposition_board_loop_delay
     ;
-    calculate_and_display_score.
+    true. % calculate_and_display_score.
 
 calculate_and_display_score :-
     score(S),
+    display_score(S).
+
+display_score(S) :-
     format(atom(Score), '~w', [S]),
     atom_codes(Score, ScoreCodes),
     _ >> [id -:> score, innerHTML <:+ ScoreCodes].

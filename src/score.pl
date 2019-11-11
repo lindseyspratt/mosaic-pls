@@ -1,4 +1,6 @@
-:- module(score, [score/1, test_tiles/0]).
+:- module(score, [score/1, incremental_score/2, test_tiles/0, test_tiles2/0, test_tiles2/2, clear_score/0, create_score/0]).
+
+:- use_module('../proscriptls_sdk/library/data_predicates').
 
 :- use_module(model_basics).
 :- use_module(game_model_tiles).
@@ -6,6 +8,21 @@
 :- use_module(locations).
 :- use_module(library).
 :- use_module(components).
+
+:- initialization(initdyn).
+
+initdyn :-
+    data_predicate_dynamics([data_predicates(s, data,[components])]).
+
+dummy_reference :-
+    dummy_reference,
+    data_components(_).
+
+create_score:-
+    assert_data(s([]), 1).
+
+clear_score :-
+    retract_data(data, 1).
 
 score(Scores) :-
     wam_duration(Start),
@@ -20,16 +37,54 @@ score(Scores) :-
     wam_duration(End),
     display_spans([Start, Mark1, Mark2, Mark3, End], score).
 
+incremental_score(NewTile, Scores) :-
+    retract(data_components(ID, OldComponents)),
+    incremental_score(NewTile, OldComponents, MergedComponents, Scores),
+    asserta(data_components(ID, MergedComponents)).
+
+incremental_score(NewTile, OldComponents, Components, Scores) :-
+    graph([NewTile], NewNodes, NewEdges),
+    sort(NewNodes, SortedNewNodes),
+    components_ex(SortedNewNodes, NewEdges, NewComponents),
+    merge_components(NewComponents, OldComponents, Components),
+    component_tile_sets(Components, TileSets),
+    tile_set_scores(TileSets, Scores).
+
 
 test_tiles :-
     init_model_basics(2, 4, [1,2,3,4]),
     init_game_model_tiles, % uses info in model_basics.
     update_game_phase,
     increment_turn(1), % the first increment should move the turn from the initial 0 to 1.
+    create_score,
     place_tile_on_board(1, 0, 0),
     place_tile_on_board(11, 0, 1),
     place_tile_on_board(2, -1, 0),
     place_tile_on_board(12, -1, 1).
+
+test_tiles2 :-
+    init_model_basics(2, 4, [1,2,3,4]),
+    init_game_model_tiles, % uses info in model_basics.
+    update_game_phase,
+    increment_turn(1), % the first increment should move the turn from the initial 0 to 1.
+    create_score.
+
+test_tiles2(1, S) :-
+    place_tile_on_board(1, 0, 0),
+    incremental_score(1, S).
+
+test_tiles2(2, S) :-
+    place_tile_on_board(11, 0, 1),
+    incremental_score(11, S).
+
+test_tiles2(3, S) :-
+    place_tile_on_board(2, -1, 0),
+    incremental_score(2, S).
+
+test_tiles2(4, S) :-
+    place_tile_on_board(12, -1, 1),
+    incremental_score(12, S).
+
 /*
 Create a graph from the board tiles.
 The graph has one or more nodes for each tile.
@@ -38,16 +93,20 @@ Each tile region is connected to one or more side nodes.
 The side node of one tile is connected by a graph edge to
 a side node of an adjacent tile.
 */
-graph(Nodes, AllEdges) :-
-    get_board(RawBoard),
-    sort(RawBoard, Board), % order tiles by ascending ID. adjacent_tile_edges/1 relies on this ordering to avoid duplicate edges.
-    graph(Board, Nodes, BaseEdges),
-    adjacent_tile_edges(Board, AllEdges, BaseEdges).
+graph(Nodes, Edges) :-
+    get_board(Board),
+    graph(Board, Nodes, Edges).
 
-graph([], [], []).
-graph([H|T], Nodes, Edges) :-
+graph(RawBoard, Nodes, AllEdges) :-
+    sort(RawBoard, Board), % order tiles by ascending ID. adjacent_tile_edges/1 relies on this ordering to avoid duplicate edges.
+    graph1(Board, Nodes, BaseEdges),
+    adjacent_tile_edges(Board, RawAllEdges, BaseEdges),
+    sort(RawAllEdges, AllEdges). % remove duplicate edges.
+
+graph1([], [], []).
+graph1([H|T], Nodes, Edges) :-
     graph1(H, Nodes, NodesTail, Edges, EdgesTail),
-    graph(T, NodesTail, EdgesTail).
+    graph1(T, NodesTail, EdgesTail).
 
 graph1(Tile, Nodes, NodesTail, Edges, EdgesTail) :-
     get_tile_colors(Tile, Colors),
@@ -132,7 +191,8 @@ ateDY([DY|T], DX, Tile, Edges, EdgesTail) :-
 %    Edges = EdgesTail.
 
 ateDXDY(DX, DY, Tile, Edges, EdgesTail) :-
-    (DX=0;DY=0),
+    (DX = 0;DY=0),
+    (DX \= 0; DY \= 0),
     !,
     ateDXDY1(DX, DY, Tile, Edges, EdgesTail).
 ateDXDY(_DX, _DY, _Tile, Edges, Edges).
@@ -143,15 +203,23 @@ ateDXDY1(DX, DY, Tile, Edges, EdgesTail) :-
     ateDXDY2(Tile, Edges, EdgesTail, TilePositionIndex, OtherTile, OtherTilePositionIndex).
 ateDXDY1(_DX, _DY, _Tile, Edges, Edges).
 
+% Ensure edges are always LowTile -> HighTile, so that sorting can eliminate duplicates.
 ateDXDY2(Tile, Edges, EdgesTail, TilePositionIndex, OtherTile, OtherTilePositionIndex) :-
+    Tile < OtherTile,
+    !,
+    ateDXDY3(Tile, Edges, EdgesTail, TilePositionIndex, OtherTile, OtherTilePositionIndex).
+ateDXDY2(Tile, Edges, EdgesTail, TilePositionIndex, OtherTile, OtherTilePositionIndex) :-
+    Tile > OtherTile,
+    ateDXDY3(OtherTile, Edges, EdgesTail, OtherTilePositionIndex, Tile, TilePositionIndex).
+
+ateDXDY3(Tile, Edges, EdgesTail, TilePositionIndex, OtherTile, OtherTilePositionIndex) :-
     get_tile_colors(Tile, Colors),
     nth1(TilePositionIndex, Colors, TileColor),
     get_tile_colors(OtherTile, OtherColors),
-    Tile < OtherTile, % add edge between tile 1 and tile 2 only once - edges are bidirectional.
     nth1(OtherTilePositionIndex, OtherColors, TileColor),
     !,
     Edges = [edge(Tile/TilePositionIndex, OtherTile/OtherTilePositionIndex)|EdgesTail].
-ateDXDY2(_Tile, Edges, Edges, _TilePositionIndex, _OtherTile, _OtherTilePositionIndex).
+ateDXDY3(_Tile, Edges, Edges, _TilePositionIndex, _OtherTile, _OtherTilePositionIndex).
 
 get_neighboring_tile(Tile, DX, DY, TilePositionIndex, OtherTile, OtherTilePositionIndex) :-
     placed_position_offset(DX, DY, TilePositionOffset),
