@@ -1,4 +1,6 @@
-:- module(score, [score/1, incremental_score/2, test_tiles/0, test_tiles2/0, test_tiles2/2, clear_score/0, create_score/0]).
+:- module(score,
+    [score/1, incremental_score/2, components_score/2, get_components/1, save_score_stream/1,
+     test_tiles/0, test_tiles2/0, test_tiles2/2, clear_score/0, create_score/0]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 
@@ -24,20 +26,37 @@ create_score:-
 clear_score :-
     retract_data(data, 1).
 
+get_components(Components) :-
+    data_components(Components).
+
+save_score_stream(Stream) :-
+    writeln(save_score),
+    save_data_stream(data, Stream),
+    writeln(done(save_score)).
+
+% score/1 can be run at any time the board is 'stable'.
+% incremental_score/2 uses the Components recorded
+% by score/1.
+
 score(Scores) :-
     wam_duration(Start),
     graph(RawNodes, Edges),
     sort(RawNodes, Nodes),
     wam_duration(Mark1),
     components_ex(Nodes, Edges, Components),
+    set_components(Components),
     wam_duration(Mark2),
-    component_tile_sets(Components, TileSets),
-    wam_duration(Mark3),
-    tile_set_scores(TileSets, Scores),
+    components_score(Components, Scores),
     wam_duration(End),
-    display_spans([Start, Mark1, Mark2, Mark3, End], score).
+    display_spans([Start, Mark1, Mark2, End], score).
+
+set_components(Components) :-
+    data_default_id(ID),
+    retractall(data_components(ID, _)),
+    asserta(data_components(ID, Components)).
 
 incremental_score(NewTile, Scores) :-
+    data_default_id(ID),
     retract(data_components(ID, OldComponents)),
     incremental_score(NewTile, OldComponents, MergedComponents, Scores),
     asserta(data_components(ID, MergedComponents)).
@@ -47,6 +66,9 @@ incremental_score(NewTile, OldComponents, Components, Scores) :-
     sort(NewNodes, SortedNewNodes),
     components_ex(SortedNewNodes, NewEdges, NewComponents),
     merge_components(NewComponents, OldComponents, Components),
+    components_score(Components, Scores).
+
+components_score(Components, Scores) :-
     component_tile_sets(Components, TileSets),
     tile_set_scores(TileSets, Scores).
 

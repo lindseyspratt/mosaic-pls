@@ -70,11 +70,14 @@
 <li><a   id="api_node_index" href="index_doc.html#api_node"> Node </a></li>
 <li><a   id="api_parentnode_index" href="index_doc.html#api_parentnode"> ParentNode </a></li>
 <li><a   id="api_path2d_index" href="index_doc.html#api_path2d"> Path2D </a></li>
+<li><a   id="api_storage_index" href="index_doc.html#api_storage"> Storage </a></li>
 <li><a   id="api_textmetrics_index" href="index_doc.html#api_textmetrics"> TextMetrics </a></li>
 <li><a   id="api_uievent_index" href="index_doc.html#api_uievent"> UIEvent </a></li>
 <li><a   id="api_uint8clampedarray_index" href="index_doc.html#api_uint8clampedarray"> Uint8ClampedArray </a></li>
 <li><a   id="api_validitystate_index" href="index_doc.html#api_validitystate"> ValidityState </a></li>
 <li><a   id="api_window_index" href="index_doc.html#api_window"> Window </a></li>
+<li><a   id="api_windowlocalstorage_index" href="index_doc.html#api_windowlocalstorage"> WindowLocalStorage </a></li>
+<li><a   id="api_windowsessionstorage_index" href="index_doc.html#api_windowsessionstorage"> WindowSessionStorage </a></li>
 
                                 </ul>
                             </li>
@@ -114,12 +117,25 @@
 <li><a   id="pred_set_dom_object_property_3_index" href="index_doc.html#pred_set_dom_object_property_3"> set_dom_object_property/3 </a></li>
 <li><a   id="pred_toggle_dom_element_class_3_index" href="index_doc.html#pred_toggle_dom_element_class_3"> toggle_dom_element_class/3 </a></li>
 </ul></li>
+<li><span class="caret"></span><a   id="pred_cat_memory_file_index" href="index_doc.html#pred_cat_memory_file"> memory_file </a>
+<ul class='nested'>
+<li><a   id="pred_copy_local_storage_to_memory_file_2_index" href="index_doc.html#pred_copy_local_storage_to_memory_file_2"> copy_local_storage_to_memory_file/2 </a></li>
+<li><a   id="pred_copy_memory_file_to_local_storage_2_index" href="index_doc.html#pred_copy_memory_file_to_local_storage_2"> copy_memory_file_to_local_storage/2 </a></li>
+<li><a   id="pred_free_memory_file_1_index" href="index_doc.html#pred_free_memory_file_1"> free_memory_file/1 </a></li>
+<li><a   id="pred_new_memory_file_1_index" href="index_doc.html#pred_new_memory_file_1"> new_memory_file/1 </a></li>
+<li><a   id="pred_open_memory_file_3_index" href="index_doc.html#pred_open_memory_file_3"> open_memory_file/3 </a></li>
+</ul></li>
 <li><span class="caret"></span><a   id="pred_cat_runtime_index" href="index_doc.html#pred_cat_runtime"> runtime </a>
 <ul class='nested'>
 <li><a   id="pred_current_prolog_flag_2_index" href="index_doc.html#pred_current_prolog_flag_2"> current_prolog_flag/2 </a></li>
 <li><a   id="pred_halt_0_index" href="index_doc.html#pred_halt_0"> halt/0 </a></li>
 <li><a   id="pred_repeat_0_index" href="index_doc.html#pred_repeat_0"> repeat/0 </a></li>
 <li><a   id="pred_set_prolog_flag_2_index" href="index_doc.html#pred_set_prolog_flag_2"> set_prolog_flag/2 </a></li>
+<li><a   id="pred_statistics_0_index" href="index_doc.html#pred_statistics_0"> statistics/0 </a></li>
+<li><a   id="pred_statistics_max_heap_1_index" href="index_doc.html#pred_statistics_max_heap_1"> statistics_max_heap/1 </a></li>
+<li><a   id="pred_statistics_max_stack_1_index" href="index_doc.html#pred_statistics_max_stack_1"> statistics_max_stack/1 </a></li>
+<li><a   id="pred_wam_duration_1_index" href="index_doc.html#pred_wam_duration_1"> wam_duration/1 </a></li>
+<li><a   id="pred_yield_0_index" href="index_doc.html#pred_yield_0"> yield/0 </a></li>
 </ul></li>
 <li><span class="caret"></span><a   id="pred_cat_terms_index" href="index_doc.html#pred_cat_terms"> terms </a>
 <ul class='nested'>
@@ -203,7 +219,7 @@
     <div id="tiles_pl" >
         <h2 id='tiles_pl_header'>tiles.pl</h2>
         <code class='content'>
-        <span style='color:red'>:-</span>&nbsp;module(tiles,&nbsp;[select_test/0]).<br>
+        <span style='color:red'>:-</span>&nbsp;module(tiles,&nbsp;[select_test/0,&nbsp;save_tiles/0,&nbsp;load_tiles/0]).<br>
 <br>
 <span style='color:red'>:-</span>&nbsp;use_module('../library/object').&nbsp;<span style='color:green'>%&nbsp;for&nbsp;>>/2.</span><br>
 <span style='color:red'>:-</span>&nbsp;use_module('../library/data_predicates').<br>
@@ -239,6 +255,24 @@ select_test&nbsp;<span style='color:red'>:-</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;initial_hands_expanded(2,&nbsp;<i>Hands</i>),<br>
 &nbsp;&nbsp;&nbsp;&nbsp;setup_hands(<i>Hands</i>,&nbsp;<i>TileIDs</i>),<br>
 &nbsp;&nbsp;&nbsp;&nbsp;draw_all_tiles(<i>TileIDs</i>,&nbsp;<i>Ctx</i>,&nbsp;<i>W</i>,&nbsp;<i>H</i>).<br>
+<br>
+save_tiles&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;new_memory_file(<i>DataMemFile</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;open_memory_file(<i>DataMemFile</i>,&nbsp;write,&nbsp;<i>Stream</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;save_data_stream(game,&nbsp;<i>Stream</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;save_data_stream(tile,&nbsp;<i>Stream</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;save_data_stream(legal_position,&nbsp;<i>Stream</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;close(<i>Stream</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;copy_memory_file_to_local_storage(<i>DataMemFile</i>,&nbsp;save_tiles),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;free_memory_file(<i>DataMemFile</i>).<br>
+<br>
+load_tiles&nbsp;<span style='color:red'>:-</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;retract_all_data(game),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;retract_all_data(tile),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;retract_all_data(legal_position),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;copy_local_storage_to_memory_file(save_tiles,&nbsp;<i>DataMemFile</i>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;wam_compiler:compile_and_free_memory_file(<i>DataMemFile</i>).<br>
+<br>
 <br>
 dummy_reference&nbsp;<span style='color:red'>:-</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;dummy_reference,<br>
@@ -589,7 +623,7 @@ highlight_color(2,&nbsp;'#CCCCFF').<br>
         <hr>
         <table style="width:100%">
         <tr>
-        <td>Version 1.4.1, November 2019.</td>
+        <td>Version 1.5.0, December 2019.</td>
         <td style="text-align:right">Powered by ProscriptLS Prolog - Logic at Your Service.</td>
         </tr>
         </table>

@@ -1,6 +1,5 @@
-:- module(tiles, [select_test/0, rotate_test/0, view_basics_test/0,
-    game_model_tiles_test/0, tile_view_test/0, game_view_tiles_test/0, move_to_board_test/0,
-    reposition_board_loop/0]).
+:- module(tiles, [setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0,
+        save_game/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -16,95 +15,10 @@
 :- use_module(draw).
 :- use_module(score).
 
-% For tiles the shadow tile structure functor is 'ts'
-% and the arguments are 'x', 'y', etc.
-% For the game the shadow game structure functor is 'g'
-% and the arguments are 'turn', etc.
-% (Note that there is currently only one 'game' so the ID is always '1'.)
-
-%:- initialization(init).
-%
-%init :-
-%    data_predicate_dynamics([
-%        %data_predicates(g, game,[board_translate, replacements]), % e.g. game_board_translate(ID, X>Y)...
-%        %data_predicates(ts, tile,[x, y,size]), % e.g. tile_x(ID, X), tile_y(ID, Y)...
-%        %data_predicates(lp, legal_position, [bx, by])
-%    ]).
-
 dummy_reference :-
     dummy_reference,
     select(_),
-    rotate(_),
-    move_to_board(_),
     calculate_and_display_score.
-
-clear_tests :-
-    clear_select_test,
-    clear_rotate_test,
-    clear_move_to_board_test,
-    clear_view_basics_test,
-    clear_game_model_tiles_test,
-    clear_tile_view_test.
-
-view_basics_test :-
-    setup_game_data,
-    clear_tests,
-    view_basics_values(V),
-    display_key_values("View Basics", V).
-
-clear_view_basics_test :-
-    clear_display_key_values.
-
-game_model_tiles_test :-
-    setup_game_data,
-    clear_tests,
-    game_model_tiles_values(V),
-    display_key_values("Game Model Tiles", V).
-
-clear_game_model_tiles_test :-
-    clear_display_key_values.
-
-tile_view_test :-
-    setup_game_data,
-    clear_tests,
-    create_tile_view(1, 10, 15, 55),
-    tile_view_values(1, V),
-    display_key_values("Tile View", V).
-
-clear_tile_view_test :-
-    clear_display_key_values.
-
-game_view_tiles_test :-
-    setup_game_data,
-    clear_tests,
-    create_tile_view(1, 10, 15, 55),
-    game_view_tiles_values(1, V),
-    display_key_values("Game View Tiles", V).
-
-game_view_tiles_test :-
-    clear_display_key_values.
-
-clear_display_key_values :-
-    _Elements >> [id -:> display_elements, innerHTML <:+ ""].
-
-display_key_values(LabelCodes, V) :-
-    append_lists(["<h2>Active: ", LabelCodes, " Test</h2>"], MessageCodes),
-    _TestLabel >> [id -:> current_test, innerHTML <:+ MessageCodes],
-    Elements >-> id :> display_elements,
-    create_dom_element(ul, ULElement),
-    append_dom_node_child(Elements, ULElement),
-    display_key_values1(V, ULElement).
-
-
-display_key_values1([], _).
-display_key_values1([H|T], Elements) :-
-    display_key_value(H, Elements),
-    display_key_values1(T, Elements).
-
-display_key_value(Key - Value, Elements) :-
-    format(atom(HTML), '<li>~w: ~w</li>\n', [Key, Value]),
-    atom_codes(HTML, HTMLCodes),
-    Elements >*> insertAdjacentHTML(beforeEnd, HTMLCodes).
 
 setup_game_data :-
     init_model_basics(2, 4, [1,2,3,4]),
@@ -119,10 +33,8 @@ setup_game_data :-
     create_score,
     !.
 
-select_test :-
+start_mosaic_game :-
     setup_game_data,
-    clear_tests,
-    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Select Test</h2>"],
     get_canvas_width(W),
     get_canvas_height(H),
     get_context(Ctx),
@@ -131,7 +43,7 @@ select_test :-
     get_tiles(TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
-clear_select_test :-
+clear_mosaic_game :-
     get_canvas_width(W),
     get_canvas_height(H),
     get_context(Ctx),
@@ -140,45 +52,145 @@ clear_select_test :-
     Ctx >*> clearRect(0, 0, W, H),
     set_selected_tile_id(none).
 
-rotate_test :-
-    setup_game_data,
-    clear_tests,
-    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Rotate Test</h2>"],
+save_game_stream :-
+    writeln('Saving...'),
+    new_memory_file(DataMemFile),
+    open_memory_file(DataMemFile, write, Stream),
+    writeln('  model_basics'),
+    save_model_basics_stream(Stream),
+    writeln('  view_basics'),
+    save_view_basics_stream(Stream),
+    writeln('  tile_model'),
+    save_tile_model_stream(Stream),
+    writeln('  tile_view'),
+    save_tile_view_stream(Stream),
+    writeln('  game_model_tiles'),
+    save_game_model_tiles_stream(Stream),
+    writeln('  game_view_tiles'),
+    save_game_view_tiles_stream(Stream),
+    writeln('  location_model'),
+    save_location_model_stream(Stream),
+    writeln('  locations'),
+    save_locations_stream(Stream),
+    writeln('  score'),
+    save_score_stream(Stream),
+    writeln('  (finish)'),
+    close(Stream),
+    copy_memory_file_to_local_storage(DataMemFile, save_mosaic),
+    free_memory_file(DataMemFile),
+    writeln('Done.').
+
+load_game :-
+    writeln('Load Game.'),
+    load_game_data_stream,
+    setup_event_handling,
+    display_game,
+    yield,
+    setup_score.
+
+setup_score :-
+    get_components(Components),
+    components_score(Components, Scores),
+    display_score(Scores).
+%
+%    clear_score,
+%    create_score,
+%    calculate_and_display_score.
+
+% setup_event_handling prepares the game to accept mouse clicks.
+% removeEventListener in case one is already present - this method succeeds even if there is no
+% handler present.
+
+setup_event_handling :-
+    _Canvas >> [id -:> canvas,
+        removeEventListener(click, [object-E]^select(E))],
+    _Canvas >> [id -:> canvas,
+        addEventListener(click, [object-E]^select(E))].
+
+display_game :-
     get_canvas_width(W),
     get_canvas_height(H),
     get_context(Ctx),
-    _Canvas >> [id -:> canvas,
-        addEventListener(click, [object-E]^rotate(E))],
     get_tiles(TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
-clear_rotate_test :-
-    get_canvas_width(W),
-    get_canvas_height(H),
-    get_context(Ctx),
-    _Canvas >> [id -:> canvas,
-        removeEventListener(click, [object-E]^rotate(E))],
-    Ctx >*> clearRect(0, 0, W, H).
+load_game_data_stream :-
+    retract_game_data,
+    copy_local_storage_to_memory_file(save_mosaic, DataMemFile),
+    wam_compiler:compile_and_free_memory_file(DataMemFile),
+    reset_view_basics. % reset the HTML UI values for canvas HTML element.
 
-move_to_board_test :-
-    setup_game_data,
-    clear_tests,
-    _TestLabel >> [id -:> current_test, innerHTML <:+ "<h2>Active: Select Test</h2>"],
-    get_canvas_width(W),
-    get_canvas_height(H),
-    get_context(Ctx),
-    _Canvas >> [id -:> canvas,
-        addEventListener(click, [object-E]^move_to_board(E))],
-    get_tiles(TileIDs),
-    draw_all_tiles(TileIDs, Ctx, W, H).
+retract_game_data :-
+    retract_model_basics,
+    retract_view_basics,
+    retract_tile_model,
+    retract_tile_view,
+    retract_game_model_tiles,
+    retract_game_view_tiles,
+    retract_location_model,
+    retract_locations.
 
-clear_move_to_board_test :-
-    get_canvas_width(W),
-    get_canvas_height(H),
-    get_context(Ctx),
-    _Canvas >> [id -:> canvas,
-        removeEventListener(click, [object-E]^move_to_board(E))],
-    Ctx >*> clearRect(0, 0, W, H).
+save_game :-
+    writeln('Saving...'),
+    writeln('  model_basics'),
+    save_model_basics,
+    writeln('  view_basics'),
+    save_view_basics,
+    writeln('  tile_model'),
+    save_tile_model,
+    writeln('  tile_view'),
+    yield,
+    save_tile_view,
+    writeln('  game_model_tiles'),
+    save_game_model_tiles,
+    writeln('  game_view_tiles'),
+    save_game_view_tiles,
+    writeln('  location_model'),
+    save_location_model,
+    writeln('  locations'),
+    save_locations,
+    writeln('Done.').
+
+load_game_data :-
+    load_game_data1,
+    load_game_data1a,
+    load_game_data2,
+    load_game_data3.
+
+load_game_data1 :-
+    writeln('Loading...'),
+    writeln('  model_basics'),
+    yield,
+    load_model_basics,
+    writeln('  tile_model'),
+    yield,
+    load_tile_model.
+
+load_game_data1a :-
+    writeln('  view_basics'),
+    yield,
+    load_view_basics.
+
+load_game_data2 :-
+    writeln('  game_model_tiles'),
+    yield,
+    load_game_model_tiles,
+    writeln('  game_view_tiles'),
+    yield,
+    load_game_view_tiles.
+
+load_game_data3 :-
+    writeln('  location_model'),
+    yield,
+    load_location_model,
+    writeln('  locations'),
+    yield,
+    load_locations,
+    writeln('  tile_view'),
+    yield,
+    load_tile_view,
+    writeln('Done.'),
+    yield.
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates
@@ -191,12 +203,12 @@ select(Event) :-
     select1(PageX, PageY).
 
 select1(PageX, PageY) :-
-    % writeln(select1(PageX, PageY)),
+    writeln(select1(PageX, PageY)),
     get_canvas_offset_top(PTop),
     get_canvas_offset_left(PLeft),
     X is PageX - PLeft,
     Y is PageY - PTop,
-    % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
+    writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
     (point_in_tile(Tile, X, Y)
       -> on_click_tile(Tile, X, Y)  % at most one tile contains (X, Y).
     ;
@@ -206,41 +218,26 @@ select1(PageX, PageY) :-
      true
     ).
 
-rotate(Event) :-
-    Event >> [pageX +:> PageX, pageY +:> PageY],
-    dom_release_object(Event),
-    get_canvas_offset_top(PTop),
-    get_canvas_offset_left(PLeft),
-    X is PageX - PLeft,
-    Y is PageY - PTop,
-    % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
-    (point_in_tile(ID, X, Y)
-      -> on_click_tile_rotate(ID, X, Y)  % at most one tile contains (X, Y).
-    ;
-     true
-    ).
-
-move_to_board(Event) :-
-    Event >> [pageX +:> PageX, pageY +:> PageY],
-    dom_release_object(Event),
-    get_canvas_offset_top(PTop),
-    get_canvas_offset_left(PLeft),
-    X is PageX - PLeft,
-    Y is PageY - PTop,
-    % writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
-    (point_in_tile(ID, X, Y)
-      -> on_click_tile_move(ID, X, Y)  % at most one tile contains (X, Y).
-    ;
-     true
-    ).
-
-on_click_tile(ID, _X, _Y) :-
+on_click_tile(ID, X, Y) :-
     %writeln(click(ID, X, Y)),
-    (tile_in_active_hand(ID)
+    get_game_phase(Phase),
+    (tile_in_active_hand(ID),
+     (Phase = build;Phase = rebuild)
       -> on_click_active_hand_tile(ID)
     ;
-    true % writeln(not_active)
-    ).
+    tile_in_board(ID)
+      -> (Phase = transform
+          -> on_click_transform_tile(ID, X, Y)
+         ;
+         Phase = replace
+          -> on_click_select_replace_tile(ID)
+         ;
+         true
+         )
+    ;
+    true
+    ),
+    update_game_phase.
 
 on_click_active_hand_tile(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
@@ -269,16 +266,30 @@ on_click_active_hand_tile_select(ID) :-
     get_legal_positions_with_rotation(LegalPositionsWithRotation),
     draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
 
+on_click_select_replace_tile(ID) :-
+    set_selected_tile_id(ID),
+    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    draw_all_tile(ID, Ctx),
+    find_legal_with_rotation_locations(ID),
+    find_legal_locations(ID),
+    get_legal_positions(LegalPositions),
+    get_legal_positions_with_rotation(LegalPositionsWithRotation),
+    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
+
 on_click_legal_location(BX, BY) :-
-    wam_duration(Start),
     get_selected_tile_id(Tile),
     set_selected_tile_id(none),
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    increment_turn(_),
-    place_tile_on_board_and_draw(Ctx, Tile, BX, BY),
-    wam_duration(End),
-    !,
-    display_spans([Start, End], on_click_location).
+    get_game_phase(Phase),
+    (Phase = build
+      -> increment_turn(_),
+         place_tile_on_board_and_draw(Ctx, Tile, BX, BY)
+    ;
+     Phase = replace
+      -> move_tile_on_board_and_draw(Ctx, Tile, BX, BY)
+    ;
+    writeln(legal_location_click_error(Tile, BX, BY, Phase))
+    ).
 
 on_click_tile_rotate(ID, _X, _Y) :-
     %writeln(click(ID, X, Y)),
@@ -299,18 +310,6 @@ on_click_active_hand_tile_rotate(ID) :-
     get_legal_positions_with_rotation(LegalPositionsWithRotation),
     draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
 
-on_click_tile_move(ID, _X, _Y) :-
-    %writeln(on_click_tile_move(ID, X, Y)),
-    (tile_in_active_hand(ID)
-      -> on_click_active_hand_tile_move(ID)
-    ;
-    true % writeln(not_active)
-    ).
-
-on_click_active_hand_tile_move(ID) :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    place_tile_on_board_and_draw(Ctx, ID, 0, 0).
-
 point_in_legal_location(BX, BY, X, Y) :-
      wam_duration(Start),
      get_legal_positions(LegalPositions),
@@ -321,6 +320,73 @@ point_in_legal_location(BX, BY, X, Y) :-
      wam_duration(End),
      !,
      display_spans([Start, End], point_in_board).
+
+% transform:
+% - identify selected edge,
+% - from edge determine selected pair of tiles,
+% - determine candidate replacement tiles - set replacements,
+% - move selected tiles to current turn player's hand,
+% - specify original positions of selected tiles as
+% shaped locations (thus 'find legal with rotations'
+% and 'find legal' will pick among these original positions).
+%
+%    Mark removed tile locations as 'replacement positions' with color constraints.
+%    Do this mark before moving the marked tiles to hands so that the boardTileX and
+%    boardTileY values are 'in the board'.
+%
+%    The replacement positions are marked by recording them in the legalPositions
+%    global array, same as is used for guiding the placement of tiles from the hands
+%    during the 'build' state of the game.
+
+
+on_click_transform_tile(Tile, X, Y) :-
+    %_ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    writeln(transform(Tile, X, Y)),
+    point_in_tile_edge(Tile, X, Y, Edge),
+    get_tile_colors(Tile, Colors),
+    nth0(Edge, Colors, Color),
+    get_turn(PlayerColor),
+    (PlayerColor = Color
+      -> true % The edge is the current player's color (and thus cannot be *changed* to the current player's color). Ignore this selection click.
+    ;
+     writeln(transform_edge(Edge, Color)),
+     edge_neighbor_tile(Tile, Edge, NeighborTile)
+      -> (last_placed_tiles(Tile, NeighborTile)
+           -> true % these tiles were placed by previous turn/player. Ignore this selection click.
+         ;
+          create_transform_shaped_locations(Tile, Edge, NeighborTile),
+          find_replacements([Tile, NeighborTile]),
+          place_tile_in_hand(Tile),
+          place_tile_in_hand(NeighborTile),
+          get_context(Ctx),
+          get_canvas_width(W),
+          get_canvas_height(H),
+          get_tiles(TileIDs),
+          draw_all_tiles(TileIDs, Ctx, W, H)
+         )
+    ;
+     true % There is no neighboring tile for this edge. Ignore this selection click.
+    ).
+
+% Tile is replacing a tile that was moved out of the
+% board to a hand (due to a transform selection or
+% to a mismatch).
+% Tile is in Replacements.
+
+move_tile_on_board_and_draw(_Ctx, Tile, X, Y) :-
+    writeln(move_tile_on_board_and_draw(Tile, X, Y)).
+%    get_tile_grid_x(Tile, OldX),
+%    get_tile_grid_y(Tile, OldY),
+%    add_legal_position_with_rotation(OldX > OldY), % legal-with-rotation when rebuilding
+%    place_tile_on_board(Tile, X, Y),
+%    clear_legal_location_for_tile(Tile),
+%    remove_tile_from_replacements(Tile),
+%    update_board_tile_view(Tile),
+%    get_canvas_width(W),
+%    get_canvas_height(H),
+%    get_tiles(TileIDs),
+%    draw_all_tiles(TileIDs, Ctx, W, H),
+%    draw_legal_moves.
 
 place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     wam_duration(Start),

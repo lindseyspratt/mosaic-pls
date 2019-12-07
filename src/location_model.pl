@@ -1,8 +1,10 @@
 :- module(location_model,
-    [create_location_model/3, clear_location/1, get_location_grid_x/2, get_location_grid_y/2,get_location_neighbors/2, get_location_orthogonal_neighbors/2,
+    [create_location_model/3, save_location_model/0, load_location_model/0,
+     save_location_model_stream/1, retract_location_model/0,
+     clear_location/1, get_location_grid_x/2, get_location_grid_y/2,get_location_neighbors/2, get_location_orthogonal_neighbors/2,
      get_location_by_last_tile_placed/2, set_location_by_last_tile_placed/2,
      get_location_constraints/2, set_location_constraints/2, set_location_constraint/3, get_location_forced_colors/2, set_location_forced_color/3,
-     get_location_replacements/2, get_location_minimum_mismatch/2, increment_location_neighbors/2, increment_location_orthogonal_neighbors/2,
+     get_location_replacements/2, set_location_replacements/2, get_location_minimum_mismatch/2, set_location_minimum_mismatch/2, increment_location_neighbors/2, increment_location_orthogonal_neighbors/2,
      location_edge_neighbor_position/3, location_edge_second_neighbor_position/3, location_model_values/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
@@ -29,6 +31,18 @@ dummy_reference :-
 
 create_location_model(ID, GridX, GridY) :-
     assert_data(lm(GridX, GridY, 0, 0, false, [-1,-1,-1,-1], [], [], []), ID).
+
+save_location_model_stream(Stream) :-
+    save_data_stream(data, Stream).
+
+retract_location_model :-
+    retract_all_data(data).
+
+save_location_model :-
+    save_data(data, local_storage('mosaic')).
+
+load_location_model :-
+    load_data(data, local_storage('mosaic')).
 
 clear_location(ID) :-
     retract_data(data, ID).
@@ -75,8 +89,16 @@ set_location_forced_color(ID, Position, Value) :-
 get_location_replacements(ID, Value) :-
     data_replacements(ID, Value).
 
+set_location_replacements(ID, Value) :-
+    retractall(data_replacements(ID, _)),
+    asserta(data_replacements(ID, Value)).
+
 get_location_minimum_mismatch(ID, Value) :-
     data_minimumMismatch(ID, Value).
+
+set_location_minimum_mismatch(ID, Value) :-
+    retractall(data_minimumMismatch(ID, _)),
+    asserta(data_minimumMismatch(ID, Value)).
 
 increment_location_neighbors(ID, New) :-
     retract(data_neighbors(ID, Old)),

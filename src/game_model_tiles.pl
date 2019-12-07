@@ -2,19 +2,34 @@
  * The gameModelTiles object function returns an object that describes the current state of the game.
  * This includes the tiles used in the game, the hands and board uses of those tiles, a record of
  * the last 2 tiles placed, the current turn, and the current game phase.
+ *
+ * The game phase names the next action to be taken by the player identified by the current turn.
+ * build = build the board by adding a tile to it. Adding a tile has subactions:
+ *      select/change hand tile,
+ *      rotate selected tile,
+ *      move hand tile to board by selecting board location.
+ * transform = transform the board by selecting a shared edge between two board tiles.
+ * replace = replace a tile selected for transformation (one of the two tiles with the shared edge).
+ *      Replacing a tile has similar subactions to 'build' (there is no rotation):
+ *      select/change replacement tile,
+ *      move replacement tile to replacement location by selecting that location.
+ * rebuild = rebuild the board (after a shared edge has been changed) by adding a tile to the board.
+ *      Rebuilding the board has the same subactions as 'build'.
  * @param {Object} spec
  * @param {gameModelBasics} spec.gameModelBasics
  */
 
 
 :- module(game_model_tiles,
-    [init_game_model_tiles/0, get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
+    [init_game_model_tiles/0, save_game_model_tiles/0, load_game_model_tiles/0,
+     save_game_model_tiles_stream/1, retract_game_model_tiles/0,
+     get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
      get_turn/1, increment_turn/1, get_selected_tile_id/1, set_selected_tile_id/1,
      get_replacements/1, set_replacements/1, get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
      set_last_build_phase_tile_placed/1,
      last_placed_tiles/2, place_tile_in_hand/1, place_tile_on_board/3, get_game_phase/1,
      update_game_phase/0, update_game_phase/2, edge_neighbor_tile/3, tile_in_inactive_hand/1,
-     tile_in_active_hand/1, get_tiles_placed/1, game_model_tiles_values/1]).
+     tile_in_active_hand/1, tile_in_board/1, get_tiles_placed/1, game_model_tiles_values/1]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -34,6 +49,18 @@ initdyn :-
 init_game_model_tiles :-
     assert_data(gmt(0, [], [], [], 0, [], none, none, none, 0, none, [], none), 1),
     build_tiles.
+
+save_game_model_tiles_stream(Stream) :-
+    save_data_stream(data, Stream).
+
+retract_game_model_tiles :-
+    retract_all_data(data).
+
+save_game_model_tiles :-
+    save_data(data, local_storage('mosaic')).
+
+load_game_model_tiles :-
+    load_data(data, local_storage('mosaic')).
 
 make_hand_tile(PlayerID, Colors, NewTileID) :-
     increment_tile_counter(NewTileID),
@@ -262,7 +289,7 @@ update_game_phase(Old, New) :-
       -> New = build,
          set_game_phase(New)
     ;
-    Old = build,
+    (Old = build; Old = rebuild),
     data_board(Board),
     length(Board, BoardLength),
     data_tiles(Tiles),
@@ -270,6 +297,23 @@ update_game_phase(Old, New) :-
     BoardLength = TilesLength
       -> New = transform,
          set_game_phase(New)
+    ;
+    Old = transform,
+    get_replacements(Replacements),
+    Replacements \= []
+      -> New = rebuild,
+         set_game_phase(New)
+    ;
+     Old = replace,
+     get_replacements([]),
+     get_hands(Hands),
+     (Hands \= [[],[]]
+      -> New = rebuild,
+         set_game_phase(New)
+     ;
+      New = transform,
+      set_game_phase(New)
+     )
     ;
     Old = New
     ).
@@ -293,6 +337,10 @@ tile_in_active_hand(Tile) :-
     container_type(Container, hand),
     get_turn(TurnID),
     container_id(Container, TurnID).
+
+tile_in_board(Tile) :-
+    get_tile_container(Tile, Container),
+    container_type(Container, board).
 
 get_tiles_placed(Placed) :-
     data_tilesPlaced(Placed).

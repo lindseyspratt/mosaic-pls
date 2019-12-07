@@ -11,34 +11,16 @@
 <body onload="proscriptls_init ();">
 <div class="mosaic-description">
     <h2>Mosaic</h2>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:rotate_test.');">
-        Rotate Test: Clicking on the non-grayed-out squares rotates the selected square to the right.
+    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game.');">
+        Start Mosaic Game
     </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:select_test.');">
-        Select Test: Clicking on the non-grayed-out squares places marker ('+') on the selected square.
+    <button class="mosaic-button" onclick="proscriptls ('tiles:save_game_stream.');">
+        Save Mosaic Game
     </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:move_to_board_test.');">
-        Move-to-board Test: Clicking on a non-grayed-out square moves it to (1,1) in the board.
+    <button class="mosaic-button" onclick="proscriptls ('tiles:load_game.');">
+        Load Mosaic Game
     </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:view_basics_test.');">
-        View Basics Test: This test displays a list of values held in the view_basics module.
-    </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:game_model_tiles_test.');">
-        Game Model Tiles Test: This test displays a list of values held in the game_model_tiles module.
-    </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:tile_view_test.');">
-        Tile View Test: This test displays a list of values held in the tile_view module.
-    </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:game_view_tiles_test.');">
-        Game View Tiles Test: This test displays a list of values held in the game_view_tiles module.
-    </button>
-    <div id="current_test">
-        <h1>No test in progress.</h1>
-    </div>
-    <div id="display_elements">
-
-    </div>
-</div>
+ </div>
 <div id="tiles" class="mosaic-label">
     Tiles
     <canvas id="canvas" width="800" height="600">

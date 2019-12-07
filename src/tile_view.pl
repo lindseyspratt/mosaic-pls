@@ -1,5 +1,5 @@
 :- module(tile_view,
-    [create_tile_view/4,
+    [create_tile_view/4, save_tile_view/0, load_tile_view/0, save_tile_view_stream/1, retract_tile_view/0,
      get_tile_display_x/2, set_tile_display_x/2, get_tile_display_y/2, set_tile_display_y/2, get_tile_size/2, set_tile_size/2,
      point_in_tile/3, point_in_tile_edge/4, tile_view_values/2]).
 
@@ -10,6 +10,18 @@
 
 initdyn :-
     data_predicate_dynamics([data_predicates(tv, data,[displayX, displayY, size])]).
+
+save_tile_view_stream(Stream) :-
+    save_data_stream(data, Stream).
+
+retract_tile_view :-
+    retract_all_data(data).
+
+save_tile_view :-
+    save_data(data, local_storage('mosaic')).
+
+load_tile_view :-
+    load_data(data, local_storage('mosaic')).
 
 dummy_reference :-
     dummy_reference,

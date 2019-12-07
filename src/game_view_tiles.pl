@@ -1,4 +1,7 @@
-:- module(game_view_tiles, [create_game_view_tiles/0, layout_hands/0, center_board/0,
+:- module(game_view_tiles,
+    [create_game_view_tiles/0, save_game_view_tiles/0, load_game_view_tiles/0,
+     save_game_view_tiles_stream/1, retract_game_view_tiles/0,
+    layout_hands/0, center_board/0,
     get_translate_x/1, set_translate_x/1, get_translate_y/1, set_translate_y/1,
     get_target_translate_x/1, set_target_translate_x/1, get_target_translate_y/1, set_target_translate_y/1,
     get_top_left_board_tile_coords/4, point_in_board_position/4, update_board_tile_view/1, reposition_board_toward_target_translation/0,
@@ -19,6 +22,18 @@ initdyn :-
 
 create_game_view_tiles :-
     assert_data(gvt(0,0,0,0), 1).
+
+save_game_view_tiles_stream(Stream) :-
+    save_data_stream(data, Stream).
+
+retract_game_view_tiles :-
+    retract_all_data(data).
+
+save_game_view_tiles :-
+    save_data(data, local_storage('mosaic')).
+
+load_game_view_tiles :-
+    load_data(data, local_storage('mosaic')).
 
 layout_hands :-
     get_hands(Hands),

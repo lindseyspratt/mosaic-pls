@@ -36,8 +36,11 @@
  * @param {number} spec.trianglesPerTile
  */
 
-:- module(model_basics, [init_model_basics/3, get_hand_color_ids/1, get_number_of_players/1, get_triangles_per_tile/1,
-    rotate_right/2, rotate_left/2, board_hash_key_coords/3, tile_colors_match_constraint_colors/2,
+:- module(model_basics, [init_model_basics/3, save_model_basics/0, load_model_basics/0,
+    save_model_basics_stream/1, retract_model_basics/0,
+    get_hand_color_ids/1, get_number_of_players/1, get_triangles_per_tile/1,
+    rotate_right/2, rotate_left/2, board_hash_key_coords/3,
+    tile_colors_match_constraint_colors/2, tile_colors_mismatch_constraint_colors/4,
     edge_neighbor_offset/2, display_spans/2, values/1]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
@@ -52,6 +55,22 @@ init_model_basics(NOP, TPT, AC) :-
     assert_data(gmb(NOP, TPT, AC, []), 1),
 	build_sequences(NOP, HCIS),
     assert_data(gmb(NOP, TPT, AC, HCIS), 1).
+
+save_model_basics_stream(Stream) :-
+    writeln(save_model_basics),
+    save_data_stream(data, Stream),
+    writeln(done(save_model_basics)).
+
+retract_model_basics :-
+    retract_all_data(data).
+
+save_model_basics :-
+    writeln(save_model_basics),
+    save_data(data, local_storage('mosaic')),
+    writeln(done(save_model_basics)).
+
+load_model_basics :-
+    load_data(data, local_storage('mosaic')).
 
 /**
  * build_base_sequences constructs an array of color sequences that defines the basic collection of

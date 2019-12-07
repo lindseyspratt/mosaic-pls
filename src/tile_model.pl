@@ -24,7 +24,9 @@
  * @param {gameModelTiles} spec.model
  */
 
-:- module(tile_model, [create_tile_model/5, create_tile_model/7, get_tile_grid_x/2, get_tile_grid_y/2,
+:- module(tile_model, [create_tile_model/5, save_tile_model/0, load_tile_model/0,
+    save_tile_model_stream/1, retract_tile_model/0,
+    create_tile_model/7, get_tile_grid_x/2, get_tile_grid_y/2,
     get_tile_colors/2, get_tile_container/2,
     update_grid_x/3, update_grid_y/3, update_container/3, update_replacements/3,
     tile_rotate_left/1, tile_rotate_right/1, tile_board_hash_key/2, edge_neighbor_position/3]).
@@ -38,6 +40,18 @@
 
 initdyn :-
     data_predicate_dynamics([data_predicates(tm, tile_model,[gridX,gridY,colors,container,replacements,minimumMismatch])]).
+
+save_tile_model_stream(Stream) :-
+    save_data_stream(tile_model, Stream).
+
+retract_tile_model :-
+    retract_all_data(tile_model).
+
+save_tile_model :-
+    save_data(tile_model, local_storage('mosaic')).
+
+load_tile_model :-
+    load_data(tile_model, local_storage('mosaic')).
 
 dummy_reference :-
     dummy_reference,
