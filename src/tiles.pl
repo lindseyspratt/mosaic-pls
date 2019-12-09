@@ -1,5 +1,5 @@
-:- module(tiles, [setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0,
-        save_game/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0]).
+:- module(tiles, [setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
+        save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -18,6 +18,8 @@
 dummy_reference :-
     dummy_reference,
     select(_),
+    load_game_data,
+    save_game,
     calculate_and_display_score.
 
 setup_game_data :-
@@ -216,7 +218,8 @@ select1(PageX, PageY) :-
       -> on_click_legal_location(BX, BY)
     ;
      true
-    ).
+    ),
+    update_game_phase.
 
 on_click_tile(ID, X, Y) :-
     %writeln(click(ID, X, Y)),
@@ -236,8 +239,7 @@ on_click_tile(ID, X, Y) :-
          )
     ;
     true
-    ),
-    update_game_phase.
+    ).
 
 on_click_active_hand_tile(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
@@ -246,7 +248,7 @@ on_click_active_hand_tile(ID) :-
      OldID = none
     ),
     (OldID = ID
-      -> on_click_active_hand_tile_rotate(ID)
+      -> on_click_selected_tile_rotate(ID)
     ;
     OldID \= none
       -> set_selected_tile_id(none),
@@ -267,14 +269,28 @@ on_click_active_hand_tile_select(ID) :-
     draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
 
 on_click_select_replace_tile(ID) :-
-    set_selected_tile_id(ID),
+    (get_selected_tile_id(OldID)
+    ;
+     OldID = none
+    ),
+    (OldID = ID
+      -> on_click_selected_tile_rotate(ID)
+    ;
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    (OldID \= none
+      -> set_selected_tile_id(none),
+         draw_all_tile(OldID, Ctx) % de-select OldID
+     ;
+     true
+    ),
+    set_selected_tile_id(ID),
     draw_all_tile(ID, Ctx),
     find_legal_with_rotation_locations(ID),
     find_legal_locations(ID),
     get_legal_positions(LegalPositions),
     get_legal_positions_with_rotation(LegalPositionsWithRotation),
-    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
+    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx)
+    ).
 
 on_click_legal_location(BX, BY) :-
     get_selected_tile_id(Tile),
@@ -285,21 +301,49 @@ on_click_legal_location(BX, BY) :-
       -> increment_turn(_),
          place_tile_on_board_and_draw(Ctx, Tile, BX, BY)
     ;
+     Phase = rebuild
+       -> place_tile_on_board_and_draw(Ctx, Tile, BX, BY),
+          (get_turn(Turn),
+           get_hand(Turn, Hand),
+           Hand = []
+            -> increment_turn(_)
+          ;
+          true
+          )
+    ;
      Phase = replace
-      -> move_tile_on_board_and_draw(Ctx, Tile, BX, BY)
+      -> move_tile_on_board_and_draw(Ctx, Tile, BX, BY),
+         yield,
+         get_replacements(OldReplacements),
+         update_replacements,
+         get_replacements(Replacements),
+         clear_discarded_replacement_views(Ctx, OldReplacements, Replacements),
+         (Replacements \= []
+           -> true
+         ;
+         find_rebuild_hole_shaped_locations
+           -> true
+         ;
+         true
+           -> find_shaped_locations % board has been changed from replacements, now set up shaped locations to rebuild from hand.
+         )
     ;
     writeln(legal_location_click_error(Tile, BX, BY, Phase))
     ).
 
+clear_discarded_replacement_views(Ctx, OldReplacements, Replacements) :-
+    forall((member(Tile, OldReplacements), \+ member(Tile, Replacements)),
+        draw_all_tile(Tile, Ctx)).
+
 on_click_tile_rotate(ID, _X, _Y) :-
     %writeln(click(ID, X, Y)),
     (tile_in_active_hand(ID)
-      -> on_click_active_hand_tile_rotate(ID)
+      -> on_click_selected_tile_rotate(ID)
     ;
     true % writeln(not_active)
     ).
 
-on_click_active_hand_tile_rotate(ID) :-
+on_click_selected_tile_rotate(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     tile_rotate_right(ID),
     draw_all_tile(ID, Ctx),
@@ -355,9 +399,11 @@ on_click_transform_tile(Tile, X, Y) :-
            -> true % these tiles were placed by previous turn/player. Ignore this selection click.
          ;
           create_transform_shaped_locations(Tile, Edge, NeighborTile),
-          find_replacements([Tile, NeighborTile]),
+          get_shaped_positions(TransformShapedLocations),
+          find_replacements(TransformShapedLocations),
           place_tile_in_hand(Tile),
           place_tile_in_hand(NeighborTile),
+          layout_hands,
           get_context(Ctx),
           get_canvas_width(W),
           get_canvas_height(H),
@@ -373,58 +419,61 @@ on_click_transform_tile(Tile, X, Y) :-
 % to a mismatch).
 % Tile is in Replacements.
 
-move_tile_on_board_and_draw(_Ctx, Tile, X, Y) :-
-    writeln(move_tile_on_board_and_draw(Tile, X, Y)).
-%    get_tile_grid_x(Tile, OldX),
-%    get_tile_grid_y(Tile, OldY),
-%    add_legal_position_with_rotation(OldX > OldY), % legal-with-rotation when rebuilding
-%    place_tile_on_board(Tile, X, Y),
-%    clear_legal_location_for_tile(Tile),
-%    remove_tile_from_replacements(Tile),
-%    update_board_tile_view(Tile),
-%    get_canvas_width(W),
-%    get_canvas_height(H),
-%    get_tiles(TileIDs),
-%    draw_all_tiles(TileIDs, Ctx, W, H),
-%    draw_legal_moves.
-
-place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
-    wam_duration(Start),
+move_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
+    writeln(move_tile_on_board_and_draw(Tile, X, Y)),
+    get_tile_grid_x(Tile, OldX),
+    get_tile_grid_y(Tile, OldY),
+    add_rebuild_position(OldX > OldY), % check if this position is a hole when ready to start rebuilding.
     place_tile_on_board(Tile, X, Y),
 
-    wam_duration(Mark1),
-    incremental_score(Tile, Score),
-    display_score(Score),
-
-    wam_duration(Mark2),
     get_shaped_positions(OldLocations),
     clear_location_views(OldLocations, Ctx),
     set_legal_positions_with_rotation([]),
     set_legal_positions([]),
     clear_shaped_location_for_tile(Tile),
 
-    wam_duration(Mark3),
+    remove_tile_from_replacements(Tile),
+    update_board_tile_view(Tile),
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_tiles(TileIDs),
+    draw_all_tiles(TileIDs, Ctx, W, H).
+
+place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
+    wam_duration(Start),
+    place_tile_on_board(Tile, X, Y),
+
+    wam_duration(Mark1),
+    get_shaped_positions(OldLocations),
+    clear_location_views(OldLocations, Ctx),
+    set_legal_positions_with_rotation([]),
+    set_legal_positions([]),
+    clear_shaped_location_for_tile(Tile),
+
+    wam_duration(Mark2),
     update_board_tile_view(Tile),
     get_canvas_width(W),
     get_canvas_height(H),
     get_tiles(TileIDs),
 
-    wam_duration(Mark4),
+    wam_duration(Mark3),
     draw_all_tiles(TileIDs, Ctx, W, H),
+    reposition_board_loop_delay,
 
-    wam_duration(Mark5),
+    wam_duration(Mark4),
     incremental_find_shaped_locations(Tile),
 
-    wam_duration(Mark6),
-
-    reposition_board_loop_delay,
+    wam_duration(Mark5),
+    score_delay(Tile),
 
     wam_duration(End),
     !,
-    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, Mark5, Mark6, End], place_tile_on_board_and_draw).
+    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, Mark5, End], place_tile_on_board_and_draw).
 
 reposition_board_loop_delay :-
-    eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);").
+    yield,
+    reposition_board_loop.
+%    eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);").
 
 reposition_board_loop :-
     reposition_board_toward_target_translation
@@ -440,6 +489,31 @@ reposition_board_loop :-
         reposition_board_loop_delay
     ;
     true. % calculate_and_display_score.
+
+score_delay(Tile) :-
+    writeln(score_delay(Tile)),
+    yield,
+    number_codes(Tile, TileCodes),
+    append_lists(["setTimeout(() => proscriptls('tiles:score_delay1(", TileCodes, ")'), 0);"], MsgCodes),
+    eval_javascript(MsgCodes).
+
+score_delay1(Tile) :-
+    writeln(score_delay1(Tile)),
+    yield,
+    (get_game_phase(build)
+      -> incremental_score(Tile, Score)
+    ;
+     get_game_phase(rebuild),
+     get_turn(Turn),
+     get_hand(Turn, [])
+      -> score(Score)
+    ;
+     get_game_phase(transform)
+      -> score(Score)
+    ;
+     Score = 'score not available'
+    ),
+    display_score(Score).
 
 calculate_and_display_score :-
     score(S),

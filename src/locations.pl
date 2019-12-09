@@ -5,10 +5,12 @@
     clear_locations/0, clear_shaped_location_for_tile/1,
     get_shaped_positions/1,
     get_legal_positions/1, set_legal_positions/1, get_legal_positions_with_rotation/1,
-    set_legal_positions_with_rotation/1, get_irreplaceables/1, set_irreplaceables/1, update_legal_positions/1,
+    set_legal_positions_with_rotation/1, get_irreplaceables/1, set_irreplaceables/1,
+    get_rebuild_positions/1, add_rebuild_position/1, find_rebuild_hole_shaped_locations/0,
+    update_legal_positions/1,
     find_shaped_locations/0, incremental_find_shaped_locations/1,
-    find_legal_with_rotation_locations/1, find_legal_locations/1, find_replacements/1,
-    locations_values/2, placed_position_offset/3,
+    find_legal_with_rotation_locations/1, find_legal_locations/1, find_replacements/1, update_replacements/0,
+    locations_values/2, %placed_position_offset/3,
     edge_to_neighbor_edge/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
@@ -26,17 +28,26 @@
 %   at least one ortho neighbor,
 %   placing a tile in this location would not create a 'hole' (an empty location with
 %     tiles on opposite sides)
+% rebuildPositions are locations that are created in the course of replacing tiles
+% (moving a tile from one place in the board to another). The source position of
+% the replacement becomes a 'rebuild' position.
+% Once all of the replacements have been performed (usually two for transforming an edge)
+% the rebuild positions that are holes (have tiles on opposite sides)
+% are converted into shapedPositions. The game phase becomes rebuild_holes
+% and these holes must be rebuilt from the hand first.
+% Once these hole-rebuild positions have been filled, then the standard find_shaped_positions
+% is run and the game phase becomes rebuild.
 
 initdyn :-
     data_predicate_dynamics([data_predicates(loc, data,
-        [locationCounter, shapedPositions, legalPositions,legalPositionsWithRotation,irreplaceables])]).
+        [locationCounter, shapedPositions, legalPositions,legalPositionsWithRotation,irreplaceables,rebuildPositions])]).
 
 dummy_reference :-
     dummy_reference,
     data_locationCounter(_).
 
 create_locations :-
-    assert_data(loc(0, [], [], [], []), 1).
+    assert_data(loc(0, [], [], [], [], []), 1).
 
 save_locations_stream(Stream) :-
     save_data_stream(data, Stream).
@@ -52,6 +63,7 @@ load_locations :-
 
 create_transform_shaped_locations(Tile, Edge, NeighborTile) :-
     clear_locations,
+    get_turn(PlayerColor),
     % create constraints for replacement locations
     get_tile_colors(Tile, Colors),
     select_nth0(Edge, Colors, _, TransformColors, PlayerColor),
@@ -96,11 +108,13 @@ select_nth0(N,[Head|Tail1], Item1, [Head|Tail2], Item2) :-
 	N is M + 1.
 
 clear_locations :-
-    setof(Location, X^get_location_grid_x(Location, X), Locations),
-    clear_locations(Locations),
-    set_shaped_positions([]),
-    set_legal_positions_with_rotation([]),
-    set_legal_positions([]).
+    setof(Location, X^get_location_grid_x(Location, X), Locations)
+      -> clear_locations(Locations),
+         set_shaped_positions([]),
+         set_legal_positions_with_rotation([]),
+         set_legal_positions([])
+    ;
+    true.
 
 clear_unused_locations :-
     setof(Location, X^get_location_grid_x(Location, X), Locations),
@@ -223,6 +237,33 @@ set_irreplaceables(Value) :-
     retract(data_irreplaceables(ID, _)),
     asserta(data_irreplaceables(ID, Value)).
 
+get_rebuild_positions(RebuildPositions) :-
+    data_rebuildPositions(RebuildPositions).
+
+add_rebuild_position(X > Y) :-
+    create_location(LocationID, X, Y),
+    data_default_id(ID),
+    retract(data_rebuildPositions(ID, Rebuilds)),
+    asserta(data_rebuildPositions(ID, [LocationID|Rebuilds])).
+
+find_rebuild_hole_shaped_locations :-
+    data_rebuildPositions(RebuildPositions),
+    create_hole_locations(RebuildPositions, HoleLocations),
+    HoleLocations \= [],
+    set_shaped_positions(HoleLocations).
+
+create_hole_locations([], []).
+create_hole_locations([H|T], HoleLocations) :-
+    create_hole_location(H, HoleLocations, HoleLocationsTail),
+    create_hole_locations(T, HoleLocationsTail).
+
+create_hole_location(X>Y, HoleLocations, HoleLocationsTail) :-
+    position_is_hole(X>Y)
+      -> create_location(ID, X, Y),
+         HoleLocations = [ID|HoleLocationsTail]
+    ;
+    HoleLocations = HoleLocationsTail.
+
 update_legal_positions(Colors) :-
     data_legalPositionsWithRotation(PositionsWithRotations),
     filter_legal_positions_with_rotation_by_tile_colors(PositionsWithRotations, Colors, ConstrainedPositions),
@@ -290,8 +331,12 @@ find_legal_with_rotation_locations(Tile) :-
     get_shaped_positions(ShapedLocations),
     get_tile_colors(Tile, TileColors),
     filter_shaped_for_legal_locations(ShapedLocations, TileColors, LegalWithRotation),
-    filter_by_last_tile_placed(LegalWithRotation, LegalByLastTilePlaced),
-    length(LegalByLastTilePlaced, LegalByLastLength),
+    (get_game_phase(build)
+      -> filter_by_last_tile_placed(LegalWithRotation, LegalByLastTilePlaced),
+         length(LegalByLastTilePlaced, LegalByLastLength)
+     ;
+     LegalByLastLength = 0
+    ),
     (LegalByLastLength > 0
         -> FinalLegalWithRotation = LegalByLastTilePlaced
     ;
@@ -418,14 +463,16 @@ check_neighbor(PlacedTile, TX, TY, DX, DY, CandidatesIn, CandidatesOut) :-
 check_orthogonal_neighbor(PlacedTile, DX, DY, ID) :-
     wam_duration(Start),
     increment_location_orthogonal_neighbors(ID, _NewCount),
-    placed_position_offset(DX, DY, PlacedPositionOffset),
+    %placed_position_offset(DX, DY, PlacedPositionOffset),
+    edge_neighbor_offset(PlacedPositionOffset, DX>DY),
     edge_to_neighbor_edge(PlacedPositionOffset, ConstrainedOffset),
     ConstrainedPosition is ConstrainedOffset + 1,
     get_tile_colors(PlacedTile, PlacedColors),
     wam_duration(Mark),
     nth0(PlacedPositionOffset, PlacedColors, ColorConstraint),
     set_location_constraint(ID, ConstrainedPosition, ColorConstraint),
-    (get_last_build_phase_tile_placed(PlacedTile)
+    (get_game_phase(build),
+     get_last_build_phase_tile_placed(PlacedTile)
       -> set_location_by_last_tile_placed(ID, true)
     ;
     true
@@ -438,18 +485,22 @@ edge_to_neighbor_edge(Edge, NeighborEdge) :-
     get_triangles_per_tile(TPT), % TPT is 4 or 6. A TPT of 3 would require a different analysis.
     NeighborEdge is ((Edge + (TPT/2)) mod TPT).
 
-placed_position_offset(DX, DY, PlacedPositionOffset) :-
-    DY < 0
-      -> PlacedPositionOffset = 0
-    ;
-    DY > 0
-      -> PlacedPositionOffset = 2
-    ;
-    DX < 0
-      -> PlacedPositionOffset = 3
-    ;
-    PlacedPositionOffset = 1.
-
+%placed_position_offset(DX, DY, PlacedPositionOffset) :-
+%    edge_neighbor_offset(PlacedPositionOffset, DX, DY).
+%    get_triangles_per_tile(TPT),
+%    placed_position_offset(TPT, DX, DY, PlacedPositionOffset).
+%
+%placed_position_offset(4, DX, DY, PlacedPositionOffset) :-
+%    DY < 0
+%      -> PlacedPositionOffset = 0
+%    ;
+%    DY > 0
+%      -> PlacedPositionOffset = 2
+%    ;
+%    DX < 0
+%      -> PlacedPositionOffset = 3
+%    ;
+%    PlacedPositionOffset = 1.
 
 create_location(ID, GridX, GridY) :-
     increment_location_counter(ID),
@@ -543,6 +594,26 @@ candidate_would_create_hole([H|T], ConstraintOffset, Candidate) :-
 candidate_would_create_hole1(-1, ConstraintOffset, Candidate) :-
     location_edge_second_neighbor_tile(Candidate, ConstraintOffset, _).
 
+% position_is_hole(X > Y) holds when there are tiles on opposite sides
+% of the position X > Y.
+position_is_hole(X > Y) :-
+    (Yp1 is Y+1, Ym1 is Y-1,
+     tiles_exist_at_positions([X > Yp1, X > Ym1])
+    ;
+     Xp1 is X+1, Xm1 is X-1,
+     tiles_exist_at_positions([Xp1 > Y, Xm1 > Y])
+    ),
+    !.
+
+tiles_exist_at_positions([]).
+tiles_exist_at_positions([H|T]) :-
+    tile_exists_at_position(H),
+    tiles_exist_at_positions(T).
+
+tile_exists_at_position(X>Y) :-
+    get_tile_grid_x(Tile, X),
+    get_tile_grid_y(Tile, Y).
+
 filter_shaped_for_legal_locations([], _, []).
 filter_shaped_for_legal_locations([H|T], TileColors, LegalWithRotation) :-
     filter_shaped_for_legal_location(H, TileColors, LegalWithRotation, LegalWithRotationTail),
@@ -601,16 +672,39 @@ matching_rotations(Colors, FinalColors, Constraint, Rotation) :-
 locations_values(ID, Values) :-
     labelled_values(data, ID, Values).
 
+% Find replacement tiles for the given locations.
+% A replacement tile for a location has colors that can be rotated to match
+% the constraints of that location.
+% The replacement tiles are recorded using set_replacements/1.
+
 find_replacements(Locations) :-
     get_board(Tiles),
-    find_exact_replacements(Tiles, Locations, ReplacemenMap), % ReplacemenMap = [Location-Tiles, ...]
-    irreplaceable_locations(Locations, ReplacemenMap, IrreplaceableLocations),
+    find_exact_replacements(Tiles, Locations, TileLocationReplacementMap), % TileLocationReplacementMap = [Tile-Locations, ...]
+    invert_map(TileLocationReplacementMap, ReplacementMap),
+    irreplaceable_locations(Locations, ReplacementMap, IrreplaceableLocations), % ReplacementMap = [Location-Tiles, ...]
     (IrreplaceableLocations = []
-      -> replacement_map_tiles(ReplacemenMap, ReplacementTiles)
+      -> replacement_map_tiles(ReplacementMap, ReplacementTiles)
     ;
      find_minimal_mismatch_replacements(IrreplaceableLocations, Tiles, ReplacementTiles)
     ),
     set_replacements(ReplacementTiles).
+
+update_replacements :-
+    get_replacements(OldReplacements),
+    OldReplacements = []
+      -> true
+    ;
+    get_shaped_positions(TransformShapedLocations),
+    (TransformShapedLocations = []
+      -> set_replacements([])
+    ;
+    find_replacements(TransformShapedLocations)
+    ).
+
+% replacement_map_tiles(ReplacementMap, Replacements) processes ReplacementMap
+% to determine the list of (distinct) tiles for Replacements.
+% The ReplacementMap is a list of Location-Tiles pairs where the Location may be
+% replaced without any color mismatch by some rotation of each tile in Tiles.
 
 replacement_map_tiles(ReplacementMap, Replacements) :-
     replacement_map_tiles1(ReplacementMap, RawReplacements),
@@ -621,54 +715,98 @@ replacement_map_tiles1([_-Tiles|MapTail], Replacements) :-
     append(Tiles, ReplacementsTail, Replacements),
     replacement_map_tiles1(MapTail, ReplacementsTail).
 
+invert_map(Map, InvertMap) :-
+    invert_map(Map, [], InvertMap).
+
+% invert_map(Map, InvertSoFar, InvertMap) inverts the list Map where the
+% elements are of the form A-BList and InvertSoFar and InvertMap have
+% inverted elements of the form B-AList. The elements of Map are used
+% to extend InvertSoFar to create InvertMap.
+
+invert_map([], Invert, Invert).
+invert_map([K-V|T], InvertIn, InvertOut) :-
+    invert_map1(V, K, InvertIn, InvertNext),
+    invert_map(T, InvertNext, InvertOut).
+
+% invert_map1(BList, A, InvertSoFar, Invert) extends InvertSoFar to create
+% Invert by adding A to the AList of each B-AList element of InvertSoFar and
+% creating a new element B-[A] where there is no element for B in InvertSoFar.
+invert_map1([], _, Invert, Invert).
+invert_map1([H|T], K, InvertIn, InvertOut) :-
+    (select(H-KVIn, InvertIn, H-KVNext, InvertNext)
+      -> KVNext = [K|KVIn]
+    ;
+     InvertNext = [H-[K]|InvertIn]
+    ),
+    invert_map1(T, K, InvertNext, InvertOut).
+
+% find_exact_replacements(Tiles, Locations, TileLocationReplacementMap) records 
+% for each Tile in Tiles the MatchLocations in Locations for which some 
+% rotation of Tile may replace a MatchLocation without any color mismatch.
+% If a Tile in Tiles has no MatchLocations then it is not recorded in TileLocationReplacementMap.
 find_exact_replacements([], _Locations, []).
-find_exact_replacements([H|T], Locations, ReplacemenMap) :-
-    find_exact_replacement(H, Locations, ReplacemenMap, MapTail),
+find_exact_replacements([H|T], Locations, ReplacementMap) :-
+    find_exact_replacement(H, Locations, ReplacementMap, MapTail),
     find_exact_replacements(T, Locations, MapTail).
 
-find_exact_replacement(Tile, Locations, ReplacemenMap, ReplacemenMapTail) :-
+% find_exact_replacement(Tile, Locations, ReplacementMap, ReplacementMapTail)
+% records the MatchLocations in Locations for which some
+% rotation of Tile may replace a MatchLocation without any color mismatch.
+% If a Tile in Tiles has no MatchLocations then it is not recorded in TileLocationReplacementMap.
+find_exact_replacement(Tile, Locations, ReplacementMap, ReplacementMapTail) :-
     get_tile_colors(Tile, Colors),
     rotate_left(Colors, LastRotation),
-    find_exact_replacement1(Colors, LastRotation, Tile, Locations, Matches),
+    find_exact_replacement1(Colors, LastRotation, Locations, Matches),
     (Matches = []
-      -> ReplacemenMap = ReplacemenMapTail
+      -> ReplacementMap = ReplacementMapTail
     ;
-    ReplacemenMap = [Tile-Matches|ReplacemenMapTail]
+    sort(Matches, SortedMatches), % remove duplicates
+    ReplacementMap = [Tile-SortedMatches|ReplacementMapTail]
     ).
 
-
-find_exact_replacement1(Colors, LastRotation, Tile, Locations, Matches) :-
-    find_exact_replacement2(Locations, Colors, Tile, Matches, MatchesTail),
+% find_exact_replacement1(Colors, LastRotation, Locations, Matches)
+% records the MatchLocations in Locations for which some right
+% rotation of Colors (up to and including LastRotation) matches the MatchLocation's color constraint.
+% The same Location may be matched multiple times (i.e. by multiple rotations of Colors)
+% if that location's constraint includes 'match-any' values of -1.
+find_exact_replacement1(Colors, LastRotation, Locations, Matches) :-
+    find_exact_replacement2(Locations, Colors, Matches, MatchesTail),
     (Colors \= LastRotation
       ->  rotate_right(Colors, NextColors),
-          find_exact_replacement1(NextColors, LastRotation, Tile, Locations, MatchesTail)
+          find_exact_replacement1(NextColors, LastRotation, Locations, MatchesTail)
     ;
      MatchesTail = []
     ).
 
-find_exact_replacement2([], _, _, Matches, Matches).
-find_exact_replacement2([H|T], Colors, Tile, Matches, MatchesTail) :-
-    find_exact_replacement3(H, Colors, Tile, Matches, MatchesNext),
-    find_exact_replacement2(T, Colors, Tile, MatchesNext, MatchesTail).
+% find_exact_replacement2(Locations, Colors, Matches, MatchesTail)
+% records the MatchLocations in Locations for which
+% Colors matches the MatchLocation's color constraint.
+find_exact_replacement2([], _, Matches, Matches).
+find_exact_replacement2([H|T], Colors, Matches, MatchesTail) :-
+    find_exact_replacement3(H, Colors, Matches, MatchesNext),
+    find_exact_replacement2(T, Colors, MatchesNext, MatchesTail).
 
-find_exact_replacement3(Location, Colors, Tile, Matches, MatchesNext) :-
+% find_exact_replacement3(Location, Colors, Matches, MatchesTail)
+% determines if Location's constraints match Colors and if so then
+% Matches = [Location|MatchesTail]. Otherwise, Matches = MatchesTail.
+find_exact_replacement3(Location, Colors, Matches, MatchesTail) :-
     get_location_constraints(Location, Constraints),
     matching_rotations(Colors, Constraints, _)
-      -> Matches = [Tile|MatchesNext]
+      -> Matches = [Location|MatchesTail]
     ;
-    Matches = MatchesNext.
+    Matches = MatchesTail.
 
 irreplaceable_locations([], _, []).
-irreplaceable_locations([H|T], ReplacemenMap, IrreplaceableLocations) :-
-    (member(H-_, ReplacemenMap)
+irreplaceable_locations([H|T], ReplacementMap, IrreplaceableLocations) :-
+    (member(H-_, ReplacementMap)
       -> IrreplaceableLocations = Next
     ;
     IrreplaceableLocations = [H|Next],
     set_location_minimum_mismatch(H, 1000) % arbitrary large value - all possible mismatch counts are less than this.
     ),
-    irreplaceable_locations(T, ReplacemenMap, Next).
+    irreplaceable_locations(T, ReplacementMap, Next).
 
-% find_minimal_mismatch_replacements(IrreplaceableLocations, ReplacemenMap, Tiles, ReplacementTiles).
+% find_minimal_mismatch_replacements(IrreplaceableLocations, ReplacementMap, Tiles, ReplacementTiles).
 find_minimal_mismatch_replacements(IrreplaceableLocations, Tiles, SortedReplacementTiles) :-
     find_minimal_mismatch_replacements_for_locations(IrreplaceableLocations, Tiles, ReplacementTiles),
     sort(ReplacementTiles, SortedReplacementTiles). % remove duplicates - a tile may be a replacement for more than one location.
@@ -712,102 +850,3 @@ find_minimal_mismatch_replacements_for_color_rotation_of_tile(Colors, Tile, Irre
      \+ member(Tile, LocationReplacements)
       -> set_location_replacements(IrreplaceableLocation, [Tile|LocationReplacements])
     ).
-/*
-function findReplacements(tileArray, positions) {
-	game.replacements = [];
-	game.irreplaceables = [];
-//	console.log("replace colors");
-//	console.log(positions);
-
-	var replacedColors = [];
-
-    for (var i = 0; i < tileArray.length; i++) {
-        var placedTile = tileArray[i];
-        // copy so we can rotate without changing the original.
-        var rotatedColors = placedTile.colors.slice();
-        for (var rotationAttempts = 0; rotationAttempts < 4; rotationAttempts++) {
-        	var colorMatch = false;
-        	for(var colorsOfst = 0;colorsOfst < positions.length;colorsOfst++) {
-        		var colorsCheck = positions[colorsOfst].constraints;
-        		if(tileColorsMatchConstraintColors(rotatedColors, colorsCheck)) {
-        			colorMatch = true;
-        			replacedColors.push[colorsCheck];
-        		}
-        	}
-
-            if (colorMatch) {
-                game.replacements.push(placedTile);
-                break;
-            }
-            rotatedColors = rotateRight(rotatedColors);
-        }
-
-    }
-
-    if(replacedColors.length < positions.length) {
-    	// a color constraint could not be matched.
-    	// Find the tiles in tileArray that are minimally mis-matched.
-    	game.replacements = []; // undo any identified replacements.
-
-    	game.irreplaceables = [];
-    	for(var ofst = 0;ofst < positions.length;ofst++) {
-    		var colors = positions[ofst].constraints;
-    		var colorsAreReplaceable = false;
-    		for(var replacedOfst = 0;replacedOfst < replacedColors.length;replacedColors++) {
-    			var replaced = replacedColors[replacedOfst];
-    			if(replaced === colors) {
-    				colorsAreReplaceable = true;
-    				break;
-    			}
-    		}
-
-    		if(! colorsAreReplaceable) {
-    			var position = positions[ofst];
-    			game.irreplaceables.push({"boardTileX":position.boardTileX, "boardTileY":position.boardTileY, "colors": colors, "minimumMismatch": 5, "replacements":[]});
-    		}
-    	}
-
-    	for(var colorsOfst = 0;colorsOfst < game.irreplaceables.length;colorsOfst++) {
-			var irreplaceable = game.irreplaceables[colorsOfst];
-    		for (var i = 0; i < tileArray.length; i++) {
-    			var placedTile = tileArray[i];
-    			// copy so we can rotate without changing the original.
-    			var rotatedColors = placedTile.colors.slice();
-    			var tileHasBeenIdentifiedAsReplacement = false;
-    			for (var rotationAttempts = 0; rotationAttempts < 4; rotationAttempts++) {
-    				var mismatch = tileColorsMismatchConstraintColors(rotatedColors, irreplaceable.colors);
-    				if(mismatch < irreplaceable.minimumMismatch) {
-    					irreplaceable.replacements = [placedTile];
-    					irreplaceable.minimumMismatch = mismatch;
-    					tileHasBeenIdentifiedAsReplacement = true;
-    				} else if(mismatch === irreplaceable.minimumMismatch && ! tileHasBeenIdentifiedAsReplacement) {
-    					irreplaceable.replacements.push(placedTile);
-    					tileHasBeenIdentifiedAsReplacement = true;
-    				}
-        			rotatedColors = rotateRight(rotatedColors);
-    			}
-    		}
-    	}
-
-    	for(var irreplaceableOfst = 0;irreplaceableOfst < game.irreplaceables.length;irreplaceableOfst++) {
-    		var irreplaceable = game.irreplaceables[irreplaceableOfst];
-    		for(var replacementOfst = 0;replacementOfst < irreplaceable.replacements.length; replacementOfst++) {
-    			var replacement = irreplaceable.replacements[replacementOfst];
-    			var replacementAlreadyRegistered = false;
-    			for(var gameOfst = 0;gameOfst < game.replacements.length;gameOfst++) {
-    				var registeredReplacement = game.replacements[gameOfst];
-    				if(registeredReplacement === replacement) {
-    					replacementAlreadyRegistered = true;
-    					break;
-    				}
-    			}
-
-    			if(! replacementAlreadyRegistered) {
-    				game.replacements.push(replacement);
-    			}
-    		}
-    	}
-
-    }
-}
-*/

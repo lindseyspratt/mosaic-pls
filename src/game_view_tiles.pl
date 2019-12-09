@@ -111,29 +111,6 @@ repo2(Tile) :-
     set_tile_display_x(Tile, X),
     set_tile_display_y(Tile, Y).
 
-/*
-function gameLoop() {
-    if (game.board.translateX !== game.board.targetTranslateX || game.board.translateY !== game.board.targetTranslateY) {
-        game.board.translateX = (game.board.translateX * 3 + game.board.targetTranslateX) / 4;
-        game.board.translateY = (game.board.translateY * 3 + game.board.targetTranslateY) / 4;
-        if (Math.abs(game.board.translateX - game.board.targetTranslateX) < 1) {
-            game.board.translateX = game.board.targetTranslateX;
-        }
-        if (Math.abs(game.board.translateY - game.board.targetTranslateY) < 1) {
-            game.board.translateY = game.board.targetTranslateY;
-        }
-
-        for (var i = 0; i < game.tilesOnBoard.length; i++) {
-            var tile = game.tilesOnBoard[i];
-            var coords = getTopLeftBoardTileCoords(tile.boardTileX, tile.boardTileY);
-            tile.x = coords.x;
-            tile.y = coords.y;
-        }
-        drawAllTiles(context, game.allTiles);
-        drawLegalMoves(context, legalPositions, legalPositionsWithRotation);
-    }
-}
-*/
 center_board :-
     get_board(Board),
     length(Board, Length),

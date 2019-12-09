@@ -43,7 +43,10 @@ score(Scores) :-
     graph(RawNodes, Edges),
     sort(RawNodes, Nodes),
     wam_duration(Mark1),
+    writeln(start(components_ex)),
+    yield,
     components_ex(Nodes, Edges, Components),
+    writeln(done(components_ex)),
     set_components(Components),
     wam_duration(Mark2),
     components_score(Components, Scores),
@@ -244,7 +247,8 @@ ateDXDY3(Tile, Edges, EdgesTail, TilePositionIndex, OtherTile, OtherTilePosition
 ateDXDY3(_Tile, Edges, Edges, _TilePositionIndex, _OtherTile, _OtherTilePositionIndex).
 
 get_neighboring_tile(Tile, DX, DY, TilePositionIndex, OtherTile, OtherTilePositionIndex) :-
-    placed_position_offset(DX, DY, TilePositionOffset),
+    %placed_position_offset(DX, DY, TilePositionOffset),
+    edge_neighbor_offset(TilePositionOffset, DX>DY),
     TilePositionIndex is 1 + TilePositionOffset,
     OtherTilePositionIndex is 1 + ((TilePositionOffset + 2) mod 4),
     get_tile_grid_x(Tile, TX),

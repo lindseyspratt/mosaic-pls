@@ -25,7 +25,8 @@
      save_game_model_tiles_stream/1, retract_game_model_tiles/0,
      get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
      get_turn/1, increment_turn/1, get_selected_tile_id/1, set_selected_tile_id/1,
-     get_replacements/1, set_replacements/1, get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
+     get_replacements/1, set_replacements/1, remove_tile_from_replacements/1,
+     get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
      set_last_build_phase_tile_placed/1,
      last_placed_tiles/2, place_tile_in_hand/1, place_tile_on_board/3, get_game_phase/1,
      update_game_phase/0, update_game_phase/2, edge_neighbor_tile/3, tile_in_inactive_hand/1,
@@ -122,7 +123,7 @@ get_hand(PlayerID, Hand) :-
 
 add_hand_tile(PlayerID, Tile) :-
     data_default_id(ID),
-    retractall(data_hands(ID, Hands)),
+    retract(data_hands(ID, Hands)),
     add_hand_tile(Hands, PlayerID, Tile, NewHands),
     asserta(data_hands(ID, NewHands)).
 
@@ -156,6 +157,12 @@ set_replacements(Replacements) :-
     data_default_id(GameModelTilesID),
     retractall(data_replacements(GameModelTilesID, _)),
     asserta(data_replacements(GameModelTilesID, Replacements)).
+
+remove_tile_from_replacements(Tile) :-
+    data_default_id(GameModelTilesID),
+    retract(data_replacements(GameModelTilesID, Replacements)),
+    delete(Replacements, Tile, NewReplacements),
+    asserta(data_replacements(GameModelTilesID, NewReplacements)).
 
 get_board_tile_by_grid(GridX > GridY, TileID) :-
     board_hash_key_coords(GridX, GridY, Key),
@@ -222,9 +229,6 @@ remove_tile_from_container(Tile) :-
     ;
      Container = board
       -> data_default_id(GameModelTilesID),
-         retract(data_tilesOnBoard(GameModelTilesID, Board)),
-         delete(Board, Tile, RemainingBoard),
-         asserta(data_tilesOnBoard(GameModelTilesID, RemainingBoard)),
          remove_tile_from_board_hash(Tile),
          remove_tile_from_board(Tile)
     ;
@@ -301,7 +305,7 @@ update_game_phase(Old, New) :-
     Old = transform,
     get_replacements(Replacements),
     Replacements \= []
-      -> New = rebuild,
+      -> New = replace,
          set_game_phase(New)
     ;
      Old = replace,
