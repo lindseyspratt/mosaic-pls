@@ -1,7 +1,7 @@
 :- module(locations,
     [create_locations/0, save_locations/0, load_locations/0,
      save_locations_stream/1, retract_locations/0,
-    create_transform_shaped_locations/3,
+    create_transform_shaped_locations/3, create_mismatch_shaped_locations/1,
     clear_locations/0, clear_shaped_location_for_tile/1,
     get_shaped_positions/1,
     get_legal_positions/1, set_legal_positions/1, get_legal_positions_with_rotation/1,
@@ -9,7 +9,7 @@
     get_rebuild_positions/1, add_rebuild_position/1, find_rebuild_hole_shaped_locations/0,
     update_legal_positions/1,
     find_shaped_locations/0, incremental_find_shaped_locations/1,
-    find_legal_with_rotation_locations/1, find_legal_locations/1, find_replacements/1, update_replacements/0,
+    find_legal_with_rotation_locations/1, find_legal_locations/1, find_replacements/2, update_replacements/0,
     locations_values/2, %placed_position_offset/3,
     edge_to_neighbor_edge/2]).
 
@@ -40,14 +40,15 @@
 
 initdyn :-
     data_predicate_dynamics([data_predicates(loc, data,
-        [locationCounter, shapedPositions, legalPositions,legalPositionsWithRotation,irreplaceables,rebuildPositions])]).
+        [locationCounter, shapedPositions, shapedPositionsComplete,
+         legalPositions, legalPositionsWithRotation, irreplaceables, rebuildPositions])]).
 
 dummy_reference :-
     dummy_reference,
     data_locationCounter(_).
 
 create_locations :-
-    assert_data(loc(0, [], [], [], [], []), 1).
+    assert_data(loc(0, [], [], [], [], [], []), 1).
 
 save_locations_stream(Stream) :-
     save_data_stream(data, Stream).
@@ -78,8 +79,63 @@ create_transform_shaped_locations(Tile, Edge, NeighborTile) :-
     get_tile_grid_y(NeighborTile, NY),
     create_location(NeighborLocation, NX, NY),
     set_location_constraints(NeighborLocation, TransformNeighborColors),
-    set_shaped_positions([TileLocation, NeighborLocation]).
+    set_shaped_positions([TileLocation, NeighborLocation], incomplete).
 
+create_mismatch_shaped_locations(Mismatches) :-
+    clear_locations,
+    % create constraints for replacement locations
+    create_mismatch_locations(Mismatches, Locations),
+    set_shaped_positions(Locations, incomplete).
+
+% create_mismatch_locations(Mismatches, Locations)
+create_mismatch_locations([], []).
+create_mismatch_locations([H|T], [HL|TL]) :-
+    create_mismatch_location(H, HL),
+    create_mismatch_locations(T, TL).
+
+create_mismatch_location(Mismatch, Location) :-
+    neighbor_constraints(Mismatch, NeighborConstraints),
+    get_tile_colors(Mismatch, Colors),
+    adjust_mismatch_constraints(NeighborConstraints, Colors, Constraints),
+    get_tile_grid_x(Mismatch, TX),
+    get_tile_grid_y(Mismatch, TY),
+    create_location(Location, TX, TY),
+    set_location_constraints(Location, Constraints).
+
+% adjust_mismatch_constraints(NeighborConstraints, Colors, Constraints).
+adjust_mismatch_constraints([], [], []).
+adjust_mismatch_constraints([H|T], [HColor|TColors], [HConstraint|TConstraints]) :-
+    adjust_mismatch_constraint(H, HColor, HConstraint),
+    adjust_mismatch_constraints(T, TColors, TConstraints).
+
+adjust_mismatch_constraint(NeighborConstraint, MismatchTileColor, AdjustedConstraint) :-
+    NeighborConstraint = -1
+      -> MismatchTileColor = AdjustedConstraint
+    ;
+    NeighborConstraint = AdjustedConstraint.
+
+neighbor_constraints(Tile, Constraints) :-
+    get_triangles_per_tile(TPT),
+    neighbor_constraints(TPT, Tile, Constraints).
+
+% neighbor_constraints(NumberOfEdgesToInspect, Tile, Constraints).
+% Edge is a number from 0 to (TrianglesPerTile-1)
+neighbor_constraints(NumberOfEdgesToInspect, Tile, [Constraint|OtherConstraints]) :-
+    Edge is NumberOfEdgesToInspect - 1,
+    neighbor_constraint(Edge, Tile, Constraint),
+    (Edge > 0
+      -> neighbor_constraints(Edge, Tile, OtherConstraints)
+    ;
+    OtherConstraints = []
+    ).
+
+neighbor_constraint(Edge, Tile, Constraint) :-
+    edge_neighbor_tile(Tile, Edge, NeighborID)
+      -> get_tile_colors(NeighborID, NeighborColors),
+         edge_to_neighbor_edge(Edge, NeighborEdge),
+         nth0(NeighborEdge, NeighborColors, Constraint)
+    ;
+    Constraint = -1.
 
 select_nth1(1, [Head1|Tail], Head1, [Head2|Tail], Head2) :- !.
 
@@ -110,7 +166,7 @@ select_nth0(N,[Head|Tail1], Item1, [Head|Tail2], Item2) :-
 clear_locations :-
     setof(Location, X^get_location_grid_x(Location, X), Locations)
       -> clear_locations(Locations),
-         set_shaped_positions([]),
+         set_shaped_positions([], incomplete),
          set_legal_positions_with_rotation([]),
          set_legal_positions([])
     ;
@@ -127,10 +183,43 @@ clear_shaped_location_for_tile(Tile) :-
     get_tile_grid_y(Tile, Y),
     get_location_grid_x(Location, X),
     get_location_grid_y(Location, Y),
+    clear_replacements_from_location(Location),
     clear_location(Location),
+    clear_location_from_shaped(Location).
+
+% clear_replacements_from_location(Location)
+% clears the tiles listed in replacements that
+% are no longer needed for any shaped location
+% other than Location.
+clear_replacements_from_location(Location) :-
+    get_location_replacements(Location, LocalReplacements),
     get_shaped_positions(Shaped),
-    delete(Shaped, Location, TrimmedShaped),
-    set_shaped_positions(TrimmedShaped).
+    delete(Shaped, Location, OtherShaped),
+    tiles_from_location_replacements(LocalReplacements, LocalTiles),
+    tiles_not_replacing_locations(LocalTiles, OtherShaped, NotReplacing),
+    get_replacements(OldReplacements),
+    subtract(OldReplacements, NotReplacing, NewReplacements),
+    set_replacements(NewReplacements).
+
+% replacements_independent_of_location(Replacements, Shaped, Location, Independent)
+tiles_not_replacing_locations(Tiles, [], Tiles) :-
+    !.
+tiles_not_replacing_locations([], _Shaped, []).
+tiles_not_replacing_locations([H|T], Shaped, Independent) :-
+    tile_not_replacing_locations(Shaped, H, Independent, Tail),
+    tiles_not_replacing_locations(T, Shaped, Tail).
+
+tile_not_replacing_locations([], Tile, [Tile|Tail], Tail).
+tile_not_replacing_locations([H|T], Tile, NotReplacing, Tail) :-
+    tile_can_replace_location(H, Tile)
+      -> NotReplacing = Tail
+    ;
+    tile_not_replacing_locations(T, Tile, NotReplacing, Tail).
+
+tile_can_replace_location(ShapedLocation, Tile) :-
+    get_location_replacements(ShapedLocation, LocalReplacements),
+    tiles_from_location_replacements(LocalReplacements, Tiles),
+    member(Tile, Tiles).
 
 clear_hole_inducing_shaped_locations(Tile) :-
     get_tile_grid_x(Tile, TX),
@@ -169,9 +258,9 @@ clear_location_references(Location) :-
     clear_location_from_legal_positions(Location).
 
 clear_location_from_shaped(Location) :-
-    get_shaped_positions(Shaped),
+    get_shaped_positions(Shaped, Complete),
     delete(Shaped, Location, OtherShaped)
-      -> set_shaped_positions(OtherShaped)
+      -> set_shaped_positions(OtherShaped, Complete)
     ;
      true.
 
@@ -208,10 +297,16 @@ increment_location_counter(NewCounter) :-
 get_shaped_positions(Value) :-
     data_shapedPositions(Value).
 
-set_shaped_positions(Value) :-
+get_shaped_positions(Value, Complete) :-
+    data_shapedPositions(Value),
+    data_shapedPositionsComplete(Complete).
+
+set_shaped_positions(Value, Complete) :-
     data_default_id(ID),
     retract(data_shapedPositions(ID, _)),
-    asserta(data_shapedPositions(ID, Value)).
+    asserta(data_shapedPositions(ID, Value)),
+    retract(data_shapedPositionsComplete(ID, _)),
+    asserta(data_shapedPositionsComplete(ID, Complete)).
 
 get_legal_positions(Value) :-
     data_legalPositions(Value).
@@ -246,22 +341,33 @@ add_rebuild_position(X > Y) :-
     retract(data_rebuildPositions(ID, Rebuilds)),
     asserta(data_rebuildPositions(ID, [LocationID|Rebuilds])).
 
+set_rebuild_positions(Value) :-
+    data_default_id(ID),
+    retract(data_rebuildPositions(ID, _)),
+    asserta(data_rebuildPositions(ID, Value)).
+
 find_rebuild_hole_shaped_locations :-
     data_rebuildPositions(RebuildPositions),
-    create_hole_locations(RebuildPositions, HoleLocations),
+    set_rebuild_positions([]),
+    keep_hole_locations(RebuildPositions, HoleLocations),
+    !,
     HoleLocations \= [],
-    set_shaped_positions(HoleLocations).
+    set_shaped_positions(HoleLocations, incomplete).
 
-create_hole_locations([], []).
-create_hole_locations([H|T], HoleLocations) :-
-    create_hole_location(H, HoleLocations, HoleLocationsTail),
-    create_hole_locations(T, HoleLocationsTail).
+keep_hole_locations([], []).
+keep_hole_locations([H|T], HoleLocations) :-
+    keep_hole_location(H, HoleLocations, HoleLocationsTail),
+    keep_hole_locations(T, HoleLocationsTail).
 
-create_hole_location(X>Y, HoleLocations, HoleLocationsTail) :-
+keep_hole_location(Location, HoleLocations, HoleLocationsTail) :-
+    get_location_grid_x(Location, X),
+    get_location_grid_y(Location, Y),
     position_is_hole(X>Y)
-      -> create_location(ID, X, Y),
-         HoleLocations = [ID|HoleLocationsTail]
+      -> determine_color_constraints_for_location(Location, Constraints),
+         set_location_constraints(Location, Constraints),
+         HoleLocations = [Location|HoleLocationsTail]
     ;
+    clear_location(Location),
     HoleLocations = HoleLocationsTail.
 
 update_legal_positions(Colors) :-
@@ -277,14 +383,14 @@ find_shaped_locations :-
     get_board(Board),
     (Board = []
       -> create_location(ID, 0, 0),
-         set_shaped_positions([ID])
+         set_shaped_positions([ID], complete)
     ;
      wam_duration(Start),
      candidate_spaces(Board, Candidates),
      wam_duration(Mark1),
      shaped_candidates(Candidates, ShapedLocations),
      wam_duration(Mark2),
-     set_shaped_positions(ShapedLocations),
+     set_shaped_positions(ShapedLocations, complete),
      wam_duration(End),
      !,
      display_spans([Start, Mark1, Mark2, End], find_shaped_locations)
@@ -299,9 +405,16 @@ find_shaped_locations :-
 incremental_find_shaped_locations(ID) :-
      get_board(B),
      length(B, L),
-     (L = 2
+     ((L = 2
+      ;
+       L > 2,
+       get_shaped_positions([])
+      )
        -> clear_locations,
           find_shaped_locations
+     ;
+     get_shaped_positions([_|_], incomplete)
+       -> true
      ;
      wam_duration(Start),
      clear_hole_inducing_shaped_locations(ID), % some old shaped locations may have become 'hole inducing' due to new Tile on board.
@@ -309,9 +422,9 @@ incremental_find_shaped_locations(ID) :-
      wam_duration(Mark1),
      shaped_candidates(Candidates, NewShapedLocations),
      wam_duration(Mark2),
-     get_shaped_positions(OldShapedLocations),
+     get_shaped_positions(OldShapedLocations, Complete),
      append(NewShapedLocations, OldShapedLocations, ShapedLocations),
-     set_shaped_positions(ShapedLocations),
+     set_shaped_positions(ShapedLocations, Complete),
      clear_unused_locations,
      wam_duration(End),
      !,
@@ -327,6 +440,22 @@ incremental_find_shaped_locations(ID) :-
 % find_legal_with_rotation_locations/1 should be invoked whenever the
 % tile selection is changed.
 
+find_legal_with_rotation_locations(Tile) :-
+    get_game_phase(rebuild),
+    get_shaped_positions(ShapedLocations),
+    findall(ShapedLocation,
+        (member(ShapedLocation, ShapedLocations),
+         get_location_replacements(ShapedLocation, ShapedReplacements),
+         (member(Tile-_ColorsList, ShapedReplacements) % created for mismatch replacements
+         ;
+          member(Tile, ShapedReplacements) % created for exact replacements
+         )
+        ),
+        LegalWithRotation
+       ),
+    LegalWithRotation \= [],
+    !,
+    set_legal_positions_with_rotation(LegalWithRotation).
 find_legal_with_rotation_locations(Tile) :-
     get_shaped_positions(ShapedLocations),
     get_tile_colors(Tile, TileColors),
@@ -351,6 +480,21 @@ find_legal_with_rotation_locations(Tile) :-
 % find_legal_locations/1 should be invoked whenever a tile is selected
 % or rotated.
 
+find_legal_locations(Tile) :-
+    get_game_phase(rebuild),
+    get_shaped_positions(ShapedLocations),
+    get_tile_colors(Tile, TileColors),
+    findall(ShapedLocation,
+        (member(ShapedLocation, ShapedLocations),
+         get_location_replacements(ShapedLocation, ShapedReplacements),
+         member(Tile-ColorsList, ShapedReplacements),
+         member(TileColors, ColorsList)
+        ),
+        Legal
+       ),
+    Legal \= [],
+    !,
+    set_legal_positions(Legal).
 find_legal_locations(Tile) :-
     get_legal_positions_with_rotation(LegalWithRotation),
     get_tile_colors(Tile, TileColors),
@@ -407,6 +551,15 @@ key_list([H|T], [K-H|TK]) :-
 dekey_list([], []).
 dekey_list([_-H|T], [H|TT]) :-
     dekey_list(T, TT).
+
+tiles_from_location_replacements([], []).
+tiles_from_location_replacements([H|T], [Tile|TK]) :-
+    (H = Tile-_
+      -> true
+    ;
+    H = Tile
+    ),
+    tiles_from_location_replacements(T, TK).
 
 candidate_spaces([], Candidates, Candidates).
 candidate_spaces([H|T], CandidatesSoFar, CandidatesTotal) :-
@@ -480,27 +633,6 @@ check_orthogonal_neighbor(PlacedTile, DX, DY, ID) :-
     wam_duration(End),
     !,
     display_spans([Start, Mark, End], check_orthogonal_neighbor).
-
-edge_to_neighbor_edge(Edge, NeighborEdge) :-
-    get_triangles_per_tile(TPT), % TPT is 4 or 6. A TPT of 3 would require a different analysis.
-    NeighborEdge is ((Edge + (TPT/2)) mod TPT).
-
-%placed_position_offset(DX, DY, PlacedPositionOffset) :-
-%    edge_neighbor_offset(PlacedPositionOffset, DX, DY).
-%    get_triangles_per_tile(TPT),
-%    placed_position_offset(TPT, DX, DY, PlacedPositionOffset).
-%
-%placed_position_offset(4, DX, DY, PlacedPositionOffset) :-
-%    DY < 0
-%      -> PlacedPositionOffset = 0
-%    ;
-%    DY > 0
-%      -> PlacedPositionOffset = 2
-%    ;
-%    DX < 0
-%      -> PlacedPositionOffset = 3
-%    ;
-%    PlacedPositionOffset = 1.
 
 create_location(ID, GridX, GridY) :-
     increment_location_counter(ID),
@@ -677,8 +809,7 @@ locations_values(ID, Values) :-
 % the constraints of that location.
 % The replacement tiles are recorded using set_replacements/1.
 
-find_replacements(Locations) :-
-    get_board(Tiles),
+find_replacements(Tiles, Locations) :-
     find_exact_replacements(Tiles, Locations, TileLocationReplacementMap), % TileLocationReplacementMap = [Tile-Locations, ...]
     invert_map(TileLocationReplacementMap, ReplacementMap),
     irreplaceable_locations(Locations, ReplacementMap, IrreplaceableLocations), % ReplacementMap = [Location-Tiles, ...]
@@ -698,10 +829,12 @@ update_replacements :-
     (TransformShapedLocations = []
       -> set_replacements([])
     ;
-    find_replacements(TransformShapedLocations)
+    get_board(BoardTiles),
+    find_replacements(BoardTiles, TransformShapedLocations)
     ).
 
 % replacement_map_tiles(ReplacementMap, Replacements) processes ReplacementMap
+% to register replacement tiles for each location and
 % to determine the list of (distinct) tiles for Replacements.
 % The ReplacementMap is a list of Location-Tiles pairs where the Location may be
 % replaced without any color mismatch by some rotation of each tile in Tiles.
@@ -711,7 +844,8 @@ replacement_map_tiles(ReplacementMap, Replacements) :-
     sort(RawReplacements, Replacements). % eliminate duplicates.
 
 replacement_map_tiles1([], []).
-replacement_map_tiles1([_-Tiles|MapTail], Replacements) :-
+replacement_map_tiles1([Location-Tiles|MapTail], Replacements) :-
+    set_location_replacements(Location, Tiles),
     append(Tiles, ReplacementsTail, Replacements),
     replacement_map_tiles1(MapTail, ReplacementsTail).
 
@@ -814,7 +948,7 @@ find_minimal_mismatch_replacements(IrreplaceableLocations, Tiles, SortedReplacem
 find_minimal_mismatch_replacements_for_locations([], _Tiles, []).
 find_minimal_mismatch_replacements_for_locations([H|T], Tiles, ReplacementTiles) :-
     find_minimal_mismatch_replacements_for_tiles_at_location(Tiles, H, ReplacementTiles, NextReplacementTiles),
-    find_minimal_mismatch_replacements_for_locations(T, Tiles, NextReplacementTiles),
+    find_minimal_mismatch_replacements_for_locations(T, Tiles, NextReplacementTiles).
 
 find_minimal_mismatch_replacements_for_tiles_at_location([], _IrreplaceableLocation, Replacements, Replacements).
 find_minimal_mismatch_replacements_for_tiles_at_location([H|T], IrreplaceableLocation, Replacements, ReplacementsTail) :-
@@ -826,7 +960,8 @@ find_minimal_mismatch_replacements_for_tile_at_location(Tile, IrreplaceableLocat
     rotate_left(Colors, FinalColors),
     find_minimal_mismatch_replacements_for_color_rotations_of_tile(Colors, FinalColors, Tile, IrreplaceableLocation),
     get_location_replacements(IrreplaceableLocation, LocationReplacements),
-    append(LocationReplacements, ReplacementsTail, Replacements).
+    tiles_from_location_replacements(LocationReplacements, LocationReplacementTiles),
+    append(LocationReplacementTiles, ReplacementsTail, Replacements).
 
 find_minimal_mismatch_replacements_for_color_rotations_of_tile(FinalColors, FinalColors, Tile, IrreplaceableLocation) :-
     !,
@@ -842,11 +977,50 @@ find_minimal_mismatch_replacements_for_color_rotation_of_tile(Colors, Tile, Irre
     tile_colors_mismatch_constraint_colors(Colors, Constraints, 0, Mismatch),
     get_location_minimum_mismatch(IrreplaceableLocation, MinimumMismatch),
     (Mismatch < MinimumMismatch
-      -> set_location_replacements(IrreplaceableLocation, [Tile]),
+      -> set_location_replacements(IrreplaceableLocation, [Tile-[Colors]]),
          set_location_minimum_mismatch(IrreplaceableLocation, Mismatch)
     ;
      Mismatch = MinimumMismatch,
-     get_location_replacements(IrreplaceableLocation, LocationReplacements),
-     \+ member(Tile, LocationReplacements)
-      -> set_location_replacements(IrreplaceableLocation, [Tile|LocationReplacements])
+     get_location_replacements(IrreplaceableLocation, LocationReplacements)
+      -> (select(Tile-ColorsList, LocationReplacements, Tile-NewColorsList, NewLocationReplacements)
+           -> (member(Colors, ColorsList)
+               -> ColorsList = NewColorsList
+              ;
+              [Colors|ColorsList] = NewColorsList
+              )
+         ;
+          NewLocationReplacements = [Tile-[Colors]|LocationReplacements]
+         ),
+         set_location_replacements(IrreplaceableLocation, NewLocationReplacements)
+    ;
+    true % skip Tile: Mismatch > MinimumMismatch.
     ).
+
+% get color constraints for facing edge of tiles at -1,0 1,0 0,-1 0,1  relative to Location.
+determine_color_constraints_for_location(Location, Constraints) :-
+    determine_constraints([-1>0, 1>0, 0> -1, 0>1], Location, KeyedConstraints),
+    sort(KeyedConstraints, SortedKeyedConstraints),
+    dekey_list(SortedKeyedConstraints, Constraints).
+
+determine_constraints([], _Location, []).
+determine_constraints([H|T], Location, [HC|TC]) :-
+    determine_constraints1(H, Location, HC),
+    determine_constraints(T, Location, TC).
+
+determine_constraints1(CoordinateDelta, Location, LocationEdge-Constraint) :-
+    edge_neighbor_offset(LocationEdge, CoordinateDelta),
+    edge_to_neighbor_edge(LocationEdge, NeighborEdge),
+    (location_neighbor_tile(Location, CoordinateDelta, NeighborTile)
+       -> get_tile_colors(NeighborTile, NeighborColors),
+          nth0(NeighborEdge, NeighborColors, Constraint)
+     ;
+     Constraint = -1
+    ).
+
+location_neighbor_tile(Location, DX>DY, NeighborTile) :-
+    get_location_grid_x(Location, LX),
+    get_location_grid_y(Location, LY),
+    NX is LX + DX,
+    NY is LY + DY,
+    get_tile_grid_x(NeighborTile, NX),
+    get_tile_grid_y(NeighborTile, NY).

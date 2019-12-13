@@ -24,13 +24,17 @@
     [init_game_model_tiles/0, save_game_model_tiles/0, load_game_model_tiles/0,
      save_game_model_tiles_stream/1, retract_game_model_tiles/0,
      get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
-     get_turn/1, increment_turn/1, get_selected_tile_id/1, set_selected_tile_id/1,
+     get_turn/1, set_turn/1, increment_turn/1, get_turn_after_resolution/1, set_turn_after_resolution/1,
+     get_selected_tile_id/1, set_selected_tile_id/1,
      get_replacements/1, set_replacements/1, remove_tile_from_replacements/1,
+     get_mismatches/1, set_mismatches/1,
      get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
      set_last_build_phase_tile_placed/1,
-     last_placed_tiles/2, place_tile_in_hand/1, place_tile_on_board/3, get_game_phase/1,
-     update_game_phase/0, update_game_phase/2, edge_neighbor_tile/3, tile_in_inactive_hand/1,
-     tile_in_active_hand/1, tile_in_board/1, get_tiles_placed/1, game_model_tiles_values/1]).
+     last_placed_tiles/2, place_tile_in_hand/1, place_tiles_in_hand/1, place_tile_on_board/3,
+     get_game_phase/1, update_game_phase/0, update_game_phase/2, get_game_phase_status/1, set_game_phase_status/1,
+     edge_neighbor_tile/3, edge_to_neighbor_edge/2, tile_in_inactive_hand/1,
+     tile_in_active_hand/1, tile_in_board/1, get_tiles_placed/1, game_model_tiles_values/1,
+     undo_phase_updates/0]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -43,12 +47,12 @@
 initdyn :-
   data_predicate_dynamics([
       data_predicates(gmt, data,[tile_counter, tiles, hands, board,
-          tilesPlaced, boardHash,
+          tilesPlaced, boardHash, mismatches,
           lastPlacedTile1, lastPlacedTile2, lastBuildPhaseTilePlacedID,
-          turn, selectedTileID, replacements, gamePhase])]).
+          turn, turnAfterResolution, selectedTileID, replacements, gamePhase, gamePhaseStatus])]).
 
 init_game_model_tiles :-
-    assert_data(gmt(0, [], [], [], 0, [], none, none, none, 0, none, [], none), 1),
+    assert_data(gmt(0, [], [], [], 0, [], [], none, none, none, 0, none, none, [], none, closed), 1),
     build_tiles.
 
 save_game_model_tiles_stream(Stream) :-
@@ -135,12 +139,24 @@ add_hand_tile([H|T], IDCounter, Tile, [H|TN]) :-
 
 get_turn(Turn) :- data_turn(Turn).
 
+set_turn(Turn) :-
+    data_default_id(GameModelTilesID),
+    retractall(data_turn(GameModelTilesID, _)),
+    asserta(data_turn(GameModelTilesID, Turn)).
+
 increment_turn(NewTurn) :-
     data_default_id(GameModelTilesID),
     retract(data_turn(GameModelTilesID, OldTurn)),
     get_number_of_players(NumberOfPlayers),
     NewTurn is (OldTurn mod NumberOfPlayers) + 1,
     asserta(data_turn(GameModelTilesID, NewTurn)).
+
+get_turn_after_resolution(Turn) :- data_turnAfterResolution(Turn).
+
+set_turn_after_resolution(Turn) :-
+    data_default_id(GameModelTilesID),
+    retractall(data_turnAfterResolution(GameModelTilesID, _)),
+    asserta(data_turnAfterResolution(GameModelTilesID, Turn)).
 
 get_selected_tile_id(Selected) :-
     data_selectedTileID(Selected).
@@ -168,6 +184,21 @@ get_board_tile_by_grid(GridX > GridY, TileID) :-
     board_hash_key_coords(GridX, GridY, Key),
     data_boardHash(BoardHash),
     member(Key-TileID, BoardHash).
+
+get_mismatches(Value) :-
+    data_mismatches(Value).
+
+set_mismatches(Value) :-
+    data_default_id(GameModelTilesID),
+    retractall(data_mismatches(GameModelTilesID, _)),
+    asserta(data_mismatches(GameModelTilesID, Value)).
+
+add_board_mismatches(NewMismatches) :-
+    data_default_id(GameModelTilesID),
+    retract(data_mismatches(GameModelTilesID, OldMismatches)),
+    append(NewMismatches, OldMismatches, RawMismatches),
+    sort(RawMismatches, Mismatches),
+    asserta(data_mismatches(GameModelTilesID, Mismatches)).
 
 get_last_build_phase_tile_placed(ID) :-
     data_lastBuildPhaseTilePlacedID(ID).
@@ -243,6 +274,11 @@ remove_tile_from_hand([H|T], Tile, PlayerCounter, [H|NewHandsTail]) :-
     NextPlayerCounter is PlayerCounter - 1,
     remove_tile_from_hand(T, Tile, NextPlayerCounter, NewHandsTail).
 
+place_tiles_in_hand([]).
+place_tiles_in_hand([H|T]) :-
+    place_tile_in_hand(H),
+    place_tiles_in_hand(T).
+
 place_tile_in_hand(Tile) :-
     remove_tile_from_container(Tile),
     update_grid_x(Tile, _, 0),
@@ -264,7 +300,9 @@ place_tile_on_board(Tile, GridX, GridY) :-
          (Phase = build
            -> set_last_build_phase_tile_placed(Tile)
           ;
-          set_last_build_phase_tile_placed(none)
+          set_last_build_phase_tile_placed(none),
+          neighbor_mismatches(Tile, Mismatches),
+          add_board_mismatches(Mismatches)
          )
     ;
      Container = board
@@ -275,6 +313,37 @@ place_tile_on_board(Tile, GridX, GridY) :-
     ;
      throw(mosaic_internal('invalid container type (place_tile_on_board)', Container))
     ).
+
+neighbor_mismatches(Tile, Mismatches) :-
+    get_tile_colors(Tile, Colors),
+    get_triangles_per_tile(TPT),
+    neighbor_mismatches(TPT, Tile, Colors, Mismatches).
+
+% neighbor_mismatches(NumberOfEdgesToInspect, Tile, Colors, Mismatches).
+% Edge is a number from 0 to (TrianglesPerTile-1)
+neighbor_mismatches(NumberOfEdgesToInspect, Tile, Colors, Mismatches) :-
+    Edge is NumberOfEdgesToInspect - 1,
+    neighbor_mismatch(Edge, Tile, Colors, Mismatches, Tail),
+    (Edge > 0
+      -> neighbor_mismatches(Edge, Tile, Colors, Tail)
+    ;
+    Tail = []
+    ).
+
+
+neighbor_mismatch(Edge, Tile, TileColors, Mismatches, Tail) :-
+    edge_neighbor_tile(Tile, Edge, NeighborID)
+      -> get_tile_colors(NeighborID, NeighborColors),
+         nth0(Edge, TileColors, TileColor),
+         edge_to_neighbor_edge(Edge, NeighborEdge),
+         (nth0(NeighborEdge, NeighborColors, TileColor)
+           -> Mismatches = Tail
+         ;
+         Mismatches = [NeighborID|Tail]
+         )
+    ;
+    Mismatches = Tail.
+
 
 get_game_phase(Phase) :-
     data_gamePhase(Phase).
@@ -289,11 +358,21 @@ update_game_phase :-
 
 update_game_phase(Old, New) :-
     data_gamePhase(Old),
+    get_game_phase_status(Status),
+    (Status = open
+        -> Old = New
+    ;
+    update_closed_game_phase(Old, New),
+    set_game_phase_status(open)
+    ).
+
+update_closed_game_phase(Old, New) :-
     (Old = none
       -> New = build,
          set_game_phase(New)
     ;
     (Old = build; Old = rebuild),
+    get_replacements([]),
     data_board(Board),
     length(Board, BoardLength),
     data_tiles(Tiles),
@@ -308,8 +387,16 @@ update_game_phase(Old, New) :-
       -> New = replace,
          set_game_phase(New)
     ;
+    Old = rebuild,
+    get_replacements(Replacements),
+    Replacements \= []
+      -> New = replace,
+         set_game_phase(New)
+    ;
      Old = replace,
-     get_replacements([]),
+     get_replacements(Replacements),
+     \+ (member(Replacement, Replacements),
+         get_tile_container(Replacement, board)),
      get_hands(Hands),
      (Hands \= [[],[]]
       -> New = rebuild,
@@ -321,6 +408,18 @@ update_game_phase(Old, New) :-
     ;
     Old = New
     ).
+
+get_game_phase_status(Value) :-
+    data_gamePhaseStatus(Value).
+
+set_game_phase_status(Value) :-
+    data_default_id(GameModelTilesID),
+    retract(data_gamePhaseStatus(GameModelTilesID, _)),
+    asserta(data_gamePhaseStatus(GameModelTilesID, Value)).
+
+edge_to_neighbor_edge(Edge, NeighborEdge) :-
+    get_triangles_per_tile(TPT), % TPT is 4 or 6. A TPT of 3 would require a different analysis.
+    NeighborEdge is ((Edge + (TPT/2)) mod TPT).
 
 edge_neighbor_tile(ID, Edge, NeighborID) :-
     edge_neighbor_position(ID, Edge, Position),
@@ -352,3 +451,10 @@ get_tiles_placed(Placed) :-
 game_model_tiles_values(Values) :-
     data_default_id(ID),
     labelled_values(data, ID, Values).
+
+% undo all undoable updates from current closed game phase back to most recent previous closed game phase.
+undo_phase_updates :-
+    data_default_id(ID),
+    data_gamePhaseStatus(ID, closed), % the undo can only be run when the data is currently 'closed'.
+    undo_update(data_gamePhaseStatus(ID, open), data_gamePhaseStatus(ID, closed)), % first back up to data with most recent 'open' state.
+    undo_update(data_gamePhaseStatus(ID, closed), _). % undo back through many data updates to when data was next most recently 'closed'.

@@ -41,10 +41,16 @@
     get_hand_color_ids/1, get_number_of_players/1, get_triangles_per_tile/1,
     rotate_right/2, rotate_left/2, board_hash_key_coords/3,
     tile_colors_match_constraint_colors/2, tile_colors_mismatch_constraint_colors/4,
-    edge_neighbor_offset/2, display_spans/2, values/1]).
+    edge_neighbor_offset/2, display_spans/2, values/1,
+    undoable_update/2, undo_update/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(library).
+
+:- meta_predicate((
+    undoable_update((:), (:)),
+    undo_update((:), (:))
+    )).
 
 :- initialization(initdyn).
 
@@ -267,3 +273,20 @@ values([number_of_players-NOP, triangles_per_tile-TPT, hand_color_ids-HCI]) :-
     data_handColorIDSequences(HCI),
     data_numberOfPlayers(NOP),
     data_trianglesPerTile(TPT).
+
+:- dynamic(undoable_term/2).
+
+undoable_update(OldTerm, NewTerm) :-
+    retract(OldTerm),
+    asserta(NewTerm),
+    asserta(undoable_term(OldTerm, NewTerm)).
+
+undo_update(OldTerm, NewTerm) :-
+    repeat,
+    retract(undoable_term(OldTermX, NewTermX)),
+    retract(NewTermX),
+    asserta(OldTermX),
+    OldTermX = OldTerm,
+    NewTermX = NewTerm,
+    !.
+

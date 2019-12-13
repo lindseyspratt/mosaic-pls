@@ -205,21 +205,25 @@ select(Event) :-
     select1(PageX, PageY).
 
 select1(PageX, PageY) :-
-    writeln(select1(PageX, PageY)),
+    setup_select1(PageX, PageY, X, Y),
+    process_select(X, Y),
+    update_game_phase.
+
+setup_select1(PageX, PageY, X, Y) :-
     get_canvas_offset_top(PTop),
     get_canvas_offset_left(PLeft),
     X is PageX - PLeft,
     Y is PageY - PTop,
-    writeln(select(PageX, PageY, PLeft, PTop, X, Y)),
-    (point_in_tile(Tile, X, Y)
+    writeln(select(PageX, PageY, PLeft, PTop, X, Y)).
+
+process_select(X, Y) :-
+    point_in_tile(Tile, X, Y)
       -> on_click_tile(Tile, X, Y)  % at most one tile contains (X, Y).
     ;
      point_in_legal_location(BX, BY, X, Y)
       -> on_click_legal_location(BX, BY)
     ;
-     true
-    ),
-    update_game_phase.
+     true.
 
 on_click_tile(ID, X, Y) :-
     %writeln(click(ID, X, Y)),
@@ -259,14 +263,30 @@ on_click_active_hand_tile(ID) :-
     ).
 
 on_click_active_hand_tile_select(ID) :-
-    set_selected_tile_id(ID),
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    draw_all_tile(ID, Ctx),
-    find_legal_with_rotation_locations(ID),
-    find_legal_locations(ID),
-    get_legal_positions(LegalPositions),
-    get_legal_positions_with_rotation(LegalPositionsWithRotation),
-    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
+    hand_tile_selectable(ID)
+      -> set_selected_tile_id(ID),
+         _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+         draw_all_tile(ID, Ctx),
+         find_legal_with_rotation_locations(ID),
+         find_legal_locations(ID),
+         get_legal_positions(LegalPositions),
+         get_legal_positions_with_rotation(LegalPositionsWithRotation),
+         draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx)
+    ;
+    true.
+
+hand_tile_selectable(ID) :-
+    get_replacements(Replacements),
+    hand_tile_selectable(ID, Replacements).
+
+hand_tile_selectable(_ID, []) :-
+    !.
+hand_tile_selectable(ID, Replacements) :-
+    member(ID, Replacements),
+    !.
+hand_tile_selectable(ID, Replacements) :-
+    member(ID - _, Replacements),
+    !.
 
 on_click_select_replace_tile(ID) :-
     (get_selected_tile_id(OldID)
@@ -298,38 +318,88 @@ on_click_legal_location(BX, BY) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     get_game_phase(Phase),
     (Phase = build
-      -> increment_turn(_),
-         place_tile_on_board_and_draw(Ctx, Tile, BX, BY)
+      -> set_game_phase_status(closed),
+         increment_turn(_),
+         place_tile_on_board_and_draw(Ctx, Tile, BX, BY),
+         score_delay(Tile)
     ;
      Phase = rebuild
-       -> place_tile_on_board_and_draw(Ctx, Tile, BX, BY),
+       -> get_replacements(OldReplacements),
+          place_tile_on_board_and_draw(Ctx, Tile, BX, BY),
+          yield,
+          get_replacements(Replacements),
+          clear_discarded_replacement_views(Ctx, OldReplacements, Replacements),
           (get_turn(Turn),
            get_hand(Turn, Hand),
            Hand = []
-            -> increment_turn(_)
+           % four cases based on two issues: mismatches-to-resolve and in-resolution-sequence
+            -> set_game_phase_status(closed),
+               get_turn_after_resolution(AfterResolutionTurn),
+               (get_mismatches(Mismatches),
+                Mismatches = []
+                 -> (AfterResolutionTurn = none
+                      -> increment_turn(_)
+                    ;
+                     set_turn(AfterResolutionTurn),
+                     set_turn_after_resolution(none)
+                    )
+               ;
+                increment_turn(NextTurn),
+                process_mismatches, % This continues the resolution sequence. The phase will be updated to 'replace' by update_game_phase.
+                (AfterResolutionTurn = none
+                  -> set_turn_after_resolution(NextTurn)
+                ;
+                true
+                )
+               )
           ;
           true
           )
     ;
      Phase = replace
-      -> move_tile_on_board_and_draw(Ctx, Tile, BX, BY),
+      -> get_replacements(OldReplacements),
+         move_tile_on_board_and_draw(Ctx, Tile, BX, BY),
          yield,
-         get_replacements(OldReplacements),
-         update_replacements,
+         %update_replacements,
          get_replacements(Replacements),
          clear_discarded_replacement_views(Ctx, OldReplacements, Replacements),
-         (Replacements \= []
+         (member(Replacement, Replacements),
+          get_tile_container(Replacement, board) % replacements can be in the hand (for rebuild phase) if there are mismatch resolutions required.
            -> true
          ;
          find_rebuild_hole_shaped_locations
-           -> true
+           -> set_game_phase_status(closed),
+              get_turn(Turn),
+              get_hand(Turn, HandTiles),
+              get_shaped_positions(HoleShapedLocations),
+              %update_game_phase, % force the game phase to be 'rebuild' - the game state after find_replacements/2 looks the same as for replace.
+              find_replacements(HandTiles, HoleShapedLocations),
+              get_replacements(NewReplacements),
+              draw_constrained_replacements(NewReplacements, Ctx)
          ;
          true
-           -> find_shaped_locations % board has been changed from replacements, now set up shaped locations to rebuild from hand.
+           -> set_game_phase_status(closed),
+              find_shaped_locations % board has been changed from replacements, now set up shaped locations to rebuild from hand.
          )
     ;
     writeln(legal_location_click_error(Tile, BX, BY, Phase))
     ).
+
+% process_mismatches sets up another hand, shaped locations,
+% and replacement tiles - continuing the resolution sequence.
+% The phase will be updated to 'replace' by update_game_phase.
+
+process_mismatches :-
+    get_mismatches(Mismatches),
+    set_mismatches([]),
+    create_mismatch_shaped_locations(Mismatches),
+    setup_replacements(Mismatches),
+    draw_game_tiles.
+
+draw_constrained_replacements([], _Ctx).
+draw_constrained_replacements([H|T], Ctx) :-
+    draw_replacement_tile_mark(H, Ctx),
+    draw_constrained_replacements(T, Ctx).
 
 clear_discarded_replacement_views(Ctx, OldReplacements, Replacements) :-
     forall((member(Tile, OldReplacements), \+ member(Tile, Replacements)),
@@ -398,21 +468,31 @@ on_click_transform_tile(Tile, X, Y) :-
       -> (last_placed_tiles(Tile, NeighborTile)
            -> true % these tiles were placed by previous turn/player. Ignore this selection click.
          ;
+          set_game_phase_status(closed),
           create_transform_shaped_locations(Tile, Edge, NeighborTile),
-          get_shaped_positions(TransformShapedLocations),
-          find_replacements(TransformShapedLocations),
-          place_tile_in_hand(Tile),
-          place_tile_in_hand(NeighborTile),
-          layout_hands,
-          get_context(Ctx),
-          get_canvas_width(W),
-          get_canvas_height(H),
-          get_tiles(TileIDs),
-          draw_all_tiles(TileIDs, Ctx, W, H)
+          setup_replacements([Tile, NeighborTile]),
+          draw_game_tiles
          )
     ;
      true % There is no neighboring tile for this edge. Ignore this selection click.
     ).
+
+setup_replacements(TilesForHand) :-
+    get_shaped_positions(ShapedLocations),
+    get_board(BoardTiles),
+    find_replacements(BoardTiles, ShapedLocations),
+    place_tiles_in_hand(TilesForHand),
+    layout_hands.
+
+draw_game_tiles :-
+    get_context(Ctx),
+    draw_game_tiles(Ctx).
+
+draw_game_tiles(Ctx) :-
+    get_canvas_width(W),
+    get_canvas_height(H),
+    get_tiles(TileIDs),
+    draw_all_tiles(TileIDs, Ctx, W, H).
 
 % Tile is replacing a tile that was moved out of the
 % board to a hand (due to a transform selection or
@@ -430,14 +510,11 @@ move_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     clear_location_views(OldLocations, Ctx),
     set_legal_positions_with_rotation([]),
     set_legal_positions([]),
-    clear_shaped_location_for_tile(Tile),
 
     remove_tile_from_replacements(Tile),
+    clear_shaped_location_for_tile(Tile),
     update_board_tile_view(Tile),
-    get_canvas_width(W),
-    get_canvas_height(H),
-    get_tiles(TileIDs),
-    draw_all_tiles(TileIDs, Ctx, W, H).
+    draw_game_tiles(Ctx).
 
 place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     wam_duration(Start),
@@ -448,27 +525,23 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     clear_location_views(OldLocations, Ctx),
     set_legal_positions_with_rotation([]),
     set_legal_positions([]),
+
+    remove_tile_from_replacements(Tile),
     clear_shaped_location_for_tile(Tile),
 
     wam_duration(Mark2),
     update_board_tile_view(Tile),
-    get_canvas_width(W),
-    get_canvas_height(H),
-    get_tiles(TileIDs),
 
     wam_duration(Mark3),
-    draw_all_tiles(TileIDs, Ctx, W, H),
+    draw_game_tiles(Ctx),
     reposition_board_loop_delay,
 
     wam_duration(Mark4),
     incremental_find_shaped_locations(Tile),
 
-    wam_duration(Mark5),
-    score_delay(Tile),
-
     wam_duration(End),
     !,
-    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, Mark5, End], place_tile_on_board_and_draw).
+    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, End], place_tile_on_board_and_draw).
 
 reposition_board_loop_delay :-
     yield,

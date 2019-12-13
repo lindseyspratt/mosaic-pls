@@ -30,7 +30,7 @@ dummy_reference :-
     data_minimumMismatch(_).
 
 create_location_model(ID, GridX, GridY) :-
-    assert_data(lm(GridX, GridY, 0, 0, false, [-1,-1,-1,-1], [], [], []), ID).
+    assert_data(lm(GridX, GridY, 0, 0, false, [-1,-1,-1,-1], [], [], 1000), ID).
 
 save_location_model_stream(Stream) :-
     save_data_stream(data, Stream).

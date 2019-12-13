@@ -186,7 +186,7 @@ function buffered_write(msg, term) {
             line = lines[ofst];
         }
 
-        term.echo(line);
+        term.echo($.terminal.escape_formatting(line));
     }
 
     buffer = (buffer ? buffer : '') + lines[lines.length - 1];
