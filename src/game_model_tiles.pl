@@ -94,24 +94,29 @@ build_tiles([H|T], PlayerID, [HT|TT], AllTileIDs) :-
 
 increment_tile_counter(NewCounter) :-
     data_default_id(GameModelTilesID),
-    retract(data_tile_counter(GameModelTilesID, OldCounter)),
+    data_tile_counter(GameModelTilesID, OldCounter),
     NewCounter is OldCounter + 1,
-    asserta(data_tile_counter(GameModelTilesID, NewCounter)).
+    undoable_update(
+        data_tile_counter(GameModelTilesID, OldCounter),
+        data_tile_counter(GameModelTilesID, NewCounter)).
 
 set_tile_counter(Counter) :-
     data_default_id(GameModelTilesID),
-    retractall(data_tile_counter(GameModelTilesID, _)),
-    asserta(data_tile_counter(GameModelTilesID, Counter)).
+    undoable_update(
+        data_tile_counter(GameModelTilesID, _),
+        data_tile_counter(GameModelTilesID, Counter)).
 
 set_hands(HandTiles) :-
     data_default_id(GameModelTilesID),
-    retractall(data_hands(GameModelTilesID, _)),
-    asserta(data_hands(GameModelTilesID, HandTiles)).
+    undoable_update(
+        data_hands(GameModelTilesID, _),
+        data_hands(GameModelTilesID, HandTiles)).
 
 set_tiles(Tiles) :-
     data_default_id(GameModelTilesID),
-    retractall(data_tiles(GameModelTilesID, _)),
-    asserta(data_tiles(GameModelTilesID, Tiles)).
+    undoable_update(
+        data_tiles(GameModelTilesID, _),
+        data_tiles(GameModelTilesID, Tiles)).
 
 get_tiles(T) :- data_tiles(T).
 
@@ -127,9 +132,11 @@ get_hand(PlayerID, Hand) :-
 
 add_hand_tile(PlayerID, Tile) :-
     data_default_id(ID),
-    retract(data_hands(ID, Hands)),
+    data_hands(ID, Hands),
     add_hand_tile(Hands, PlayerID, Tile, NewHands),
-    asserta(data_hands(ID, NewHands)).
+    undoable_update(
+        data_hands(ID, Hands),
+        data_hands(ID, NewHands)).
 
 add_hand_tile([H|T], 1, Tile, [[Tile|H]|T]) :-
     !.
@@ -141,44 +148,52 @@ get_turn(Turn) :- data_turn(Turn).
 
 set_turn(Turn) :-
     data_default_id(GameModelTilesID),
-    retractall(data_turn(GameModelTilesID, _)),
-    asserta(data_turn(GameModelTilesID, Turn)).
+    undoable_update(
+        data_turn(GameModelTilesID, _),
+        data_turn(GameModelTilesID, Turn)).
 
 increment_turn(NewTurn) :-
     data_default_id(GameModelTilesID),
-    retract(data_turn(GameModelTilesID, OldTurn)),
+    data_turn(GameModelTilesID, OldTurn),
     get_number_of_players(NumberOfPlayers),
     NewTurn is (OldTurn mod NumberOfPlayers) + 1,
-    asserta(data_turn(GameModelTilesID, NewTurn)).
+    undoable_update(
+        data_turn(GameModelTilesID, OldTurn),
+        data_turn(GameModelTilesID, NewTurn)).
 
 get_turn_after_resolution(Turn) :- data_turnAfterResolution(Turn).
 
 set_turn_after_resolution(Turn) :-
     data_default_id(GameModelTilesID),
-    retractall(data_turnAfterResolution(GameModelTilesID, _)),
-    asserta(data_turnAfterResolution(GameModelTilesID, Turn)).
+    undoable_update(
+        data_turnAfterResolution(GameModelTilesID, _),
+        data_turnAfterResolution(GameModelTilesID, Turn)).
 
 get_selected_tile_id(Selected) :-
     data_selectedTileID(Selected).
 
 set_selected_tile_id(Selected) :-
     data_default_id(GameModelTilesID),
-    retractall(data_selectedTileID(GameModelTilesID, _)),
-    asserta(data_selectedTileID(GameModelTilesID, Selected)).
+    undoable_update(
+        data_selectedTileID(GameModelTilesID, _),
+        data_selectedTileID(GameModelTilesID, Selected)).
 
 get_replacements(Replacements) :-
     data_replacements(Replacements).
 
 set_replacements(Replacements) :-
     data_default_id(GameModelTilesID),
-    retractall(data_replacements(GameModelTilesID, _)),
-    asserta(data_replacements(GameModelTilesID, Replacements)).
+    undoable_update(
+        data_replacements(GameModelTilesID, _),
+        data_replacements(GameModelTilesID, Replacements)).
 
 remove_tile_from_replacements(Tile) :-
     data_default_id(GameModelTilesID),
-    retract(data_replacements(GameModelTilesID, Replacements)),
+    data_replacements(GameModelTilesID, Replacements),
     delete(Replacements, Tile, NewReplacements),
-    asserta(data_replacements(GameModelTilesID, NewReplacements)).
+    undoable_update(
+        data_replacements(GameModelTilesID, Replacements),
+        data_replacements(GameModelTilesID, NewReplacements)).
 
 get_board_tile_by_grid(GridX > GridY, TileID) :-
     board_hash_key_coords(GridX, GridY, Key),
@@ -190,23 +205,27 @@ get_mismatches(Value) :-
 
 set_mismatches(Value) :-
     data_default_id(GameModelTilesID),
-    retractall(data_mismatches(GameModelTilesID, _)),
-    asserta(data_mismatches(GameModelTilesID, Value)).
+    undoable_update(
+        data_mismatches(GameModelTilesID, _),
+        data_mismatches(GameModelTilesID, Value)).
 
 add_board_mismatches(NewMismatches) :-
     data_default_id(GameModelTilesID),
-    retract(data_mismatches(GameModelTilesID, OldMismatches)),
+    data_mismatches(GameModelTilesID, OldMismatches),
     append(NewMismatches, OldMismatches, RawMismatches),
     sort(RawMismatches, Mismatches),
-    asserta(data_mismatches(GameModelTilesID, Mismatches)).
+    undoable_update(
+        data_mismatches(GameModelTilesID, OldMismatches),
+        data_mismatches(GameModelTilesID, Mismatches)).
 
 get_last_build_phase_tile_placed(ID) :-
     data_lastBuildPhaseTilePlacedID(ID).
 
 set_last_build_phase_tile_placed(ID) :-
     data_default_id(GameModelTilesID),
-    retractall(data_lastBuildPhaseTilePlacedID(GameModelTilesID, _)),
-    asserta(data_lastBuildPhaseTilePlacedID(GameModelTilesID, ID)).
+    undoable_update(
+        data_lastBuildPhaseTilePlacedID(GameModelTilesID, _),
+        data_lastBuildPhaseTilePlacedID(GameModelTilesID, ID)).
 
 last_placed_tiles(Tile1, Tile2) :-
     get_tile_grid_x(Tile1, GridX1),
@@ -228,35 +247,43 @@ last_placed_tiles(Tile1, Tile2) :-
 
 add_board_tile(Tile) :-
     data_default_id(ID),
-    retract(data_board(ID, Board)),
-    asserta(data_board(ID, [Tile|Board])).
+    undoable_update(
+        data_board(ID, Board),
+        data_board(ID, [Tile|Board])).
 
 remove_tile_from_board(Tile) :-
     data_default_id(GameModelTilesID),
-    retract(data_board(GameModelTilesID, Board)),
+    data_board(GameModelTilesID, Board),
     delete(Board, Tile, RemainderBoard),
-    asserta(data_board(GameModelTilesID, RemainderBoard)).
+    undoable_update(
+        data_board(GameModelTilesID, Board),
+        data_board(GameModelTilesID, RemainderBoard)).
 
 remove_tile_from_board_hash(Tile) :-
     tile_board_hash_key(Tile, Key),
     data_default_id(GameModelTilesID),
-    retract(data_boardHash(GameModelTilesID, BoardHash)),
+    data_boardHash(GameModelTilesID, BoardHash),
     delete(BoardHash, Key-Tile, RemainderBoardHash),
-    asserta(data_boardHash(GameModelTilesID, RemainderBoardHash)).
+    undoable_update(
+        data_boardHash(GameModelTilesID, BoardHash),
+        data_boardHash(GameModelTilesID, RemainderBoardHash)).
 
 add_board_hash_tile(Tile) :-
     tile_board_hash_key(Tile, Key),
     data_default_id(GameModelTilesID),
-    retract(data_boardHash(GameModelTilesID, BoardHash)),
-    asserta(data_boardHash(GameModelTilesID, [Key-Tile|BoardHash])).
+    undoable_update(
+        data_boardHash(GameModelTilesID, BoardHash),
+        data_boardHash(GameModelTilesID, [Key-Tile|BoardHash])).
 
 remove_tile_from_container(Tile) :-
     get_tile_container(Tile, Container),
     (Container = hand(PlayerID)
       -> data_default_id(GameModelTilesID),
-         retract(data_hands(GameModelTilesID, Hands)),
+         data_hands(GameModelTilesID, Hands),
          remove_tile_from_hand(Hands, Tile, PlayerID, NewHands),
-         asserta(data_hands(GameModelTilesID, NewHands))
+         undoable_update(
+            data_hands(GameModelTilesID, Hands),
+            data_hands(GameModelTilesID, NewHands))
     ;
      Container = board
       -> data_default_id(GameModelTilesID),
@@ -350,8 +377,9 @@ get_game_phase(Phase) :-
 
 set_game_phase(Phase) :-
     data_default_id(GameModelTilesID),
-    retract(data_gamePhase(GameModelTilesID, _)),
-    asserta(data_gamePhase(GameModelTilesID, Phase)).
+    undoable_update(
+        data_gamePhase(GameModelTilesID, _),
+        data_gamePhase(GameModelTilesID, Phase)).
 
 update_game_phase :-
     update_game_phase(_, _).
@@ -414,8 +442,9 @@ get_game_phase_status(Value) :-
 
 set_game_phase_status(Value) :-
     data_default_id(GameModelTilesID),
-    retract(data_gamePhaseStatus(GameModelTilesID, _)),
-    asserta(data_gamePhaseStatus(GameModelTilesID, Value)).
+    undoable_update(
+        data_gamePhaseStatus(GameModelTilesID, _),
+        data_gamePhaseStatus(GameModelTilesID, Value)).
 
 edge_to_neighbor_edge(Edge, NeighborEdge) :-
     get_triangles_per_tile(TPT), % TPT is 4 or 6. A TPT of 3 would require a different analysis.
