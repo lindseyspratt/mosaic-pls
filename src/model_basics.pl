@@ -56,6 +56,7 @@
 
 initdyn :-
     data_predicate_dynamics([data_predicates(gmb, data,[numberOfPlayers, trianglesPerTile, abstractColors, handColorIDSequences])]).
+
 % init(2, 4, [a,b,c,d])
 init_model_basics(NOP, TPT, AC) :-
     assert_data(gmb(NOP, TPT, AC, []), 1),
@@ -279,14 +280,34 @@ values([number_of_players-NOP, triangles_per_tile-TPT, hand_color_ids-HCI]) :-
 undoable_update(OldTerm, NewTerm) :-
     retract(OldTerm),
     asserta(NewTerm),
-    asserta(undoable_term(OldTerm, NewTerm)).
+    (OldTerm \= NewTerm
+      -> asserta(undoable_term(OldTerm, NewTerm))
+    ;
+    true
+    ).
 
-undo_update(OldTerm, NewTerm) :-
-    repeat,
-    retract(undoable_term(OldTermX, NewTermX)),
-    retract(NewTermX),
-    asserta(OldTermX),
-    OldTermX = OldTerm,
-    NewTermX = NewTerm,
+
+undo_update(Old, New) :-
+    undo_update1(Old, New),
     !.
 
+% undo_update1(OldTerm, NewTerm)
+undo_update1(OldTerm, NewTerm) :-
+    undoable_term(OldTerm, NewTerm)
+      -> repeat,
+         retract(undoable_term(OldTermX, NewTermX)),
+         undo_single_update(OldTermX, NewTermX),
+         OldTermX = OldTerm,
+         NewTermX = NewTerm
+    ;
+    throw(undo_not_defined(OldTerm, NewTerm)).
+
+% undo_single_update(OldTermX, NewTermX)
+% executes a single retract/asserta.
+% The cut (!) is needed to prevent retract(NewTermX)
+% from endlessly succeeding on redo when OldTermX=NewTermX.
+
+undo_single_update(OldTermX, NewTermX) :-
+    retract(NewTermX),
+    asserta(OldTermX),
+    !.

@@ -1,5 +1,6 @@
 :- module(tiles, [setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
-        save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0]).
+        save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0,
+        undo_last_selection/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -207,7 +208,8 @@ select(Event) :-
 select1(PageX, PageY) :-
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y),
-    update_game_phase.
+    update_game_phase,
+    update_selection_marker.
 
 setup_select1(PageX, PageY, X, Y) :-
     get_canvas_offset_top(PTop),
@@ -596,3 +598,9 @@ display_score(S) :-
     format(atom(Score), '~w', [S]),
     atom_codes(Score, ScoreCodes),
     _ >> [id -:> score, innerHTML <:+ ScoreCodes].
+
+undo_last_selection :-
+    get_selection_marker(Marker),
+    PreviousMarker is Marker - 1,
+    undo_selection_updates(PreviousMarker),
+    draw_game_tiles.

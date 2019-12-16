@@ -81,30 +81,39 @@ get_tile_container(ID, Container) :-
     tile_model_container(ID, Container).
 
 update_grid_x(ID, X1, X2) :-
-    retract(tile_model_gridX(ID, X1)),
-    asserta(tile_model_gridX(ID, X2)).
+    undoable_update(
+        tile_model_gridX(ID, X1),
+        tile_model_gridX(ID, X2)).
 
 update_grid_y(ID, X1, X2) :-
-    retract(tile_model_gridY(ID, X1)),
-    asserta(tile_model_gridY(ID, X2)).
+    undoable_update(
+        tile_model_gridY(ID, X1),
+        tile_model_gridY(ID, X2)).
+
+update_colors(ID, X1, X2) :-
+    undoable_update(
+        tile_model_colors(ID, X1),
+        tile_model_colors(ID, X2)).
 
 update_container(ID, X1, X2) :-
-    retract(tile_model_container(ID, X1)),
-    asserta(tile_model_container(ID, X2)).
+    undoable_update(
+        tile_model_container(ID, X1),
+        tile_model_container(ID, X2)).
 
 update_replacements(ID, X1, X2) :-
-    retract(tile_model_replacements(ID, X1)),
-    asserta(tile_model_replacements(ID, X2)).
+    undoable_update(
+        tile_model_replacements(ID, X1),
+        tile_model_replacements(ID, X2)).
 
 tile_rotate_left(ID) :-
-    retract(tile_model_colors(ID, X1)),
+    tile_model_colors(ID, X1),
     rotate_left(X1, X2),
-    asserta(tile_model_colors(ID, X2)).
+    update_colors(ID, X1, X2).
 
 tile_rotate_right(ID) :-
-    retract(tile_model_colors(ID, X1)),
+    tile_model_colors(ID, X1),
     rotate_left(X1, X2),
-    asserta(tile_model_colors(ID, X2)).
+    update_colors(ID, X1, X2).
 
 tile_board_hash_key(ID, Key) :-
     tile_model_gridX(ID, X),

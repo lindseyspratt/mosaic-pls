@@ -144,12 +144,15 @@ data_predicate_dynamics(M : DPs) :-
     findall(Prefix-Suffixes, data_predicates(_, M:Prefix, Suffixes), All),
     data_predicate_dynamics1a(M:All).
 
-assert_dps(_M : []).
+assert_dps(_M : []) :- !.
 assert_dps(M : [H|T]) :-
     assert_dp(M : H),
     assert_dps(M : T).
 
 assert_dp(M : data_predicates(F, P, S)) :-
+    data_predicates(_, M:P, _)
+      -> true % writeln(already_asserted_long(M:P))
+    ;
     assertz(data_predicates(F, M:P, S)).
 
 data_predicate_dynamics1a(_M:[]).

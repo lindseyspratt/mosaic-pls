@@ -25,7 +25,7 @@
      save_game_model_tiles_stream/1, retract_game_model_tiles/0,
      get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
      get_turn/1, set_turn/1, increment_turn/1, get_turn_after_resolution/1, set_turn_after_resolution/1,
-     get_selected_tile_id/1, set_selected_tile_id/1,
+     get_selected_tile_id/1, set_selected_tile_id/1, get_selection_marker/1, update_selection_marker/0,
      get_replacements/1, set_replacements/1, remove_tile_from_replacements/1,
      get_mismatches/1, set_mismatches/1,
      get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
@@ -34,7 +34,7 @@
      get_game_phase/1, update_game_phase/0, update_game_phase/2, get_game_phase_status/1, set_game_phase_status/1,
      edge_neighbor_tile/3, edge_to_neighbor_edge/2, tile_in_inactive_hand/1,
      tile_in_active_hand/1, tile_in_board/1, get_tiles_placed/1, game_model_tiles_values/1,
-     undo_phase_updates/0]).
+     undo_phase_updates/0, undo_selection_updates/1, write_undo_history/1]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -49,10 +49,56 @@ initdyn :-
       data_predicates(gmt, data,[tile_counter, tiles, hands, board,
           tilesPlaced, boardHash, mismatches,
           lastPlacedTile1, lastPlacedTile2, lastBuildPhaseTilePlacedID,
-          turn, turnAfterResolution, selectedTileID, replacements, gamePhase, gamePhaseStatus])]).
+          turn, turnAfterResolution, selectedTileID, replacements, gamePhase, gamePhaseStatus, selectionMarker])]).
+
+write_undo_history(Marker) :-
+    findall(A, X^Y^(model_basics:undoable_term(X, Y), game_model_tiles:abbrev(Y, A)), Xs),
+    data_default_id(ID),
+    game_model_tiles:abbrev(game_model_tiles:data_selectionMarker(ID, Marker), MA),
+    write_undo_history(Xs, MA).
+
+write_undo_history([H|T], MA) :-
+    writeln(H),
+    (H=MA -> true
+    ;
+     write_undo_history(T, MA)
+    ).
+
+abbrev(Module : BaseGoal, Abbrev) :-
+    Module : data_predicates(_, Prefix, _),
+    atom_codes(Prefix, PrefixCodes),
+    append(PrefixCodes, "_", CombinedPrefixCodes),
+    functor(BaseGoal, F, _),
+    atom_codes(F, FCodes),
+    append(CombinedPrefixCodes, NameCodes, FCodes),
+    condense_name(NameCodes, CondensedNameCodes),
+    atom_codes(Name, CondensedNameCodes),
+    ((Module = tile_model; Module = tile_view; Module = location_model)
+        -> arg(1, BaseGoal, V1),
+           arg(2, BaseGoal, V2),
+           Abbrev =.. [Name, V1, V2]
+    ;
+    arg(2, BaseGoal, Value),
+    Abbrev =.. [Name, Value]
+    ).
+
+% remove vowels from NameCodes after first letter.
+condense_name([H|T], [H|CondensedTail]) :-
+    condense_name1(T, CondensedTail).
+
+condense_name1([], []).
+condense_name1([H|T], CondensedNameCodes) :-
+    condense_name2(H, CondensedNameCodes, CondensedTail),
+    condense_name1(T, CondensedTail).
+
+condense_name2(H, CondensedNameCodes, CondensedTail) :-
+    member(H, "aeiouy")
+      -> CondensedNameCodes = CondensedTail
+    ;
+    CondensedNameCodes = [H|CondensedTail].
 
 init_game_model_tiles :-
-    assert_data(gmt(0, [], [], [], 0, [], [], none, none, none, 0, none, none, [], none, closed), 1),
+    assert_data(gmt(0, [], [], [], 0, [], [], none, none, none, 0, none, none, [], none, closed, 0), 1),
     build_tiles.
 
 save_game_model_tiles_stream(Stream) :-
@@ -177,6 +223,17 @@ set_selected_tile_id(Selected) :-
     undoable_update(
         data_selectedTileID(GameModelTilesID, _),
         data_selectedTileID(GameModelTilesID, Selected)).
+
+get_selection_marker(Marker) :-
+    data_selectionMarker(Marker).
+
+update_selection_marker :-
+    data_selectionMarker(GameModelTilesID, Old),
+    New is Old + 1,
+    data_default_id(GameModelTilesID),
+    undoable_update(
+        data_selectionMarker(GameModelTilesID, Old),
+        data_selectionMarker(GameModelTilesID, New)).
 
 get_replacements(Replacements) :-
     data_replacements(Replacements).
@@ -395,7 +452,7 @@ update_game_phase(Old, New) :-
     ).
 
 update_closed_game_phase(Old, New) :-
-    (Old = none
+    Old = none
       -> New = build,
          set_game_phase(New)
     ;
@@ -434,8 +491,7 @@ update_closed_game_phase(Old, New) :-
       set_game_phase(New)
      )
     ;
-    Old = New
-    ).
+    Old = New.
 
 get_game_phase_status(Value) :-
     data_gamePhaseStatus(Value).
@@ -487,3 +543,8 @@ undo_phase_updates :-
     data_gamePhaseStatus(ID, closed), % the undo can only be run when the data is currently 'closed'.
     undo_update(data_gamePhaseStatus(ID, open), data_gamePhaseStatus(ID, closed)), % first back up to data with most recent 'open' state.
     undo_update(data_gamePhaseStatus(ID, closed), _). % undo back through many data updates to when data was next most recently 'closed'.
+
+% undo all undoable updates back to specified selection marker value.
+undo_selection_updates(Marker) :-
+    data_default_id(ID),
+    undo_update(data_selectionMarker(ID, _), data_selectionMarker(ID, Marker)).
