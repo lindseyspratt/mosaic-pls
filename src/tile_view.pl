@@ -4,6 +4,7 @@
      point_in_tile/3, point_in_tile_edge/4, tile_view_values/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
+:- use_module(model_basics). % undoable_update
 :- use_module(geometry).
 
 :- initialization(initdyn).
@@ -36,22 +37,25 @@ get_tile_display_x(ID, Value) :-
     data_displayX(ID, Value).
 
 set_tile_display_x(ID, Value) :-
-    retractall(data_displayX(ID, _)),
-    asserta(data_displayX(ID, Value)).
+    undoable_update(
+        data_displayX(ID, _),
+        data_displayX(ID, Value)).
 
 get_tile_display_y(ID, Value) :-
     data_displayY(ID, Value).
 
 set_tile_display_y(ID, Value) :-
-    retractall(data_displayY(ID, _)),
-    asserta(data_displayY(ID, Value)).
+    undoable_update(
+        data_displayY(ID, _),
+        data_displayY(ID, Value)).
 
 get_tile_size(ID, Value) :-
     data_size(ID, Value).
 
 set_tile_size(ID, Value) :-
-    retractall(data_size(ID, _)),
-    asserta(data_size(ID, Value)).
+    undoable_update(
+        data_size(ID, _),
+        data_size(ID, Value)).
 
 point_in_tile(ID, X, Y) :-
     data_displayX(ID, DX),

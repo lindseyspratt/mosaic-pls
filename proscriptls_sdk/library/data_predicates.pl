@@ -27,6 +27,7 @@ The default_asserted_id(Type, ID) is updated to the last data asserted which is 
     save_data/2, save_data/3, load_data/2, remove_data/2]).
 
 :- use_module(library(wam_compiler)).
+:- use_module(undo).
 
 :- meta_predicate((
     data_predicate_dynamics((:)),
@@ -109,27 +110,70 @@ assert_shadow_arguments([H|T], MPrefix, [HP|TP], ID) :-
 
 assert_shadow_argument(Arg, M:Prefix, Suffix, ID) :-
     construct_data_predicate(Prefix, Suffix, Predicate),
-    GoalR =.. [Predicate, ID, _],
-    Goal =.. [Predicate, ID, Arg],
-    retractall(M:GoalR),
-    assertz(M:Goal).
+    set_abstract_undoable(M:Predicate, ID, Arg).
+%
+%set_abstract(M:Predicate, ID, Arg) :-
+%    GoalR =.. [Predicate, ID, _],
+%    Goal =.. [Predicate, ID, Arg],
+%    retractall(M:GoalR),
+%    assertz(M:Goal).
+%
+%set_abstract(M:Predicate, ID) :-
+%    GoalR =.. [Predicate, _],
+%    Goal =.. [Predicate, ID],
+%    retractall(M:GoalR),
+%    assertz(M:Goal).
+
+set_abstract_undoable(M:Predicate, ID, Arg) :-
+    GoalNew =.. [Predicate, ID, Arg],
+    Goal =.. [Predicate, ID, _],
+    undoable_update(M:Goal, M:GoalNew).
+
+set_abstract_undoable(M:Predicate, ID) :-
+    GoalNew =.. [Predicate, _],
+    Goal =.. [Predicate, ID],
+    undoable_update(M:Goal, M:GoalNew).
+
+retract_abstract(M:Predicate, ID) :-
+    GoalR =.. [Predicate, ID],
+    retract(M:GoalR).
+
+retract_abstract(M:Predicate, ID, Arg) :-
+    GoalR =.. [Predicate, ID, Arg],
+    retract(M:GoalR).
+
+/*
+dummy_reference :-
+    throw(dummy_reference),
+    M:set_Prefix_Suffix(_, _).
+
+M:set_Prefix_Suffix(ID, Arg) :-
+    M:Prefix_Suffix(ID, Old)
+      -> undoable_update(M:Prefix_Suffix(ID, Old), M:Prefix_Suffix(ID, Arg))
+    ;
+    undoable_assert(M:Prefix_Suffix(ID, Arg)).
+
+M:update_Prefix_Suffix(ID, Old, New) :-
+    M:Prefix_Suffix(ID, Old)
+      -> undoable_update(M:Prefix_Suffix(ID, Old), M:Prefix_Suffix(ID, New))
+    ;
+    undoable_assert(M:Prefix_Suffix(ID, New)).
+
+M:clear_Prefix_Suffix(ID) :-
+    undoable_retract(M:Prefix_Suffix(ID, _)).
+*/
 
 default_asserted_id(M:Prefix, ID) :-
     atom_concat(Prefix, '_default_id', Predicate),
-    GoalR =.. [Predicate, _],
-    Goal =.. [Predicate, ID],
-    retractall(M:GoalR),
-    assertz(M:Goal).
+    set_abstract_undoable(M:Predicate, ID).
 
 retract_default_id(M:Prefix) :-
     atom_concat(Prefix, '_default_id', Predicate),
-    GoalR =.. [Predicate, _],
-    retractall(M:GoalR).
+    retract_abstract(M:Predicate, _).
 
 retract_default_id(M:Prefix, ID) :-
     atom_concat(Prefix, '_default_id', Predicate),
-    Goal =.. [Predicate, ID],
-    retract(M:Goal).
+    retract_abstract(M:Predicate, ID).
 
 write_default_id(M:Prefix, Stream) :-
     atom_concat(Prefix, '_default_id', Predicate),
@@ -174,13 +218,112 @@ data_predicate_dynamic(Suffix, M:Prefix) :-
 
 data_predicate_default_dynamic(M:Prefix, Predicate) :-
     (dynamic(M:(Predicate /1))), % BUG: 'dynamic(Predicate/1), foo' is being parsed as dynamic (Predicate/1, foo).
-    Head =.. [Predicate, Value],
+    assert_unary_predicate(M:Prefix, Predicate).
 
-    retractall(M:Head :- _),
-    atom_concat(Prefix, '_default_id', DefaultPredicate),
-    DefaultGoal =.. [DefaultPredicate, DefaultID],
-    BinaryGoal =.. [Predicate, DefaultID, Value],
-    asserta((M:Head :- M:DefaultGoal, M:BinaryGoal)).
+assert_unary_predicate(ModulePrefix, Predicate) :-
+    build_unary_predicate_clause(ModulePrefix, Predicate, Clause),
+    retract_assert_clause(Clause).
+
+build_unary_predicate_clause(M:Prefix, Predicate, Clause) :-
+    create_clause(
+        goal(M, [Predicate], [Arg]),
+        (goal(M, [Prefix, default_id], [ID]),
+         goal(M, [Predicate], [ID,Arg])
+        ),
+        Clause).
+
+assert_action_predicate(Action, ModulePredicate) :-
+    build_predicate_clause(Action, ModulePredicate, Clause),
+    retract_assert_clause(Clause).
+
+retract_assert_clause(Head :- Body) :-
+    retractall(Head :- _),
+    asserta(Head :- Body).
+
+build_predicate_clause(set, M:Predicate, Clause) :-
+    create_clause(
+        goal(M, [set, Predicate], [ID, Arg]),
+        goal(M, [update, Predicate], [ID, _, Arg]),
+        Clause).
+
+build_predicate_clause(update, M:Predicate, Clause) :-
+    create_goals(goal(M, [Predicate], [ID, Old]), RefOld),
+    create_goals(goal(M, [Predicate], [ID, New]), RefNew),
+    create_clause(
+        goal(M, [update, Predicate], [Old, New]),
+        (RefOld -> undoable_update(RefOld, RefNew) ; undoable_assert(RefNew)),
+        Clause).
+
+build_predicate_clause(clear, M:Predicate, Clause) :-
+    create_goals(goal(M, [Predicate], [ID, New]), RefNew),
+    create_clause(
+        goal(M, [clear, Predicate], [ID, New]),
+        undoable_retract(RefNew),
+        Clause).
+
+test_create_clause(M, Prefix, Suffix, Clause) :-
+    create_goals(goal(M, [Prefix, Suffix], [ID, _]), Ref1),
+    create_goals(goal(M, [Prefix, Suffix], [ID, Arg]), Ref2),
+    create_clause(goal(M, [set, Prefix, Suffix], [ID, Arg]),
+       (Ref1 -> undoable_update(Ref1, Ref2); undoable_assert(Ref2)),
+     Clause).
+
+create_clause(Head, Body, (CreatedHead :- CreatedBody)) :-
+    create_goals(Head, CreatedHead),
+    create_goals(Body, CreatedBody).
+
+create_goal(goal(Module, Parts, Args), Module:CreatedGoal) :-
+    concat_parts(Parts, '_', Predicate),
+    CreatedGoal =.. [Predicate|Args ].
+
+create_goals((A,B), (CreatedA, CreatedB)) :-
+    !,
+    create_goals(A, CreatedA),
+    create_goals(B, CreatedB).
+create_goals((A -> B ; C), (CreatedA -> CreatedB ; CreatedC)) :-
+    !,
+    create_goals(A, CreatedA),
+    create_goals(B, CreatedB),
+    create_goals(C, CreatedC).
+create_goals((A ; C), (CreatedA ; CreatedC)) :-
+    !,
+    create_goals(A, CreatedA),
+    create_goals(C, CreatedC).
+create_goals(goal(Module, Parts, Args), CreatedGoal) :-
+    !,
+    create_goal(goal(Module, Parts, Args), CreatedGoal).
+create_goals(Goal, Goal).
+
+concat_parts(Parts, Separator, Concatenation) :-
+    concat_parts(Parts, Separator, '', Concatenation).
+
+concat_parts([], _, Out, Out).
+concat_parts([H|T], Separator, In, Out) :-
+    (In = ''
+      -> Next = H
+    ;
+    Separator = ''
+      -> atomic_concat(In, H, Next)
+    ;
+    atomic_concat(In, Separator, ExtendedIn),
+    atom_concat(ExtendedIn, H, Next)
+    ),
+    concat_parts(T, Separator, Next, Out).
+
+atomic_concat(A, B, C) :-
+    (number(A)
+      -> number_codes(A, ACodes),
+         atom_codes(AAtom, ACodes)
+    ;
+    AAtom = A
+    ),
+    (number(B)
+      -> number_codes(B, BCodes),
+         atom_codes(BAtom, BCodes)
+    ;
+    BAtom = B
+    ),
+    atom_concat(AAtom, BAtom, C).
 
 construct_data_predicate(Prefix, Suffix, Predicate) :-
     atom_concat(Prefix, '_', PrefixExtended),
@@ -240,8 +383,7 @@ retract_data1(M:Prefix, ID) :-
 retract_data([], _, _).
 retract_data([H|T], M:Prefix, ID) :-
     construct_data_predicate(Prefix, H, Predicate),
-    Goal =.. [Predicate, ID, _],
-    retractall(M:Goal),
+    retract_abstract(M:Predicate, ID, _),
     retract_data(T, M:Prefix, ID).
 
 % store facts for data matching M:Prefix in the browser's localStorage

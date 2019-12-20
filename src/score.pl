@@ -24,10 +24,14 @@ create_score:-
     assert_data(s([]), 1).
 
 clear_score :-
-    retract_data(data, 1).
+    data_default_id(ID),
+    clear_components(ID).
 
 get_components(Components) :-
     data_components(Components).
+
+clear_components(ID) :-
+    undoable_retract(data_components(ID, _)).
 
 save_score_stream(Stream) :-
     writeln(save_score),
@@ -55,14 +59,17 @@ score(Scores) :-
 
 set_components(Components) :-
     data_default_id(ID),
-    retractall(data_components(ID, _)),
-    asserta(data_components(ID, Components)).
+    undoable_update(
+        data_components(ID, _),
+        data_components(ID, Components)).
 
 incremental_score(NewTile, Scores) :-
     data_default_id(ID),
-    retract(data_components(ID, OldComponents)),
+    data_components(ID, OldComponents),
     incremental_score(NewTile, OldComponents, MergedComponents, Scores),
-    asserta(data_components(ID, MergedComponents)).
+    undoable_update(
+        data_components(ID, OldComponents),
+        data_components(ID, MergedComponents)).
 
 incremental_score(NewTile, OldComponents, Components, Scores) :-
     graph([NewTile], NewNodes, NewEdges),

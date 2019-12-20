@@ -290,9 +290,11 @@ reset_by_last_tile_placed([H|T]) :-
 
 increment_location_counter(NewCounter) :-
     data_default_id(DataID),
-    retract(data_locationCounter(DataID, Counter)),
+    data_locationCounter(DataID, Counter),
     NewCounter is Counter + 1,
-    asserta(data_locationCounter(DataID, NewCounter)).
+    undoable_update(
+        data_locationCounter(DataID, Counter),
+        data_locationCounter(DataID, NewCounter)).
 
 get_shaped_positions(Value) :-
     data_shapedPositions(Value).
@@ -303,34 +305,39 @@ get_shaped_positions(Value, Complete) :-
 
 set_shaped_positions(Value, Complete) :-
     data_default_id(ID),
-    retract(data_shapedPositions(ID, _)),
-    asserta(data_shapedPositions(ID, Value)),
-    retract(data_shapedPositionsComplete(ID, _)),
-    asserta(data_shapedPositionsComplete(ID, Complete)).
+    undoable_update(
+        data_shapedPositions(ID, _),
+        data_shapedPositions(ID, Value)),
+    undoable_update(
+        data_shapedPositionsComplete(ID, _),
+        data_shapedPositionsComplete(ID, Complete)).
 
 get_legal_positions(Value) :-
     data_legalPositions(Value).
 
 set_legal_positions(Value) :-
     data_default_id(ID),
-    retract(data_legalPositions(ID, _)),
-    asserta(data_legalPositions(ID, Value)).
+    undoable_update(
+        data_legalPositions(ID, _),
+        data_legalPositions(ID, Value)).
 
 get_legal_positions_with_rotation(Value) :-
     data_legalPositionsWithRotation(Value).
 
 set_legal_positions_with_rotation(Value) :-
     data_default_id(ID),
-    retract(data_legalPositionsWithRotation(ID, _)),
-    asserta(data_legalPositionsWithRotation(ID, Value)).
+    undoable_update(
+        data_legalPositionsWithRotation(ID, _),
+        data_legalPositionsWithRotation(ID, Value)).
 
 get_irreplaceables(Value) :-
     data_irreplaceables(Value).
 
 set_irreplaceables(Value) :-
     data_default_id(ID),
-    retract(data_irreplaceables(ID, _)),
-    asserta(data_irreplaceables(ID, Value)).
+    undoable_update(
+        data_irreplaceables(ID, _),
+        data_irreplaceables(ID, Value)).
 
 get_rebuild_positions(RebuildPositions) :-
     data_rebuildPositions(RebuildPositions).
@@ -338,13 +345,15 @@ get_rebuild_positions(RebuildPositions) :-
 add_rebuild_position(X > Y) :-
     create_location(LocationID, X, Y),
     data_default_id(ID),
-    retract(data_rebuildPositions(ID, Rebuilds)),
-    asserta(data_rebuildPositions(ID, [LocationID|Rebuilds])).
+    undoable_update(
+        data_rebuildPositions(ID, Rebuilds),
+        data_rebuildPositions(ID, [LocationID|Rebuilds])).
 
 set_rebuild_positions(Value) :-
     data_default_id(ID),
-    retract(data_rebuildPositions(ID, _)),
-    asserta(data_rebuildPositions(ID, Value)).
+    undoable_update(
+        data_rebuildPositions(ID, _),
+        data_rebuildPositions(ID, Value)).
 
 find_rebuild_hole_shaped_locations :-
     data_rebuildPositions(RebuildPositions),

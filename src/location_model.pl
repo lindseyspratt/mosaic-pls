@@ -45,70 +45,117 @@ load_location_model :-
     load_data(data, local_storage('mosaic')).
 
 clear_location(ID) :-
-    retract_data(data, ID).
+    clear_location_grid_x(ID),
+    clear_location_grid_y(ID),
+    clear_location_neighbors(ID),
+    clear_location_orthogonal_neighbors(ID),
+    clear_location_by_last_tile_placed(ID),
+    clear_location_constraints(ID),
+    clear_location_forced_colors(ID),
+    clear_location_replacements(ID),
+    clear_location_minimum_mismatch(ID).
 
 get_location_grid_x(ID, Value) :-
     data_gridX(ID, Value).
 
+clear_location_grid_x(ID) :-
+    undoable_retract(data_gridX(ID, _)).
+
 get_location_grid_y(ID, Value) :-
     data_gridY(ID, Value).
+
+clear_location_grid_y(ID) :-
+    undoable_retract(data_gridY(ID, _)).
 
 get_location_neighbors(ID, Value) :-
     data_neighbors(ID, Value).
 
+clear_location_neighbors(ID) :-
+    undoable_retract(data_neighbors(ID, _)).
+
 get_location_orthogonal_neighbors(ID, Value) :-
     data_orthogonalNeighbors(ID, Value).
+
+clear_location_orthogonal_neighbors(ID) :-
+    undoable_retract(data_orthogonalNeighbors(ID, _)).
 
 get_location_by_last_tile_placed(ID, Value) :-
     data_byLastTilePlaced(ID, Value).
 
+clear_location_by_last_tile_placed(ID) :-
+    undoable_retract(data_byLastTilePlaced(ID, _)).
+
 set_location_by_last_tile_placed(ID, Value) :-
-    retract(data_byLastTilePlaced(ID, _)),
-    asserta(data_byLastTilePlaced(ID, Value)).
+    undoable_update(
+        data_byLastTilePlaced(ID, _),
+        data_byLastTilePlaced(ID, Value)).
 
 get_location_constraints(ID, Value) :-
     data_constraints(ID, Value).
 
+clear_location_constraints(ID) :-
+    undoable_retract(data_constraints(ID, _)).
+
 set_location_constraints(ID, Value) :-
-    retract(data_constraints(ID, _)),
-    asserta(data_constraints(ID, Value)).
+    undoable_update(
+        data_constraints(ID, _),
+        data_constraints(ID, Value)).
 
 set_location_constraint(ID, Position, Value) :-
-    retract(data_constraints(ID, Old)),
+    data_constraints(ID, Old),
     replace(Old, Position, Value, New),
-    asserta(data_constraints(ID, New)).
+    undoable_update(
+        data_constraints(ID, Old),
+        data_constraints(ID, New)).
 
 get_location_forced_colors(ID, Value) :-
     data_forcedColors(ID, Value).
 
+clear_location_forced_colors(ID) :-
+    undoable_retract(data_forcedColors(ID, _)).
+
 set_location_forced_color(ID, Position, Value) :-
-    retract(data_forcedColors(ID, Old)),
+    data_forcedColors(ID, Old),
     replace(Old, Position, Value, New),
-    asserta(data_forcedColors(ID, New)).
+    undoable_update(
+        data_forcedColors(ID, Old),
+        data_forcedColors(ID, New)).
 
 get_location_replacements(ID, Value) :-
     data_replacements(ID, Value).
 
+clear_location_replacements(ID) :-
+    undoable_retract(data_replacements(ID, _)).
+
 set_location_replacements(ID, Value) :-
-    retractall(data_replacements(ID, _)),
-    asserta(data_replacements(ID, Value)).
+    undoable_update(
+        data_replacements(ID, _),
+        data_replacements(ID, Value)).
 
 get_location_minimum_mismatch(ID, Value) :-
     data_minimumMismatch(ID, Value).
 
+clear_location_minimum_mismatch(ID) :-
+    undoable_retract(data_minimumMismatch(ID, _)).
+
 set_location_minimum_mismatch(ID, Value) :-
-    retractall(data_minimumMismatch(ID, _)),
-    asserta(data_minimumMismatch(ID, Value)).
+    undoable_update(
+        data_minimumMismatch(ID, _),
+        data_minimumMismatch(ID, Value)).
 
 increment_location_neighbors(ID, New) :-
-    retract(data_neighbors(ID, Old)),
+    data_neighbors(ID, Old),
     New is Old + 1,
-    asserta(data_neighbors(ID, New)).
+    undoable_update(
+        data_neighbors(ID, Old),
+        data_neighbors(ID, New)).
 
 increment_location_orthogonal_neighbors(ID, New) :-
-    retract(data_orthogonalNeighbors(ID, Old)),
+    data_orthogonalNeighbors(ID, Old),
     New is Old + 1,
-    asserta(data_orthogonalNeighbors(ID, New)).
+    undoable_update(
+        data_orthogonalNeighbors(ID, Old),
+        data_orthogonalNeighbors(ID, New)).
 
 replace([_|T], 1, Value, [Value|T]) :-
     !.

@@ -486,6 +486,15 @@ setup_replacements(TilesForHand) :-
     place_tiles_in_hand(TilesForHand),
     layout_hands.
 
+draw_game_tiles_and_locations :-
+    get_context(Ctx),
+    draw_game_tiles_and_locations(Ctx).
+
+draw_game_tiles_and_locations(Ctx) :-
+    get_context(Ctx),
+    draw_game_tiles(Ctx),
+    draw_locations(Ctx).
+
 draw_game_tiles :-
     get_context(Ctx),
     draw_game_tiles(Ctx).
@@ -495,6 +504,11 @@ draw_game_tiles(Ctx) :-
     get_canvas_height(H),
     get_tiles(TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
+
+draw_locations(Ctx) :-
+    get_legal_positions(LegalPositions),
+    get_legal_positions_with_rotation(LegalPositionsWithRotation),
+    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
 
 % Tile is replacing a tile that was moved out of the
 % board to a hand (due to a transform selection or
@@ -603,4 +617,4 @@ undo_last_selection :-
     get_selection_marker(Marker),
     PreviousMarker is Marker - 1,
     undo_selection_updates(PreviousMarker),
-    draw_game_tiles.
+    draw_game_tiles_and_locations.

@@ -51,10 +51,14 @@ initdyn :-
           lastPlacedTile1, lastPlacedTile2, lastBuildPhaseTilePlacedID,
           turn, turnAfterResolution, selectedTileID, replacements, gamePhase, gamePhaseStatus, selectionMarker])]).
 
+dummy_reference :-
+    dummy_reference,
+    abbrev(_,_,_).
+
 write_undo_history(Marker) :-
-    findall(A, X^Y^(model_basics:undoable_term(X, Y), game_model_tiles:abbrev(Y, A)), Xs),
+    findall(A, (undoable_term(X, Y), abbrev(Y, X, A)), Xs),
     data_default_id(ID),
-    game_model_tiles:abbrev(game_model_tiles:data_selectionMarker(ID, Marker), MA),
+    abbrev1(game_model_tiles:data_selectionMarker(ID, Marker), MA),
     write_undo_history(Xs, MA).
 
 write_undo_history([H|T], MA) :-
@@ -64,7 +68,22 @@ write_undo_history([H|T], MA) :-
      write_undo_history(T, MA)
     ).
 
-abbrev(Module : BaseGoal, Abbrev) :-
+abbrev(_ : '$none', X, - Abbrev) :-
+    !,
+    abbrev1(X, Abbrev).
+abbrev(Y, _ : '$none', + Abbrev) :-
+    !,
+    abbrev1(Y, Abbrev).
+abbrev('$none', X, - Abbrev) :-
+    !,
+    abbrev1(X, Abbrev).
+abbrev(Y, '$none', + Abbrev) :-
+    !,
+    abbrev1(Y, Abbrev).
+abbrev(Y, _X, Abbrev) :-
+    abbrev1(Y, Abbrev).
+
+abbrev1(Module : BaseGoal, Abbrev) :-
     Module : data_predicates(_, Prefix, _),
     atom_codes(Prefix, PrefixCodes),
     append(PrefixCodes, "_", CombinedPrefixCodes),
@@ -547,4 +566,4 @@ undo_phase_updates :-
 % undo all undoable updates back to specified selection marker value.
 undo_selection_updates(Marker) :-
     data_default_id(ID),
-    undo_update(data_selectionMarker(ID, _), data_selectionMarker(ID, Marker)).
+    undo_update(_, data_selectionMarker(ID, Marker)).
