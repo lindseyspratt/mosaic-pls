@@ -15,9 +15,13 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(vb, data,[canvasWidth, canvasHeight, canvasOffsetTop, canvasOffsetLeft, context,
-        colors, highlightColors, handTileSize, handPadding, handMargin,
-        boardTileSize, boardLeft, boardTop, boardWidth, boardHeight])]).
+    data_predicate_dynamics(
+        [data_predicates(vb, data, [undoable],
+            [canvasWidth, canvasHeight, canvasOffsetTop, canvasOffsetLeft, context,
+             colors, highlightColors, handTileSize, handPadding, handMargin,
+             boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
+            ])
+        ]).
 
 create_view_basics :-
         _Canvas >> [id -:> canvas,

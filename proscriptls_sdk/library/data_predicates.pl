@@ -17,10 +17,10 @@ address_name/1, address_street_number/1, address_street_name/1, etc.
 The arity 2 predicates associate attributes with an 'instance' of the data type.
 For the address example we can assert an address using assert_datas([addr(nguyen, 15, main_st, centerville, idaho, 83631)]).
 This associates ID 1 with each of these attributes: address_name(1, nguyen), address_street_number(1, 15), etc.
-The default_asserted_id(Type, ID) is updated to the last data asserted which is 1 in this example.
+The default_asserted_id(Type, ID, Opt) is updated to the last data asserted which is 1 in this example.
 */
 :- module(data_predicates,
-    [data_predicates/3, data_predicate_dynamics/1,
+    [data_predicates/4, data_predicate_dynamics/1,
     assert_datas/1, assert_datas/2, assert_id_datas/1, assert_data/2,
     labelled_values/3, retract_all_data/1, retract_data/2,
     save_data_stream/2, save_data_stream/3,
@@ -35,7 +35,7 @@ The default_asserted_id(Type, ID) is updated to the last data asserted which is 
     assert_id_datas((:)),
     assert_datas((:), ?),
     assert_datas((:)),
-    data_predicates(?, (:), ?),
+    data_predicates(?, (:), ?, ?),
     labelled_values((:), ?, ?),
     retract_data((:),?),
     retract_all_data((:)),
@@ -48,7 +48,7 @@ The default_asserted_id(Type, ID) is updated to the last data asserted which is 
     load_data((:), ?),
     remove_data((:), ?))).
 
-:- dynamic data_predicates/3.
+:- dynamic data_predicates/4.
 
 % ShadowData is in-memory representation of data
 % where ShadowData is a structure of many arguments and
@@ -92,88 +92,81 @@ assert_data(ShadowData, ID) :-
 
 assert_data1(M:ShadowData, ID) :-
     ShadowData =.. [F|Args],
-    data_predicates(F, M:Prefix, Suffixes),
+    data_predicates(F, M:Prefix, Opt, Suffixes),
     (length(Suffixes, ArgCount),
      length(Args, ArgCount)
-       -> assert_shadow_arguments(Args, M:Prefix, Suffixes, ID),
-          default_asserted_id(M:Prefix, ID)
+       -> assert_shadow_arguments(Args, M:Prefix, Suffixes, ID, Opt),
+          default_asserted_id(M:Prefix, ID, Opt)
     ;
      length(Suffixes, ArgCount1),
      length(Args, ArgCount2),
      throw(shadow_argument_error('Count different from count of shadow argument', M, F, Prefix, ArgCount1, ArgCount2))
     ).
 
-assert_shadow_arguments([], _, [], _).
-assert_shadow_arguments([H|T], MPrefix, [HP|TP], ID) :-
-    assert_shadow_argument(H, MPrefix, HP, ID),
-    assert_shadow_arguments(T, MPrefix, TP, ID).
+assert_shadow_arguments([], _, [], _, _).
+assert_shadow_arguments([H|T], MPrefix, [HP|TP], ID, Opt) :-
+    assert_shadow_argument(H, MPrefix, HP, ID, Opt),
+    assert_shadow_arguments(T, MPrefix, TP, ID, Opt).
 
-assert_shadow_argument(Arg, M:Prefix, Suffix, ID) :-
+assert_shadow_argument(Arg, M:Prefix, Suffix, ID, Opt) :-
     construct_data_predicate(Prefix, Suffix, Predicate),
-    set_abstract_undoable(M:Predicate, ID, Arg).
-%
-%set_abstract(M:Predicate, ID, Arg) :-
-%    GoalR =.. [Predicate, ID, _],
-%    Goal =.. [Predicate, ID, Arg],
-%    retractall(M:GoalR),
-%    assertz(M:Goal).
-%
-%set_abstract(M:Predicate, ID) :-
-%    GoalR =.. [Predicate, _],
-%    Goal =.. [Predicate, ID],
-%    retractall(M:GoalR),
-%    assertz(M:Goal).
+    storage_mode(Opt, Mode),
+    set_abstract(Mode, M:Predicate, ID, Arg).
 
-set_abstract_undoable(M:Predicate, ID, Arg) :-
-    GoalNew =.. [Predicate, ID, Arg],
-    Goal =.. [Predicate, ID, _],
-    undoable_update(M:Goal, M:GoalNew).
+storage_mode(Opt, Mode) :-
+    member(undoable, Opt)
+      -> Mode = undoable
+    ;
+    Mode = ephemeral.
 
-set_abstract_undoable(M:Predicate, ID) :-
+set_abstract(ephemeral, M:Predicate, ID) :-
+    GoalR =.. [Predicate, _],
+    Goal =.. [Predicate, ID],
+    retractall(M:GoalR),
+    assertz(M:Goal).
+set_abstract(undoable, M:Predicate, ID) :-
     GoalNew =.. [Predicate, _],
     Goal =.. [Predicate, ID],
     undoable_update(M:Goal, M:GoalNew).
 
-retract_abstract(M:Predicate, ID) :-
+set_abstract(ephemeral, M:Predicate, ID, Arg) :-
+    GoalR =.. [Predicate, ID, _],
+    Goal =.. [Predicate, ID, Arg],
+    retractall(M:GoalR),
+    assertz(M:Goal).
+set_abstract(undoable, M:Predicate, ID, Arg) :-
+    GoalNew =.. [Predicate, ID, Arg],
+    Goal =.. [Predicate, ID, _],
+    undoable_update(M:Goal, M:GoalNew).
+
+retract_abstract(ephemeral, M:Predicate, ID) :-
     GoalR =.. [Predicate, ID],
     retract(M:GoalR).
+retract_abstract(undoable, M:Predicate, ID) :-
+    GoalR =.. [Predicate, ID],
+    undoable_retract(M:GoalR).
 
-retract_abstract(M:Predicate, ID, Arg) :-
+retract_abstract(ephemeral, M:Predicate, ID, Arg) :-
     GoalR =.. [Predicate, ID, Arg],
     retract(M:GoalR).
+retract_abstract(undoable, M:Predicate, ID, Arg) :-
+    GoalR =.. [Predicate, ID, Arg],
+    undoable_retract(M:GoalR).
 
-/*
-dummy_reference :-
-    throw(dummy_reference),
-    M:set_Prefix_Suffix(_, _).
-
-M:set_Prefix_Suffix(ID, Arg) :-
-    M:Prefix_Suffix(ID, Old)
-      -> undoable_update(M:Prefix_Suffix(ID, Old), M:Prefix_Suffix(ID, Arg))
-    ;
-    undoable_assert(M:Prefix_Suffix(ID, Arg)).
-
-M:update_Prefix_Suffix(ID, Old, New) :-
-    M:Prefix_Suffix(ID, Old)
-      -> undoable_update(M:Prefix_Suffix(ID, Old), M:Prefix_Suffix(ID, New))
-    ;
-    undoable_assert(M:Prefix_Suffix(ID, New)).
-
-M:clear_Prefix_Suffix(ID) :-
-    undoable_retract(M:Prefix_Suffix(ID, _)).
-*/
-
-default_asserted_id(M:Prefix, ID) :-
+default_asserted_id(M:Prefix, ID, Opt) :-
     atom_concat(Prefix, '_default_id', Predicate),
-    set_abstract_undoable(M:Predicate, ID).
+    storage_mode(Opt, Mode),
+    set_abstract(Mode, M:Predicate, ID).
 
-retract_default_id(M:Prefix) :-
+retract_default_id(M:Prefix, Opt) :-
     atom_concat(Prefix, '_default_id', Predicate),
-    retract_abstract(M:Predicate, _).
+    storage_mode(Opt, Mode),
+    retract_abstract(Mode, M:Predicate, _).
 
-retract_default_id(M:Prefix, ID) :-
+retract_default_id(M:Prefix, ID, Opt) :-
     atom_concat(Prefix, '_default_id', Predicate),
-    retract_abstract(M:Predicate, ID).
+    storage_mode(Opt, Mode),
+    retract_abstract(Mode, M:Predicate, ID).
 
 write_default_id(M:Prefix, Stream) :-
     atom_concat(Prefix, '_default_id', Predicate),
@@ -185,7 +178,7 @@ write_default_id(M:Prefix, Stream) :-
 
 data_predicate_dynamics(M : DPs) :-
     assert_dps(M : DPs),
-    findall(Prefix-Suffixes, data_predicates(_, M:Prefix, Suffixes), All),
+    findall(Prefix-Suffixes-Opt, data_predicates(_, M:Prefix, Opt, Suffixes), All),
     data_predicate_dynamics1a(M:All).
 
 assert_dps(_M : []) :- !.
@@ -194,27 +187,33 @@ assert_dps(M : [H|T]) :-
     assert_dps(M : T).
 
 assert_dp(M : data_predicates(F, P, S)) :-
-    data_predicates(_, M:P, _)
+    !,
+    assert_dp(M : data_predicates(F, P, [], S)).
+
+assert_dp(M : data_predicates(F, P, Opt, S)) :-
+    data_predicates(_, M:P, _, _)
       -> true % writeln(already_asserted_long(M:P))
     ;
-    assertz(data_predicates(F, M:P, S)).
+    assertz(data_predicates(F, M:P, Opt, S)).
 
-data_predicate_dynamics1a(_M:[]).
-data_predicate_dynamics1a(M:[Prefix-Suffixes|T]) :-
-    data_predicate_dynamics(Suffixes, M:Prefix),
+data_predicate_dynamics1a(_M:[], _).
+data_predicate_dynamics1a(M:[Prefix-Suffixes-Opt|T]) :-
+    data_predicate_dynamics(Suffixes, M:Prefix, Opt),
     atom_concat(Prefix, '_default_id', DefaultPredicate),
     (dynamic(M:(DefaultPredicate / 1))),
-    data_predicate_dynamics1a(M:T).
+    data_predicate_dynamics1a(M:T, Opt).
 
-data_predicate_dynamics([], _).
-data_predicate_dynamics([H|T], MPrefix) :-
-    data_predicate_dynamic(H, MPrefix),
-    data_predicate_dynamics(T, MPrefix).
+data_predicate_dynamics([], _, _).
+data_predicate_dynamics([H|T], MPrefix, Opt) :-
+    data_predicate_dynamic(H, MPrefix, Opt),
+    data_predicate_dynamics(T, MPrefix, Opt).
 
-data_predicate_dynamic(Suffix, M:Prefix) :-
+data_predicate_dynamic(Suffix, M:Prefix, Opt) :-
     construct_data_predicate(Prefix, Suffix, Predicate),
     (dynamic(M:(Predicate / 2))), % BUG: 'dynamic(Predicate/2), foo' is being parsed as dynamic (Predicate/2, foo).
-    data_predicate_default_dynamic(M:Prefix, Predicate).
+    data_predicate_default_dynamic(M:Prefix, Predicate),
+    storage_mode(Opt, Mode),
+    assert_action_predicates(M:Predicate, Mode).
 
 data_predicate_default_dynamic(M:Prefix, Predicate) :-
     (dynamic(M:(Predicate /1))), % BUG: 'dynamic(Predicate/1), foo' is being parsed as dynamic (Predicate/1, foo).
@@ -232,40 +231,100 @@ build_unary_predicate_clause(M:Prefix, Predicate, Clause) :-
         ),
         Clause).
 
-assert_action_predicate(Action, ModulePredicate) :-
-    build_predicate_clause(Action, ModulePredicate, Clause),
+assert_action_predicates(ModulePredicate, Mode) :-
+    assert_action_predicate(set, ModulePredicate, Mode),
+    assert_action_predicate(update, ModulePredicate, Mode),
+    assert_action_predicate(clear, ModulePredicate, Mode).
+
+assert_action_predicate(Action, ModulePredicate, Mode) :-
+    build_predicate_clause(Action, Mode, ModulePredicate, Clause),
     retract_assert_clause(Clause).
 
 retract_assert_clause(Head :- Body) :-
-    retractall(Head :- _),
+    functor(Head, Functor, Arity),
+    (current_predicate(Functor/Arity)
+      ->  retractall(Head :- _)
+    ;
+    true
+    ),
     asserta(Head :- Body).
 
-build_predicate_clause(set, M:Predicate, Clause) :-
+/*
+dummy_reference :-
+    throw(dummy_reference),
+    M:set_Prefix_Suffix(_, _).
+
+M:set_Prefix_Suffix(ID, Arg) :-
+    update_Prefix_Suffix(ID, _, Arg).
+
+% ephemeral
+M:set_Prefix_Suffix(ID, Arg) :-
+    retractall(M:Prefix_Suffix(ID, _)),
+    asserta(M:Prefix_Suffix(ID, Arg)).
+
+% undoable
+M:update_Prefix_Suffix(ID, Old, New) :-
+    M:Prefix_Suffix(ID, Old)
+      -> undoable_update(M:Prefix_Suffix(ID, Old), M:Prefix_Suffix(ID, New))
+    ;
+    undoable_assert(M:Prefix_Suffix(ID, New)).
+
+% ephemeral
+M:update_Prefix_Suffix(ID, Old, New) :-
+    retract(M:Prefix_Suffix(ID, Old)),
+    asserta(M:Prefix_Suffix(ID, New)).
+
+% undoable
+M:clear_Prefix_Suffix(ID) :-
+    undoable_retract(M:Prefix_Suffix(ID, _)).
+
+% ephemeral
+M:clear_Prefix_Suffix(ID) :-
+    retractall(M:Prefix_Suffix(ID, _)).
+
+*/
+
+build_predicate_clause(set, _, M:Predicate, Clause) :-
     create_clause(
         goal(M, [set, Predicate], [ID, Arg]),
         goal(M, [update, Predicate], [ID, _, Arg]),
         Clause).
 
-build_predicate_clause(update, M:Predicate, Clause) :-
+build_predicate_clause(update, undoable, M:Predicate, Clause) :-
     create_goals(goal(M, [Predicate], [ID, Old]), RefOld),
     create_goals(goal(M, [Predicate], [ID, New]), RefNew),
     create_clause(
-        goal(M, [update, Predicate], [Old, New]),
-        (RefOld -> undoable_update(RefOld, RefNew) ; undoable_assert(RefNew)),
+        goal(M, [update, Predicate], [ID, Old, New]),
+        (RefOld -> undo:undoable_update(RefOld, RefNew) ; undo:undoable_assert(RefNew)),
         Clause).
 
-build_predicate_clause(clear, M:Predicate, Clause) :-
+build_predicate_clause(update, ephemeral, M:Predicate, Clause) :-
+    create_goals(goal(M, [Predicate], [ID, Old]), RefOld),
     create_goals(goal(M, [Predicate], [ID, New]), RefNew),
     create_clause(
-        goal(M, [clear, Predicate], [ID, New]),
-        undoable_retract(RefNew),
+        goal(M, [update, Predicate], [ID, Old, New]),
+        (retract(RefOld), asserta(RefNew)),
+        Clause).
+
+build_predicate_clause(clear, undoable, M:Predicate, Clause) :-
+    create_goals(goal(M, [Predicate], [ID, _]), RefNew),
+    create_clause(
+        goal(M, [clear, Predicate], [ID]),
+        undo:undoable_retract(RefNew),
+        Clause).
+
+build_predicate_clause(clear, ephemeral, M:Predicate, Clause) :-
+    create_goals(goal(M, [Predicate], [ID, _]), RefNew),
+    create_clause(
+        goal(M, [clear, Predicate], [ID]),
+        undo:undoable_retract(RefNew),
         Clause).
 
 test_create_clause(M, Prefix, Suffix, Clause) :-
     create_goals(goal(M, [Prefix, Suffix], [ID, _]), Ref1),
     create_goals(goal(M, [Prefix, Suffix], [ID, Arg]), Ref2),
     create_clause(goal(M, [set, Prefix, Suffix], [ID, Arg]),
-       (Ref1 -> undoable_update(Ref1, Ref2); undoable_assert(Ref2)),
+       (Ref1 -> undo:undoable_update(Ref1, Ref2); undo:undoable_assert(Ref2)),
      Clause).
 
 create_clause(Head, Body, (CreatedHead :- CreatedBody)) :-
@@ -330,7 +389,7 @@ construct_data_predicate(Prefix, Suffix, Predicate) :-
     atom_concat(PrefixExtended, Suffix, Predicate).
 
 labelled_values(M:Prefix, ID, Values) :-
-    data_predicates(_, M:Prefix, Suffixes),
+    data_predicates(_, M:Prefix, _, Suffixes),
     data_values(Suffixes, M:Prefix, ID, Values).
 
 data_values([], _, _, []).
@@ -350,7 +409,6 @@ retract_all_data(DataSpec) :-
     retract_all_data1(DataSpec).
 
 retract_all_data1(M:Prefix) :-
-    retract_default_id(M:Prefix),
     ids_in_use(M:Prefix, SortedIDs),
     retract_all_data1(SortedIDs, M:Prefix).
 
@@ -360,7 +418,7 @@ retract_all_data(_M1:M2:Prefix, IDs) :-
 retract_all_data(DataSpec, IDs) :-
     retract_all_data1(IDs, DataSpec).
 
-retract_all_data1([],_).
+retract_all_data1([], _).
 retract_all_data1([H|T], M:Prefix) :-
     retract_data1(M:Prefix, H),
     retract_all_data1(T, M:Prefix).
@@ -372,19 +430,20 @@ retract_data(DataSpec, ID) :-
     retract_data1(DataSpec, ID).
 
 retract_data1(M:Prefix, ID) :-
-    (retract_default_id(M:Prefix, ID) % retract foo_default_id if set to ID, otherwise leave it.
+    data_predicates(_, M:Prefix, Opt, Suffixes),
+    (retract_default_id(M:Prefix, ID, Opt) % retract foo_default_id if set to ID, otherwise leave it.
       -> true
     ;
      true
     ),
-    data_predicates(_, M:Prefix, Suffixes),
-    retract_data(Suffixes, M:Prefix, ID).
+    retract_data(Suffixes, M:Prefix, ID, Opt).
 
-retract_data([], _, _).
-retract_data([H|T], M:Prefix, ID) :-
+retract_data([], _, _, _).
+retract_data([H|T], M:Prefix, ID, Opt) :-
     construct_data_predicate(Prefix, H, Predicate),
-    retract_abstract(M:Predicate, ID, _),
-    retract_data(T, M:Prefix, ID).
+    storage_mode(Opt, Mode),
+    retract_abstract(Mode, M:Predicate, ID, _),
+    retract_data(T, M:Prefix, ID, Opt).
 
 % store facts for data matching M:Prefix in the browser's localStorage
 % where the facts are stored as a single string/blob and the
@@ -439,7 +498,7 @@ save_data_stream1(M:Prefix, IDs, Stream) :-
     gather_data(Stream, M:Prefix, IDs).
 
 gather_data(Stream, M:Prefix, IDs) :-
-    data_predicates(_, M:Prefix, Suffixes),
+    data_predicates(_, M:Prefix, _, Suffixes),
     gather_data(Suffixes, Stream, M:Prefix, IDs).
 
 gather_data([], _, _, _).
@@ -509,7 +568,7 @@ remove_data1(M:Prefix, local_storage(Key)) :-
     dom_object_method(S, removeItem(K)).
 
 ids_in_use(M:Prefix, SortedIDs) :-
-    data_predicates(_, M:Prefix, Suffixes),
+    data_predicates(_, M:Prefix, _, Suffixes),
     !,
     ids_in_use(Suffixes, M:Prefix, IDs),
     sort(IDs, SortedIDs). % remove duplicates.

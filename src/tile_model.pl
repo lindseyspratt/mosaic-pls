@@ -39,7 +39,10 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(tm, tile_model,[gridX,gridY,colors,container,replacements,minimumMismatch])]).
+    data_predicate_dynamics(
+        [data_predicates(tm, tile_model, [undoable],
+            [gridX,gridY,colors,container,replacements,minimumMismatch])
+        ]).
 
 save_tile_model_stream(Stream) :-
     save_data_stream(tile_model, Stream).
@@ -60,7 +63,22 @@ dummy_reference :-
     tile_model_colors(_),
     tile_model_container(_),
     tile_model_replacements(_),
-    tile_model_minimumMismatch(_).
+    tile_model_minimumMismatch(_),
+
+    set_tile_model_gridX(_,_),
+    set_tile_model_gridY(_,_),
+    set_tile_model_colors(_,_),
+    set_tile_model_container(_,_),
+    set_tile_model_replacements(_,_),
+    set_tile_model_minimumMismatch(_,_),
+
+    clear_tile_model_gridX(_),
+    clear_tile_model_gridY(_),
+    clear_tile_model_colors(_),
+    clear_tile_model_container(_),
+    clear_tile_model_replacements(_),
+    clear_tile_model_minimumMismatch(_).
+
 
 create_tile_model(ID, GridX,GridY,Colors,Container) :-
     create_tile_model(ID, GridX,GridY,Colors,Container,[],[]).
@@ -81,29 +99,19 @@ get_tile_container(ID, Container) :-
     tile_model_container(ID, Container).
 
 update_grid_x(ID, X1, X2) :-
-    undoable_update(
-        tile_model_gridX(ID, X1),
-        tile_model_gridX(ID, X2)).
+    update_tile_model_gridX(ID, X1, X2).
 
 update_grid_y(ID, X1, X2) :-
-    undoable_update(
-        tile_model_gridY(ID, X1),
-        tile_model_gridY(ID, X2)).
+    update_tile_model_gridY(ID, X1, X2).
 
 update_colors(ID, X1, X2) :-
-    undoable_update(
-        tile_model_colors(ID, X1),
-        tile_model_colors(ID, X2)).
+    update_tile_model_colors(ID, X1, X2).
 
 update_container(ID, X1, X2) :-
-    undoable_update(
-        tile_model_container(ID, X1),
-        tile_model_container(ID, X2)).
+    update_tile_model_container(ID, X1, X2).
 
 update_replacements(ID, X1, X2) :-
-    undoable_update(
-        tile_model_replacements(ID, X1),
-        tile_model_replacements(ID, X2)).
+    update_tile_model_replacements(ID, X1, X2).
 
 tile_rotate_left(ID) :-
     tile_model_colors(ID, X1),

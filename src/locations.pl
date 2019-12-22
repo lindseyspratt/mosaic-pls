@@ -39,13 +39,25 @@
 % is run and the game phase becomes rebuild.
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(loc, data,
-        [locationCounter, shapedPositions, shapedPositionsComplete,
-         legalPositions, legalPositionsWithRotation, irreplaceables, rebuildPositions])]).
+    data_predicate_dynamics(
+        [data_predicates(loc, data, [undoable],
+            [locationCounter, shapedPositions, shapedPositionsComplete,
+             legalPositions, legalPositionsWithRotation, irreplaceables, rebuildPositions
+            ])
+        ]).
 
 dummy_reference :-
     dummy_reference,
-    data_locationCounter(_).
+    data_locationCounter(_),
+
+    set_data_locationCounter(_,_),
+    clear_data_locationCounter(_),
+    clear_data_shapedPositions(_),
+    clear_data_shapedPositionsComplete(_),
+    clear_data_legalPositions(_),
+    clear_data_legalPositionsWithRotation(_),
+    clear_data_irreplaceables(_),
+    clear_data_rebuildPositions(_).
 
 create_locations :-
     assert_data(loc(0, [], [], [], [], [], []), 1).
@@ -292,9 +304,7 @@ increment_location_counter(NewCounter) :-
     data_default_id(DataID),
     data_locationCounter(DataID, Counter),
     NewCounter is Counter + 1,
-    undoable_update(
-        data_locationCounter(DataID, Counter),
-        data_locationCounter(DataID, NewCounter)).
+    update_data_locationCounter(DataID, Counter, NewCounter).
 
 get_shaped_positions(Value) :-
     data_shapedPositions(Value).
@@ -305,39 +315,29 @@ get_shaped_positions(Value, Complete) :-
 
 set_shaped_positions(Value, Complete) :-
     data_default_id(ID),
-    undoable_update(
-        data_shapedPositions(ID, _),
-        data_shapedPositions(ID, Value)),
-    undoable_update(
-        data_shapedPositionsComplete(ID, _),
-        data_shapedPositionsComplete(ID, Complete)).
+    set_data_shapedPositions(ID, Value),
+    set_data_shapedPositionsComplete(ID, Complete).
 
 get_legal_positions(Value) :-
     data_legalPositions(Value).
 
 set_legal_positions(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_legalPositions(ID, _),
-        data_legalPositions(ID, Value)).
+    set_data_legalPositions(ID, Value).
 
 get_legal_positions_with_rotation(Value) :-
     data_legalPositionsWithRotation(Value).
 
 set_legal_positions_with_rotation(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_legalPositionsWithRotation(ID, _),
-        data_legalPositionsWithRotation(ID, Value)).
+    set_data_legalPositionsWithRotation(ID, Value).
 
 get_irreplaceables(Value) :-
     data_irreplaceables(Value).
 
 set_irreplaceables(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_irreplaceables(ID, _),
-        data_irreplaceables(ID, Value)).
+    set_data_irreplaceables(ID, Value).
 
 get_rebuild_positions(RebuildPositions) :-
     data_rebuildPositions(RebuildPositions).
@@ -345,15 +345,11 @@ get_rebuild_positions(RebuildPositions) :-
 add_rebuild_position(X > Y) :-
     create_location(LocationID, X, Y),
     data_default_id(ID),
-    undoable_update(
-        data_rebuildPositions(ID, Rebuilds),
-        data_rebuildPositions(ID, [LocationID|Rebuilds])).
+    update_data_rebuildPositions(ID, Rebuilds, [LocationID|Rebuilds]).
 
 set_rebuild_positions(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_rebuildPositions(ID, _),
-        data_rebuildPositions(ID, Value)).
+    set_data_rebuildPositions(ID, Value).
 
 find_rebuild_hole_shaped_locations :-
     data_rebuildPositions(RebuildPositions),

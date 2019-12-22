@@ -1,7 +1,8 @@
-:- module(undo, [undoable_update/2, undo_update/2, undoable_retract/1, undoable_term/2]).
+:- module(undo, [undoable_update/2, undo_update/2, undoable_assert/1, undoable_retract/1, undoable_term/2]).
 
 :- meta_predicate((
     undoable_update((:), (:)),
+    undoable_assert((:)),
     undoable_retract((:)),
     undo_update((:), (:))
     )).
@@ -75,6 +76,26 @@ undoable_retract1(Term) :-
     true
     ),
     !.
+
+
+undoable_assert(M1: VarG) :-
+    var(VarG),
+    !,
+    throw(invalid_undoable_assert(M1: VarG)).
+undoable_assert(_M1: M2: G) :-
+    !,
+    undoable_assert(M2 : G).
+undoable_assert(Term) :-
+    undoable_assert1(Term),
+    !.
+
+undoable_assert1(Term) :-
+    undoable_template(Term, Template),
+    \+ call(Template)
+      -> asserta(Term),
+         asserta(undoable_term('$none', Term))
+    ;
+    throw(invalid_asserta(Term)).
 
 undo_update(M1: VarG, G2) :-
     var(VarG),

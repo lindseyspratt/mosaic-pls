@@ -19,7 +19,14 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(gvt, data,[translateX, translateY, targetTranslateX, targetTranslateY])]).
+    data_predicate_dynamics([data_predicates(gvt, data, [undoable], [translateX, translateY, targetTranslateX, targetTranslateY])]).
+
+dummy_reference :-
+    dummy_reference,
+    clear_data_translateX(_),
+    clear_data_translateY(_),
+    clear_data_targetTranslateX(_),
+    clear_data_targetTranslateY(_).
 
 create_game_view_tiles :-
     assert_data(gvt(0,0,0,0), 1).
@@ -157,36 +164,28 @@ get_translate_x(Value) :-
 
 set_translate_x(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_translateX(ID, _),
-        data_translateX(ID, Value)).
+    set_data_translateX(ID, Value).
 
 get_translate_y(Value) :-
     data_translateY(Value).
 
 set_translate_y(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_translateY(ID, _),
-        data_translateY(ID, Value)).
+    set_data_translateY(ID, Value).
 
 get_target_translate_x(Value) :-
     data_targetTranslateX(Value).
 
 set_target_translate_x(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_targetTranslateX(ID, _),
-        data_targetTranslateX(ID, Value)).
+    set_data_targetTranslateX(ID, Value).
 
 get_target_translate_y(Value) :-
     data_targetTranslateY(Value).
 
 set_target_translate_y(Value) :-
     data_default_id(ID),
-    undoable_update(
-        data_targetTranslateY(ID, _),
-        data_targetTranslateY(ID, Value)).
+    set_data_targetTranslateY(ID, Value).
 
 get_top_left_board_tile_coords(GridX, GridY, X, Y) :-
     get_board_tile_size(TileSize),

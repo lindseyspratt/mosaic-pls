@@ -10,7 +10,7 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(tv, data,[displayX, displayY, size])]).
+    data_predicate_dynamics([data_predicates(tv, data, [undoable], [displayX, displayY, size])]).
 
 save_tile_view_stream(Stream) :-
     save_data_stream(data, Stream).
@@ -28,7 +28,12 @@ dummy_reference :-
     dummy_reference,
     data_displayX(_),
     data_displayY(_),
-    data_size(_).
+    data_size(_),
+
+    clear_data_displayX(_),
+    clear_data_displayY(_),
+    clear_data_size(_).
+
 
 create_tile_view(ID, DisplayX, DisplayY, Size) :-
     assert_data(tv(DisplayX, DisplayY, Size), ID).
@@ -37,25 +42,19 @@ get_tile_display_x(ID, Value) :-
     data_displayX(ID, Value).
 
 set_tile_display_x(ID, Value) :-
-    undoable_update(
-        data_displayX(ID, _),
-        data_displayX(ID, Value)).
+    set_data_displayX(ID, Value).
 
 get_tile_display_y(ID, Value) :-
     data_displayY(ID, Value).
 
 set_tile_display_y(ID, Value) :-
-    undoable_update(
-        data_displayY(ID, _),
-        data_displayY(ID, Value)).
+    set_data_displayY(ID, Value).
 
 get_tile_size(ID, Value) :-
     data_size(ID, Value).
 
 set_tile_size(ID, Value) :-
-    undoable_update(
-        data_size(ID, _),
-        data_size(ID, Value)).
+    set_data_size(ID, Value).
 
 point_in_tile(ID, X, Y) :-
     data_displayX(ID, DX),
