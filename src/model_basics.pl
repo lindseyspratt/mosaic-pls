@@ -52,7 +52,7 @@
 
 initdyn :-
     data_predicate_dynamics(
-        [data_predicates(gmb, data, [undoable],
+        [data_predicates(gmb, data, [ephemeral],
             [numberOfPlayers, trianglesPerTile, abstractColors, handColorIDSequences])
         ]).
 

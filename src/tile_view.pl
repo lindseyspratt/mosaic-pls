@@ -10,7 +10,7 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(tv, data, [undoable], [displayX, displayY, size])]).
+    data_predicate_dynamics([data_predicates(tv, data, [ephemeral], [displayX, displayY, size])]).
 
 save_tile_view_stream(Stream) :-
     save_data_stream(data, Stream).

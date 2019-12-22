@@ -115,7 +115,18 @@ assert_shadow_argument(Arg, M:Prefix, Suffix, ID, Opt) :-
 
 storage_mode(Opt, Mode) :-
     member(undoable, Opt)
-      -> Mode = undoable
+      -> (member(ephemeral, Opt)
+           -> throw(incompatible_data_predicates_options(ephemeral_and_undoable, Opt))
+         ;
+         Mode = undoable
+         )
+    ;
+    member(ephemeral, Opt)
+      -> (member(undoable, Opt)
+           -> throw(incompatible_data_predicates_options(ephemeral_and_undoable, Opt))
+         ;
+         Mode = ephemeral
+         )
     ;
     Mode = ephemeral.
 
@@ -125,8 +136,8 @@ set_abstract(ephemeral, M:Predicate, ID) :-
     retractall(M:GoalR),
     assertz(M:Goal).
 set_abstract(undoable, M:Predicate, ID) :-
-    GoalNew =.. [Predicate, _],
-    Goal =.. [Predicate, ID],
+    Goal =.. [Predicate, _],
+    GoalNew =.. [Predicate, ID],
     undoable_update(M:Goal, M:GoalNew).
 
 set_abstract(ephemeral, M:Predicate, ID, Arg) :-
@@ -295,7 +306,7 @@ build_predicate_clause(update, undoable, M:Predicate, Clause) :-
     create_goals(goal(M, [Predicate], [ID, New]), RefNew),
     create_clause(
         goal(M, [update, Predicate], [ID, Old, New]),
-        (RefOld -> undo:undoable_update(RefOld, RefNew) ; undo:undoable_assert(RefNew)),
+        (RefOld -> undo:undoable_update(RefOld, RefNew) ; Old = '$none', undo:undoable_assert(RefNew)),
         Clause).
 
 build_predicate_clause(update, ephemeral, M:Predicate, Clause) :-
@@ -303,7 +314,7 @@ build_predicate_clause(update, ephemeral, M:Predicate, Clause) :-
     create_goals(goal(M, [Predicate], [ID, New]), RefNew),
     create_clause(
         goal(M, [update, Predicate], [ID, Old, New]),
-        (retract(RefOld), asserta(RefNew)),
+        ((retract(RefOld)->true;Old='$none'), asserta(RefNew)),
         Clause).
 
 build_predicate_clause(clear, undoable, M:Predicate, Clause) :-

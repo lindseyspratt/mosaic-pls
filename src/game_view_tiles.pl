@@ -19,7 +19,7 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(gvt, data, [undoable], [translateX, translateY, targetTranslateX, targetTranslateY])]).
+    data_predicate_dynamics([data_predicates(gvt, data, [ephemeral], [translateX, translateY, targetTranslateX, targetTranslateY])]).
 
 dummy_reference :-
     dummy_reference,

@@ -16,7 +16,7 @@
 
 initdyn :-
     data_predicate_dynamics(
-        [data_predicates(vb, data, [undoable],
+        [data_predicates(vb, data, [ephemeral],
             [canvasWidth, canvasHeight, canvasOffsetTop, canvasOffsetLeft, context,
              colors, highlightColors, handTileSize, handPadding, handMargin,
              boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
