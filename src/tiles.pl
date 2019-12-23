@@ -95,10 +95,6 @@ setup_score :-
     get_components(Components),
     components_score(Components, Scores),
     display_score(Scores).
-%
-%    clear_score,
-%    create_score,
-%    calculate_and_display_score.
 
 % setup_event_handling prepares the game to accept mouse clicks.
 % removeEventListener in case one is already present - this method succeeds even if there is no
@@ -615,6 +611,26 @@ display_score(S) :-
 
 undo_last_selection :-
     get_selection_marker(Marker),
-    PreviousMarker is Marker - 1,
-    undo_selection_updates(PreviousMarker),
+    writeln(undo_last_selection(target(Marker))),
+    yield,
+    undo_selection_updates(Marker),
+    writeln(undo_last_selection(finish(basic_undo), start(reconstruct_game_view))),
+    yield,
+    reconstruct_game_view,
+    writeln(undo_last_selection(finish(reconstruct_game_view), start(draw_game_tiles_and_locations))),
+    yield,
     draw_game_tiles_and_locations.
+
+reconstruct_game_view :-
+    layout_hands,
+    reconstruct_board_view.
+
+reconstruct_board_view :-
+    get_board(Board),
+    reconstruct_board_view(Board),
+    reposition_board_loop_delay.
+
+reconstruct_board_view([]).
+reconstruct_board_view([H|T]) :-
+    update_board_tile_view(H),
+    reconstruct_board_view(T).

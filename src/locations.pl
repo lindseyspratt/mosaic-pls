@@ -48,16 +48,7 @@ initdyn :-
 
 dummy_reference :-
     dummy_reference,
-    data_locationCounter(_),
-
-    set_data_locationCounter(_,_),
-    clear_data_locationCounter(_),
-    clear_data_shapedPositions(_),
-    clear_data_shapedPositionsComplete(_),
-    clear_data_legalPositions(_),
-    clear_data_legalPositionsWithRotation(_),
-    clear_data_irreplaceables(_),
-    clear_data_rebuildPositions(_).
+    data_locationCounter(_).
 
 create_locations :-
     assert_data(loc(0, [], [], [], [], [], []), 1).

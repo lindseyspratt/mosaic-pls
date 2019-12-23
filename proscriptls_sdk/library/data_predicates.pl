@@ -169,11 +169,6 @@ default_asserted_id(M:Prefix, ID, Opt) :-
     storage_mode(Opt, Mode),
     set_abstract(Mode, M:Predicate, ID).
 
-retract_default_id(M:Prefix, Opt) :-
-    atom_concat(Prefix, '_default_id', Predicate),
-    storage_mode(Opt, Mode),
-    retract_abstract(Mode, M:Predicate, _).
-
 retract_default_id(M:Prefix, ID, Opt) :-
     atom_concat(Prefix, '_default_id', Predicate),
     storage_mode(Opt, Mode),
@@ -245,7 +240,8 @@ build_unary_predicate_clause(M:Prefix, Predicate, Clause) :-
 assert_action_predicates(ModulePredicate, Mode) :-
     assert_action_predicate(set, ModulePredicate, Mode),
     assert_action_predicate(update, ModulePredicate, Mode),
-    assert_action_predicate(clear, ModulePredicate, Mode).
+    assert_action_predicate(clear, ModulePredicate, Mode),
+    assert_dummy_reference(ModulePredicate).
 
 assert_action_predicate(Action, ModulePredicate, Mode) :-
     build_predicate_clause(Action, Mode, ModulePredicate, Clause),
@@ -259,6 +255,18 @@ retract_assert_clause(Head :- Body) :-
     true
     ),
     asserta(Head :- Body).
+
+assert_dummy_reference(M:Predicate) :-
+    create_goals(goal(M, [dummy_reference, Predicate], []), DummyReference),
+    create_clause(
+        DummyReference,
+        (throw(invalid_clause(DummyReference)),
+         DummyReference,
+         goal(M, [set, Predicate], [_, _]),
+         goal(M, [clear, Predicate], [_])
+        ),
+        Clause),
+    retract_assert_clause(Clause).
 
 /*
 dummy_reference :-
@@ -330,13 +338,6 @@ build_predicate_clause(clear, ephemeral, M:Predicate, Clause) :-
         goal(M, [clear, Predicate], [ID]),
         undo:undoable_retract(RefNew),
         Clause).
-
-test_create_clause(M, Prefix, Suffix, Clause) :-
-    create_goals(goal(M, [Prefix, Suffix], [ID, _]), Ref1),
-    create_goals(goal(M, [Prefix, Suffix], [ID, Arg]), Ref2),
-    create_clause(goal(M, [set, Prefix, Suffix], [ID, Arg]),
-       (Ref1 -> undo:undoable_update(Ref1, Ref2); undo:undoable_assert(Ref2)),
-     Clause).
 
 create_clause(Head, Body, (CreatedHead :- CreatedBody)) :-
     create_goals(Head, CreatedHead),

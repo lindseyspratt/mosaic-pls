@@ -33,10 +33,7 @@ dummy_reference :-
     data_constraints(_),
     data_forcedColors(_),
     data_replacements(_),
-    data_minimumMismatch(_),
-
-    set_data_gridX(_,_),
-    set_data_gridY(_,_).
+    data_minimumMismatch(_).
 
 create_location_model(ID, GridX, GridY) :-
     assert_data(lm(GridX, GridY, 0, 0, false, [-1,-1,-1,-1], [], [], 1000), ID).

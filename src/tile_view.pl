@@ -28,12 +28,7 @@ dummy_reference :-
     dummy_reference,
     data_displayX(_),
     data_displayY(_),
-    data_size(_),
-
-    clear_data_displayX(_),
-    clear_data_displayY(_),
-    clear_data_size(_).
-
+    data_size(_).
 
 create_tile_view(ID, DisplayX, DisplayY, Size) :-
     assert_data(tv(DisplayX, DisplayY, Size), ID).

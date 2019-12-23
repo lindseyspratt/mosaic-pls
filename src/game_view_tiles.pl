@@ -21,13 +21,6 @@
 initdyn :-
     data_predicate_dynamics([data_predicates(gvt, data, [ephemeral], [translateX, translateY, targetTranslateX, targetTranslateY])]).
 
-dummy_reference :-
-    dummy_reference,
-    clear_data_translateX(_),
-    clear_data_translateY(_),
-    clear_data_targetTranslateX(_),
-    clear_data_targetTranslateY(_).
-
 create_game_view_tiles :-
     assert_data(gvt(0,0,0,0), 1).
 

@@ -63,22 +63,7 @@ dummy_reference :-
     tile_model_colors(_),
     tile_model_container(_),
     tile_model_replacements(_),
-    tile_model_minimumMismatch(_),
-
-    set_tile_model_gridX(_,_),
-    set_tile_model_gridY(_,_),
-    set_tile_model_colors(_,_),
-    set_tile_model_container(_,_),
-    set_tile_model_replacements(_,_),
-    set_tile_model_minimumMismatch(_,_),
-
-    clear_tile_model_gridX(_),
-    clear_tile_model_gridY(_),
-    clear_tile_model_colors(_),
-    clear_tile_model_container(_),
-    clear_tile_model_replacements(_),
-    clear_tile_model_minimumMismatch(_).
-
+    tile_model_minimumMismatch(_).
 
 create_tile_model(ID, GridX,GridY,Colors,Container) :-
     create_tile_model(ID, GridX,GridY,Colors,Container,[],[]).

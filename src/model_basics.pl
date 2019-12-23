@@ -56,20 +56,6 @@ initdyn :-
             [numberOfPlayers, trianglesPerTile, abstractColors, handColorIDSequences])
         ]).
 
-dummy_reference :-
-    throw(dummy_reference),
-    dummy_reference,
-
-    clear_data_numberOfPlayers(_),
-    clear_data_trianglesPerTile(_),
-    clear_data_abstractColors(_),
-    clear_data_handColorIDSequences(_),
-
-    set_data_trianglesPerTile(_,_),
-    set_data_numberOfPlayers(_,_),
-    set_data_abstractColors(_,_),
-    set_data_handColorIDSequences(_,_).
-
 % init(2, 4, [a,b,c,d])
 init_model_basics(NOP, TPT, AC) :-
     assert_data(gmb(NOP, TPT, AC, []), 1),

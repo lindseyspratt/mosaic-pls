@@ -55,33 +55,7 @@ initdyn :-
 
 dummy_reference :-
     dummy_reference,
-    abbrev(_,_,_),
-
-    clear_data_tile_counter(_),
-    clear_data_tiles(_),
-    clear_data_hands(_),
-    clear_data_board(_),
-    clear_data_tilesPlaced(_),
-    clear_data_boardHash(_),
-    clear_data_mismatches(_),
-    clear_data_lastPlacedTile1(_),
-    clear_data_lastPlacedTile2(_),
-    clear_data_lastBuildPhaseTilePlacedID(_),
-    clear_data_turn(_),
-    clear_data_turnAfterResolution(_),
-    clear_data_selectedTileID(_),
-    clear_data_replacements(_),
-    clear_data_gamePhase(_),
-    clear_data_gamePhaseStatus(_),
-    clear_data_selectionMarker(_),
-
-    set_data_board(_,_),
-    set_data_tilesPlaced(_,_),
-    set_data_boardHash(_,_),
-    set_data_lastPlacedTile1(_,_),
-    set_data_lastPlacedTile2(_,_),
-    set_data_turnAfterResolution(_,_),
-    set_data_selectionMarker(_,_).
+    abbrev(_,_,_).
 
 write_undo_history(Marker) :-
     findall(A, (undoable_term(X, Y), abbrev(Y, X, A)), Xs),
