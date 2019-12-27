@@ -20,9 +20,15 @@
     <button class="mosaic-button" onclick="proscriptls ('tiles:load_game.');">
         Load Mosaic Game
     </button>
- </div>
+</div>
 <div id="tiles" class="mosaic-label">
-    Tiles
+    <div class="mosaic-secondary">
+        <div id="mosaic_status">
+        </div>
+        <button class="mosaic-button" onclick="proscriptls ('tiles:undo_last_selection.');">
+            Undo
+        </button>
+    </div>
     <canvas id="canvas" width="800" height="600">
     </canvas>
     <div id="score">

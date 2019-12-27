@@ -205,7 +205,8 @@ select1(PageX, PageY) :-
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y),
     update_game_phase,
-    update_selection_marker.
+    update_selection_marker,
+    display_status.
 
 setup_select1(PageX, PageY, X, Y) :-
     get_canvas_offset_top(PTop),
@@ -214,6 +215,9 @@ setup_select1(PageX, PageY, X, Y) :-
     Y is PageY - PTop,
     writeln(select(PageX, PageY, PLeft, PTop, X, Y)).
 
+/*
+Possible actions: select tile (edge) or legal location.
+*/
 process_select(X, Y) :-
     point_in_tile(Tile, X, Y)
       -> on_click_tile(Tile, X, Y)  % at most one tile contains (X, Y).
@@ -223,6 +227,12 @@ process_select(X, Y) :-
     ;
      true.
 
+/*
+Possible select tile actions:
+    - selected a tile in active hand & phase = (build | rebuild) -> select active hand tile
+    - selected a tile on board & phase = transform -> select transformation
+    - selected a tile on board & phase = replace -> select replacement tile
+*/
 on_click_tile(ID, X, Y) :-
     %writeln(click(ID, X, Y)),
     get_game_phase(Phase),
@@ -243,23 +253,37 @@ on_click_tile(ID, X, Y) :-
     true
     ).
 
+/*
+Select active hand tile actions:
+    - selected tile already selected -> rotate selected hand tile
+    - selected tile not already selected -> deselected current selected hand tile, if any, and set selected hand tile.
+*/
 on_click_active_hand_tile(ID) :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    (get_selected_tile_id(OldID)
-    ;
-     OldID = none
-    ),
+    current_selected_tile(OldID),
     (OldID = ID
       -> on_click_selected_tile_rotate(ID)
     ;
-    OldID \= none
-      -> set_selected_tile_id(none),
-         draw_all_tile(OldID, Ctx), % de-select OldID
-         on_click_active_hand_tile_select(ID)
-    ;
+    deselect_tile(OldID, Ctx),
     on_click_active_hand_tile_select(ID)
     ).
 
+current_selected_tile(ID) :-
+    get_selected_tile_id(ID)
+    ;
+    ID = none.
+
+deselect_tile(ID, Ctx) :-
+    ID \= none
+      -> set_selected_tile_id(none),
+         draw_all_tile(ID, Ctx)
+     ;
+     true.
+/*
+Possible set selected hand tile actions:
+    - if selected hand tile selectable then record that tile as selected to-be-placed-in-board
+      and display its available target locations.
+*/
 on_click_active_hand_tile_select(ID) :-
     hand_tile_selectable(ID)
       -> set_selected_tile_id(ID),
@@ -267,9 +291,7 @@ on_click_active_hand_tile_select(ID) :-
          draw_all_tile(ID, Ctx),
          find_legal_with_rotation_locations(ID),
          find_legal_locations(ID),
-         get_legal_positions(LegalPositions),
-         get_legal_positions_with_rotation(LegalPositionsWithRotation),
-         draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx)
+         draw_locations(Ctx)
     ;
     true.
 
@@ -280,36 +302,57 @@ hand_tile_selectable(ID) :-
 hand_tile_selectable(_ID, []) :-
     !.
 hand_tile_selectable(ID, Replacements) :-
+    tile_in_replacements(ID, Replacements).
+
+tile_in_replacements(ID) :-
+    get_replacements(Replacements),
+    tile_in_replacements(ID, Replacements).
+
+tile_in_replacements(ID, Replacements) :-
     member(ID, Replacements),
     !.
-hand_tile_selectable(ID, Replacements) :-
+tile_in_replacements(ID, Replacements) :-
     member(ID - _, Replacements),
     !.
 
+/*
+Possible replacement tile ID actions:
+    - if ID is not in replacements then skip.
+    - if current selected replacement tile is ID then rotate it
+    - otherwise, update selected (replacement) tile to-be-moved/placed-in-board
+      to ID and display available target locations
+*/
 on_click_select_replace_tile(ID) :-
-    (get_selected_tile_id(OldID)
+    \+ tile_in_replacements(ID)
+      -> true % skip this selection attempt
     ;
-     OldID = none
-    ),
+    current_selected_tile(OldID),
     (OldID = ID
       -> on_click_selected_tile_rotate(ID)
     ;
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    (OldID \= none
-      -> set_selected_tile_id(none),
-         draw_all_tile(OldID, Ctx) % de-select OldID
-     ;
-     true
-    ),
+    deselect_tile(OldID, Ctx),
     set_selected_tile_id(ID),
-    draw_all_tile(ID, Ctx),
     find_legal_with_rotation_locations(ID),
     find_legal_locations(ID),
-    get_legal_positions(LegalPositions),
-    get_legal_positions_with_rotation(LegalPositionsWithRotation),
-    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx)
+    draw_all_tile(ID, Ctx),
+    draw_locations(Ctx)
     ).
 
+/*
+Possible location actions:
+    - build phase -> close phase, increment turn, move selected tile to selected location, recalc score
+
+    - rebuild phase, active hand empty, no mismatches, afterResTurn = none -> move selected tile to selected location, close phase, inc turn
+    - rebuild phase, active hand empty, no mismatches, afterResTurn \= none -> move selected tile to selected location, close phase, set turn to afterResTurn, set afterResTurn to none
+    - rebuild phase, active hand empty, mismatches, afterResTurn = none -> move selected tile to selected location, close phase, inc turn, process_mismatches, set afterResTurn to next turn
+    - rebuild phase, active hand empty, mismatches, afterResTurn \= none -> move selected tile to selected location, close phase, inc turn, process_mismatches
+    - rebuild phase, no active hand empty -> move selected tile to selected location
+    - replace phase, exists replacement on board -> move tile, clear replacements
+    - replace phase, no replacement on board, exists hole shape -> move tile, clear replacements, close phase, assign hand tiles as hole replacements
+    - replace phase, no replacement on board, no hole shape -> move tile, clear replacements, close phase, find shape locations
+    - otherwise, error
+*/
 on_click_legal_location(BX, BY) :-
     get_selected_tile_id(Tile),
     set_selected_tile_id(none),
@@ -418,9 +461,7 @@ on_click_selected_tile_rotate(ID) :-
     get_shaped_positions(OldLocations),
     clear_location_views(OldLocations, Ctx),
     find_legal_locations(ID),
-    get_legal_positions(LegalPositions),
-    get_legal_positions_with_rotation(LegalPositionsWithRotation),
-    draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx).
+    draw_locations(Ctx).
 
 point_in_legal_location(BX, BY, X, Y) :-
      wam_duration(Start),
@@ -450,6 +491,11 @@ point_in_legal_location(BX, BY, X, Y) :-
 %    global array, same as is used for guiding the placement of tiles from the hands
 %    during the 'build' state of the game.
 
+/*
+Possible transform actions:
+    - PlayerColor \= selected edge Color, selected edge has neighbor, neighboring tiles are not previous edge -> close phase, setup transform locations, setup replacement tiles
+    - otherwise -> skip
+*/
 
 on_click_transform_tile(Tile, X, Y) :-
     %_ >> [id -:> canvas, getContext('2d') *:> Ctx],
@@ -568,9 +614,7 @@ reposition_board_loop :-
             height +:> H],
         get_tiles(TileIDs),
         draw_all_tiles(TileIDs, Ctx, W, H),
-        get_legal_positions(LegalPositions),
-        get_legal_positions_with_rotation(LegalPositionsWithRotation),
-        draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx),
+        draw_locations(Ctx),
         reposition_board_loop_delay
     ;
     true. % calculate_and_display_score.
@@ -619,7 +663,8 @@ undo_last_selection :-
     reconstruct_game_view,
     writeln(undo_last_selection(finish(reconstruct_game_view), start(draw_game_tiles_and_locations))),
     yield,
-    draw_game_tiles_and_locations.
+    draw_game_tiles_and_locations,
+    display_status.
 
 reconstruct_game_view :-
     layout_hands,
@@ -634,3 +679,117 @@ reconstruct_board_view([]).
 reconstruct_board_view([H|T]) :-
     update_board_tile_view(H),
     reconstruct_board_view(T).
+
+% phase: X,
+% player: Y,
+% next action/phase: Z
+
+display_status :-
+    display_status(Marker, Phase, Turn, Next),
+
+    status_element('marker: ~w', [Marker], h2, MarkerElement),
+    status_element('phase: ~w', [Phase], h2, PhaseElement),
+    status_element('player: ~w', [Turn], h2, PlayerElement),
+
+    Node >> [id -:> mosaic_status, innerHTML <:+ ""],
+
+    append_dom_node_child(Node, MarkerElement),
+    append_dom_node_child(Node, PhaseElement),
+    append_dom_node_child(Node, PlayerElement),
+    display_next_status(Next, Node).
+
+display_status(Marker, Phase, Turn, Next) :-
+    get_selection_marker(Marker),
+    get_turn(Turn),
+    get_game_phase(Phase),
+    next_status(Phase, Next).
+
+status_element(Format, Args, Tag, Element) :-
+    format(atom(PhaseAtom), Format, Args),
+    atom_codes(PhaseAtom, PhaseAtomCodes),
+    create_dom_element(Tag, Element),
+    Element >+> innerText <: PhaseAtomCodes.
+
+/*
+<div>
+next:
+<ul>
+<li>select tile, then build</li>
+<li>select location, then build</li>
+</ul>
+</div>
+*/
+display_next_status(Next, Node) :-
+    create_dom_element(div, Div),
+    append_dom_node_child(Node, Div),
+    create_dom_text_node("next:", NextText),
+    append_dom_node_child(Div, NextText),
+    create_dom_element(ul, Ul),
+    append_dom_node_child(Div, Ul),
+    display_next_status1(Next, Ul).
+
+display_next_status1([], _).
+display_next_status1([Action-Phase|T], Ul) :-
+    status_element('select ~w, then ~w', [Action, Phase], li, Element),
+    append_dom_node_child(Ul, Element),
+    display_next_status1(T, Ul).
+
+/*
+build1: build, no locations.
+build2: build, locations.
+replace1: replace, no locations.
+replace2: replace, locations.
+rebuild1: rebuild, no locations.
+rebuild2: rebuild, locations, singleton active hand, no mismatches
+rebuild3: rebuild, locations, multiple active hand
+rebuild4: rebuild, locations, singleton active hand, mismatches
+
+build1 -- clicked tile --> build2 (new selected tile, new tile-specific locations) or (rotated tile, new legal locations)
+build2 -- clicked tile --> build2 (new selected tile, new tile-specific locations)
+build2 -- clicked location --> build1 (exist hand tiles) or transform
+
+transform -- clicked edge --> replace1 (new locations, new replacements)
+
+replace1 -- clicked tile --> replace2 (new legal locations) or (rotated tile, new legal locations)
+replace2 -- clicked tile --> replace2 (new selected tile, new legal locations)
+replace2 -- clicked location --> replace1 (one less replacement, updated board), rebuild1 (updated board)
+
+rebuild1 -- clicked tile --> rebuild2,rebuild3,rebuild4 (new selected tile, new tile-specific locations)
+rebuild2,rebuild3,rebuild4 -- clicked tile --> rebuild2,rebuild3,rebuild4 (new selected tile, new tile-specific locations) or (rotated tile, new legal locations)
+rebuild2 -- clicked location --> transform
+rebuild3 -- clicked location --> rebuild1
+rebuild4 -- clicked location --> replace1
+*/
+next_status(build, [tile-build]) :-
+    get_legal_positions([]).
+next_status(build, [tile-build, location-LocationTransition]) :-
+    get_legal_positions([_|_]),
+    (get_hands(Hands),
+     append_lists(Hands, [_])
+      -> LocationTransition = transform
+     ;
+     LocationTransition = build
+    ).
+next_status(transform, [edge-replace]).
+next_status(replace, [tile-replace]) :-
+    get_legal_positions([]).
+next_status(replace, [tile-replace, location-LocationTransition]) :-
+    get_legal_positions([_|_]),
+    (get_replacements([_])
+      -> LocationTransition = rebuild
+     ;
+     LocationTransition = replace
+    ).
+next_status(rebuild, [tile-rebuild]) :-
+    get_legal_positions([]).
+next_status(rebuild, [tile-rebuild,location-LocationTransition]) :-
+    get_legal_positions([_|_]),
+    (get_hands(Hands),
+     append_lists(Hands, [_,_|_])
+      -> LocationTransition = rebuild
+     ;
+     get_mismatches([])
+      -> LocationTransition = transform
+     ;
+     LocationTransition = replace
+    ).
