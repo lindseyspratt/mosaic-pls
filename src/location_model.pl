@@ -74,19 +74,19 @@ clear_location_grid_y(ID) :-
     clear_data_gridY(ID).
 
 get_location_neighbors(ID, Value) :-
-    data_neighbors(ID, Value).
+    get_data_neighbors(ID, Value).
 
 clear_location_neighbors(ID) :-
     clear_data_neighbors(ID).
 
 get_location_orthogonal_neighbors(ID, Value) :-
-    data_orthogonalNeighbors(ID, Value).
+    get_data_orthogonalNeighbors(ID, Value).
 
 clear_location_orthogonal_neighbors(ID) :-
     clear_data_orthogonalNeighbors(ID).
 
 get_location_by_last_tile_placed(ID, Value) :-
-    data_byLastTilePlaced(ID, Value).
+    get_data_byLastTilePlaced(ID, Value).
 
 clear_location_by_last_tile_placed(ID) :-
     clear_data_byLastTilePlaced(ID).
@@ -95,7 +95,7 @@ set_location_by_last_tile_placed(ID, Value) :-
     set_data_byLastTilePlaced(ID, Value).
 
 get_location_constraints(ID, Value) :-
-    data_constraints(ID, Value).
+    get_data_constraints(ID, Value).
 
 clear_location_constraints(ID) :-
     clear_data_constraints(ID).
@@ -104,12 +104,12 @@ set_location_constraints(ID, Value) :-
     set_data_constraints(ID, Value).
 
 set_location_constraint(ID, Position, Value) :-
-    data_constraints(ID, Old),
+    get_data_constraints(ID, Old),
     replace(Old, Position, Value, New),
     update_data_constraints(ID, Old, New).
 
 get_location_forced_colors(ID, Value) :-
-    data_forcedColors(ID, Value).
+    get_data_forcedColors(ID, Value).
 
 clear_location_forced_colors(ID) :-
     clear_data_forcedColors(ID).
@@ -118,7 +118,7 @@ set_location_forced_colors(ID, Value) :-
     set_data_forcedColors(ID, Value).
 
 set_location_forced_color(ID, Position, Value) :-
-    data_forcedColors(ID, Old),
+    get_data_forcedColors(ID, Old),
     replace(Old, Position, Value, New),
     update_data_forcedColors(ID, Old, New).
 
@@ -144,7 +144,7 @@ set_location_neighbors(ID, Value) :-
     set_data_neighbors(ID, Value).
 
 increment_location_neighbors(ID, New) :-
-    data_neighbors(ID, Old),
+    get_data_neighbors(ID, Old),
     New is Old + 1,
     update_data_neighbors(ID, Old, New).
 
@@ -152,7 +152,7 @@ set_location_orthogonal_neighbors(ID, Value) :-
     set_data_orthogonalNeighbors(ID, Value).
 
 increment_location_orthogonal_neighbors(ID, New) :-
-    data_orthogonalNeighbors(ID, Old),
+    get_data_orthogonalNeighbors(ID, Old),
     New is Old + 1,
     update_data_orthogonalNeighbors(ID, Old, New).
 
@@ -165,8 +165,8 @@ replace([H|T], Position, Value, [H|NT]) :-
 
 location_edge_neighbor_position(ID, Edge, TX > TY) :-
     edge_neighbor_offset(Edge, DX > DY),
-    data_gridX(ID, GridX),
-    data_gridY(ID, GridY),
+    get_data_gridX(ID, GridX),
+    get_data_gridY(ID, GridY),
     TX is GridX + DX,
     TY is GridY + DY.
 
@@ -176,8 +176,8 @@ location_edge_neighbor_position(ID, Edge, TX > TY) :-
 
 location_edge_second_neighbor_position(ID, Edge, TX > TY) :-
     edge_neighbor_offset(Edge, DX > DY),
-    data_gridX(ID, GridX),
-    data_gridY(ID, GridY),
+    get_data_gridX(ID, GridX),
+    get_data_gridY(ID, GridY),
     TX is GridX + 2*DX,
     TY is GridY + 2*DY.
 
