@@ -265,7 +265,7 @@ add_board_mismatches(NewMismatches) :-
     data_default_id(GameModelTilesID),
     data_mismatches(GameModelTilesID, OldMismatches),
     append(NewMismatches, OldMismatches, RawMismatches),
-    sort(RawMismatches, Mismatches),
+    sort_cut(RawMismatches, Mismatches),
     update_data_mismatches(GameModelTilesID, OldMismatches, Mismatches).
 
 get_last_build_phase_tile_placed(ID) :-

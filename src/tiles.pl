@@ -88,6 +88,7 @@ load_game :-
     load_game_data_stream,
     setup_event_handling,
     display_game,
+    display_status,
     yield,
     setup_score.
 
@@ -608,7 +609,7 @@ reposition_board_loop_delay :-
 
 reposition_board_loop :-
     reposition_board_toward_target_translation
-      -> _ >> [id -:> canvas,
+      -> _ >>$ [id -:> canvas,
             getContext('2d') *:> Ctx,
             width +:> W,
             height +:> H],
@@ -651,7 +652,8 @@ calculate_and_display_score :-
 display_score(S) :-
     format(atom(Score), '~w', [S]),
     atom_codes(Score, ScoreCodes),
-    _ >> [id -:> score, innerHTML <:+ ScoreCodes].
+    _ >> [id -:> score, innerHTML <:+ ScoreCodes],
+    !.
 
 undo_last_selection :-
     get_selection_marker(Marker),
@@ -692,6 +694,7 @@ display_status :-
     status_element('player: ~w', [Turn], h2, PlayerElement),
 
     Node >> [id -:> mosaic_status, innerHTML <:+ ""],
+    !,
 
     append_dom_node_child(Node, MarkerElement),
     append_dom_node_child(Node, PhaseElement),

@@ -1,5 +1,7 @@
 :- module(components, [components_dfs/3, components_ex/3, merge_components/3]).
 
+:- use_module(library).
+
 dummy_reference :-
     dummy_reference,
     connected(_,_,_).
@@ -93,11 +95,11 @@ mc_union([H|T], [H2|T2], M) :-
 
 sort_lists(Lists, SortedLists) :-
     sort_lists1(Lists, BaseSortedLists),
-    sort(BaseSortedLists, SortedLists).
+    sort_cut(BaseSortedLists, SortedLists).
 
 sort_lists1([], []).
 sort_lists1([H|T], [HS|TS]) :-
-    sort(H, HS),
+    sort_cut(H, HS),
     sort_lists1(T, TS).
 
 % components([a,b,c,d], [edge(a,b), edge(a,c)], C).
@@ -161,9 +163,9 @@ components_ex([H|T], Edges, Seen, Components) :-
 
 component_ex(Nodes, Edges, ComponentIn, ComponentOut) :-
     append(Nodes, ComponentIn, RawComponentNext),
-    sort(RawComponentNext, ComponentNext),
+    sort_cut(RawComponentNext, ComponentNext),
     extend(Nodes, Edges, ExtendedNodes),
-    sort(ExtendedNodes, SortedExtendedNodes),
+    sort_cut(ExtendedNodes, SortedExtendedNodes),
     ordered_difference(SortedExtendedNodes, ComponentIn, NewExtendedNodes),
     (NewExtendedNodes = []
       -> ComponentNext = ComponentOut

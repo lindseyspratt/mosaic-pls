@@ -65,6 +65,7 @@ dummy_reference :-
     tile_model_replacements(_),
     tile_model_minimumMismatch(_).
 
+
 create_tile_model(ID, GridX,GridY,Colors,Container) :-
     create_tile_model(ID, GridX,GridY,Colors,Container,[],[]).
 
@@ -78,6 +79,11 @@ get_tile_grid_y(ID, GridY) :-
     tile_model_gridY(ID, GridY).
 
 get_tile_colors(ID, Colors) :-
+    ground(ID),
+    tile_model_colors(ID, Colors),
+    !.
+get_tile_colors(ID, Colors) :-
+    var(ID),
     tile_model_colors(ID, Colors).
 
 get_tile_container(ID, Container) :-

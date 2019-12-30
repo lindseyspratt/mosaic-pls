@@ -45,7 +45,7 @@ save_score_stream(Stream) :-
 score(Scores) :-
     wam_duration(Start),
     graph(RawNodes, Edges),
-    sort(RawNodes, Nodes),
+    sort_cut(RawNodes, Nodes),
     wam_duration(Mark1),
     writeln(start(components_ex)),
     yield,
@@ -59,17 +59,19 @@ score(Scores) :-
 
 set_components(Components) :-
     data_default_id(ID),
-    set_data_components(ID, Components).
+    set_data_components(ID, Components),
+    !.
 
 incremental_score(NewTile, Scores) :-
     data_default_id(ID),
     data_components(ID, OldComponents),
     incremental_score(NewTile, OldComponents, MergedComponents, Scores),
-    update_data_components(ID, OldComponents, MergedComponents).
+    update_data_components(ID, OldComponents, MergedComponents),
+    !.
 
 incremental_score(NewTile, OldComponents, Components, Scores) :-
     graph([NewTile], NewNodes, NewEdges),
-    sort(NewNodes, SortedNewNodes),
+    sort_cut(NewNodes, SortedNewNodes),
     components_ex(SortedNewNodes, NewEdges, NewComponents),
     merge_components(NewComponents, OldComponents, Components),
     components_score(Components, Scores).
@@ -126,10 +128,10 @@ graph(Nodes, Edges) :-
     graph(Board, Nodes, Edges).
 
 graph(RawBoard, Nodes, AllEdges) :-
-    sort(RawBoard, Board), % order tiles by ascending ID. adjacent_tile_edges/1 relies on this ordering to avoid duplicate edges.
+    sort_cut(RawBoard, Board), % order tiles by ascending ID. adjacent_tile_edges/1 relies on this ordering to avoid duplicate edges.
     graph1(Board, Nodes, BaseEdges),
     adjacent_tile_edges(Board, RawAllEdges, BaseEdges),
-    sort(RawAllEdges, AllEdges). % remove duplicate edges.
+    sort_cut(RawAllEdges, AllEdges). % remove duplicate edges.
 
 graph1([], [], []).
 graph1([H|T], Nodes, Edges) :-
@@ -141,12 +143,51 @@ graph1(Tile, Nodes, NodesTail, Edges, EdgesTail) :-
     Colors = [FirstColor|_],
     Regions = [FirstRegion-FirstColor|_],
     graph1(Colors, 0, none, none, FirstColor, FirstRegion, Tile, Regions, Nodes, NodesTail, Edges, EdgesTail),
-    bind_regions(Regions, 1).
+    bind_regions(Regions).
 
-bind_regions([], _).
-bind_regions([Counter-_|T], Counter) :-
+bind_regions(Regions) :-
+    region_components(Regions, Components),
+    merge_first_and_last_components(Components, Merged),
+    bind_region_components(Merged, 1).
+
+region_components([Region-Color], [[Region-Color]]) :-
+    !.
+region_components([Region-Color|T], [[Region-Color|ComponentTail]|ComponentsTail]) :-
+    region_components(T, Color, ComponentTail, ComponentsTail).
+
+region_components([],_,[],[]).
+region_components([Region-Color|T], PreviousColor, Component, Components) :-
+    (Color = PreviousColor
+      -> Component = [Region-Color|ComponentTail],
+         Components = ComponentsTail
+    ;
+    Component = [],
+    Components = [[Region-Color|ComponentTail]|ComponentsTail]
+    ),
+    region_components(T, Color, ComponentTail, ComponentsTail).
+
+merge_first_and_last_components([First], [First]) :-
+    !.
+merge_first_and_last_components([First|OtherComponents], Merged) :-
+    append(Between, [Last], OtherComponents),
+    First = [_-FirstColor|_],
+    Last = [_-LastColor|_],
+    (FirstColor = LastColor
+        -> append(First, Last, Combined),
+           Merged = [Combined|Between]
+     ;
+     Merged = [First|OtherComponents]
+    ).
+
+bind_region_components([], _).
+bind_region_components([H|T], Counter) :-
+    bind_region_component(H, Counter),
     NextCounter is Counter + 1,
-    bind_regions(T, NextCounter).
+    bind_region_components(T, NextCounter).
+
+bind_region_component([], _).
+bind_region_component([Counter-_|T], Counter) :-
+    bind_region_component(T, Counter).
 
 % If the current color is the same as the previous color then the region is the same.
 % Else if the current color is the same as the first color and the current color
@@ -264,7 +305,7 @@ get_neighboring_tile(Tile, DX, DY, TilePositionIndex, OtherTile, OtherTilePositi
 component_tile_sets([], []).
 component_tile_sets([H|T], [Color-TileSet|OtherTileSets]) :-
     component_tile_set(H, Color, RawTileSet),
-    sort(RawTileSet, TileSet), % remove duplicate Tile references.
+    sort_cut(RawTileSet, TileSet), % remove duplicate Tile references.
     component_tile_sets(T, OtherTileSets).
 
 % component_tile_set(H, TileSet)

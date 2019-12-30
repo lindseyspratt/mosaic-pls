@@ -119,17 +119,18 @@ adjust_mismatch_constraint(NeighborConstraint, MismatchTileColor, AdjustedConstr
 
 neighbor_constraints(Tile, Constraints) :-
     get_triangles_per_tile(TPT),
-    neighbor_constraints(TPT, Tile, Constraints).
+    neighbor_constraints(TPT, Tile, ReversedConstraints),
+    reverse(ReversedConstraints, Constraints).
 
 % neighbor_constraints(NumberOfEdgesToInspect, Tile, Constraints).
 % Edge is a number from 0 to (TrianglesPerTile-1)
-neighbor_constraints(NumberOfEdgesToInspect, Tile, [Constraint|OtherConstraints]) :-
+neighbor_constraints(NumberOfEdgesToInspect, Tile, [Constraint|OtherReversedConstraints]) :-
     Edge is NumberOfEdgesToInspect - 1,
     neighbor_constraint(Edge, Tile, Constraint),
     (Edge > 0
-      -> neighbor_constraints(Edge, Tile, OtherConstraints)
+      -> neighbor_constraints(Edge, Tile, OtherReversedConstraints)
     ;
-    OtherConstraints = []
+    OtherReversedConstraints = []
     ).
 
 neighbor_constraint(Edge, Tile, Constraint) :-
@@ -837,7 +838,7 @@ update_replacements :-
 
 replacement_map_tiles(ReplacementMap, Replacements) :-
     replacement_map_tiles1(ReplacementMap, RawReplacements),
-    sort(RawReplacements, Replacements). % eliminate duplicates.
+    sort_cut(RawReplacements, Replacements). % eliminate duplicates.
 
 replacement_map_tiles1([], []).
 replacement_map_tiles1([Location-Tiles|MapTail], Replacements) :-
@@ -890,7 +891,7 @@ find_exact_replacement(Tile, Locations, ReplacementMap, ReplacementMapTail) :-
     (Matches = []
       -> ReplacementMap = ReplacementMapTail
     ;
-    sort(Matches, SortedMatches), % remove duplicates
+    sort_cut(Matches, SortedMatches), % remove duplicates
     ReplacementMap = [Tile-SortedMatches|ReplacementMapTail]
     ).
 
@@ -939,7 +940,7 @@ irreplaceable_locations([H|T], ReplacementMap, IrreplaceableLocations) :-
 % find_minimal_mismatch_replacements(IrreplaceableLocations, ReplacementMap, Tiles, ReplacementTiles).
 find_minimal_mismatch_replacements(IrreplaceableLocations, Tiles, SortedReplacementTiles) :-
     find_minimal_mismatch_replacements_for_locations(IrreplaceableLocations, Tiles, ReplacementTiles),
-    sort(ReplacementTiles, SortedReplacementTiles). % remove duplicates - a tile may be a replacement for more than one location.
+    sort_cut(ReplacementTiles, SortedReplacementTiles). % remove duplicates - a tile may be a replacement for more than one location.
 
 find_minimal_mismatch_replacements_for_locations([], _Tiles, []).
 find_minimal_mismatch_replacements_for_locations([H|T], Tiles, ReplacementTiles) :-
@@ -995,7 +996,7 @@ find_minimal_mismatch_replacements_for_color_rotation_of_tile(Colors, Tile, Irre
 % get color constraints for facing edge of tiles at -1,0 1,0 0,-1 0,1  relative to Location.
 determine_color_constraints_for_location(Location, Constraints) :-
     determine_constraints([-1>0, 1>0, 0> -1, 0>1], Location, KeyedConstraints),
-    sort(KeyedConstraints, SortedKeyedConstraints),
+    sort_cut(KeyedConstraints, SortedKeyedConstraints),
     dekey_list(SortedKeyedConstraints, Constraints).
 
 determine_constraints([], _Location, []).

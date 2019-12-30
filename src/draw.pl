@@ -31,10 +31,12 @@ draw_tile(Ctx, Tile) :-
     get_tile_grid_x(Tile, BX),
     get_tile_grid_y(Tile, BY),
     board_hash_key_coords(BX, BY, Text),
+    format(atom(TileAtom), '~w', [Tile]),
     Ctx >> [
         save,
         fillStyle <:+ '#000',
         fillText(Text, X+5, Y+10),
+        fillText(TileAtom, X+20, Y+20),
         restore
     ].
 

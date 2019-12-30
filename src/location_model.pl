@@ -62,13 +62,13 @@ clear_location(ID) :-
     clear_location_minimum_mismatch(ID).
 
 get_location_grid_x(ID, Value) :-
-    data_gridX(ID, Value).
+    get_data_gridX(ID, Value).
 
 clear_location_grid_x(ID) :-
     clear_data_gridX(ID).
 
 get_location_grid_y(ID, Value) :-
-    data_gridY(ID, Value).
+    get_data_gridY(ID, Value).
 
 clear_location_grid_y(ID) :-
     clear_data_gridY(ID).

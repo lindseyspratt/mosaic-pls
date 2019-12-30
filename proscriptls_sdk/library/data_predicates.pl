@@ -233,28 +233,40 @@ build_unary_predicate_clause(M:Prefix, Predicate, Clause) :-
     create_clause(
         goal(M, [Predicate], [Arg]),
         (goal(M, [Prefix, default_id], [ID]),
-         goal(M, [Predicate], [ID,Arg])
+         goal(M, [Predicate], [ID,Arg]),
+         !
         ),
         Clause).
 
 assert_action_predicates(ModulePredicate, Mode) :-
+    assert_action_predicate(get, ModulePredicate, Mode),
     assert_action_predicate(set, ModulePredicate, Mode),
     assert_action_predicate(update, ModulePredicate, Mode),
     assert_action_predicate(clear, ModulePredicate, Mode),
     assert_dummy_reference(ModulePredicate).
 
 assert_action_predicate(Action, ModulePredicate, Mode) :-
-    build_predicate_clause(Action, Mode, ModulePredicate, Clause),
-    retract_assert_clause(Clause).
+    build_predicate_clause(Action, Mode, ModulePredicate, Clauses),
+    retract_assert_clauses(Clauses).
+
+retract_assert_clauses([FirstClause|OtherClauses]) :-
+    retract_assert_clause(FirstClause),
+    assert_clauses(OtherClauses).
 
 retract_assert_clause(Head :- Body) :-
     functor(Head, Functor, Arity),
     (current_predicate(Functor/Arity)
-      ->  retractall(Head :- _)
+      ->  functor(TemplateHead, Functor, Arity),
+          retractall(TemplateHead :- _)
     ;
     true
     ),
     asserta(Head :- Body).
+
+assert_clauses([]).
+assert_clauses([H|T]) :-
+    asserta(H),
+    assert_clauses(T).
 
 assert_dummy_reference(M:Predicate) :-
     create_goals(goal(M, [dummy_reference, Predicate], []), DummyReference),
@@ -262,6 +274,7 @@ assert_dummy_reference(M:Predicate) :-
         DummyReference,
         (throw(invalid_clause(DummyReference)),
          DummyReference,
+         goal(M, [get, Predicate], [_, _]),
          goal(M, [set, Predicate], [_, _]),
          goal(M, [clear, Predicate], [_])
         ),
@@ -303,13 +316,27 @@ M:clear_Prefix_Suffix(ID) :-
 
 */
 
-build_predicate_clause(set, _, M:Predicate, Clause) :-
+build_predicate_clause(get, _, M:Predicate, [Clause1, Clause2]) :-
+    create_clause(
+        goal(M, [get, Predicate], [ID, Arg]),
+        (ground(ID),
+        goal(M, [Predicate], [ID, Arg]),
+        !),
+        Clause1),
+    create_clause(
+        goal(M, [get, Predicate], [ID, Arg]),
+        (var(ID),
+        goal(M, [Predicate], [ID, Arg])
+        ),
+        Clause2).
+
+build_predicate_clause(set, _, M:Predicate, [Clause]) :-
     create_clause(
         goal(M, [set, Predicate], [ID, Arg]),
         goal(M, [update, Predicate], [ID, _, Arg]),
         Clause).
 
-build_predicate_clause(update, undoable, M:Predicate, Clause) :-
+build_predicate_clause(update, undoable, M:Predicate, [Clause]) :-
     create_goals(goal(M, [Predicate], [ID, Old]), RefOld),
     create_goals(goal(M, [Predicate], [ID, New]), RefNew),
     create_clause(
@@ -317,7 +344,7 @@ build_predicate_clause(update, undoable, M:Predicate, Clause) :-
         (RefOld -> undo:undoable_update(RefOld, RefNew) ; Old = '$none', undo:undoable_assert(RefNew)),
         Clause).
 
-build_predicate_clause(update, ephemeral, M:Predicate, Clause) :-
+build_predicate_clause(update, ephemeral, M:Predicate, [Clause]) :-
     create_goals(goal(M, [Predicate], [ID, Old]), RefOld),
     create_goals(goal(M, [Predicate], [ID, New]), RefNew),
     create_clause(
@@ -325,14 +352,14 @@ build_predicate_clause(update, ephemeral, M:Predicate, Clause) :-
         ((retract(RefOld)->true;Old='$none'), asserta(RefNew)),
         Clause).
 
-build_predicate_clause(clear, undoable, M:Predicate, Clause) :-
+build_predicate_clause(clear, undoable, M:Predicate, [Clause]) :-
     create_goals(goal(M, [Predicate], [ID, _]), RefNew),
     create_clause(
         goal(M, [clear, Predicate], [ID]),
         undo:undoable_retract(RefNew),
         Clause).
 
-build_predicate_clause(clear, ephemeral, M:Predicate, Clause) :-
+build_predicate_clause(clear, ephemeral, M:Predicate, [Clause]) :-
     create_goals(goal(M, [Predicate], [ID, _]), RefNew),
     create_clause(
         goal(M, [clear, Predicate], [ID]),
