@@ -8,17 +8,16 @@
     <link href="../proscriptls_sdk/terminal/jquery_terminal.css" rel="stylesheet"/>
 
 </head>
-<body onload="proscriptls_init ();">
+<body onload="proscriptls_init ('tiles:display_title.');">
 <div class="mosaic-description">
-    <h2>Mosaic</h2>
     <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game.');">
-        Start Mosaic Game
+        Start
     </button>
     <button class="mosaic-button" onclick="proscriptls ('tiles:save_game_stream.');">
-        Save Mosaic Game
+        Save
     </button>
     <button class="mosaic-button" onclick="proscriptls ('tiles:load_game.');">
-        Load Mosaic Game
+        Load
     </button>
 </div>
 <div id="tiles" class="mosaic-label">

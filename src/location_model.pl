@@ -123,7 +123,7 @@ set_location_forced_color(ID, Position, Value) :-
     update_data_forcedColors(ID, Old, New).
 
 get_location_replacements(ID, Value) :-
-    data_replacements(ID, Value).
+    get_data_replacements(ID, Value).
 
 clear_location_replacements(ID) :-
     clear_data_replacements(ID).
@@ -132,7 +132,7 @@ set_location_replacements(ID, Value) :-
     set_data_replacements(ID, Value).
 
 get_location_minimum_mismatch(ID, Value) :-
-    data_minimumMismatch(ID, Value).
+    get_data_minimumMismatch(ID, Value).
 
 clear_location_minimum_mismatch(ID) :-
     clear_data_minimumMismatch(ID).

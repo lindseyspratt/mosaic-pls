@@ -1,4 +1,4 @@
-:- module(tiles, [setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
+:- module(tiles, [display_title/0, setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0,
         undo_last_selection/0]).
 
@@ -15,6 +15,7 @@
 :- use_module(game_view_tiles).
 :- use_module(draw).
 :- use_module(score).
+:- use_module(letters).
 
 dummy_reference :-
     dummy_reference,
@@ -22,6 +23,10 @@ dummy_reference :-
     load_game_data,
     save_game,
     calculate_and_display_score.
+
+display_title :-
+    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    letters:display_letters([m,o,s,a,i,c], Ctx, 20, 100, 100, _).
 
 setup_game_data :-
     init_model_basics(2, 4, [1,2,3,4]),

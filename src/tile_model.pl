@@ -73,21 +73,21 @@ create_tile_model(ID, GridX,GridY,Colors,Container,Replacements,MinimumMismatch)
     assert_data(tm(GridX,GridY,Colors,Container,Replacements,MinimumMismatch), ID).
 
 get_tile_grid_x(ID, GridX) :-
-    tile_model_gridX(ID, GridX).
+    get_tile_model_gridX(ID, GridX).
 
 get_tile_grid_y(ID, GridY) :-
-    tile_model_gridY(ID, GridY).
+    get_tile_model_gridY(ID, GridY).
 
 get_tile_colors(ID, Colors) :-
     ground(ID),
-    tile_model_colors(ID, Colors),
+    get_tile_model_colors(ID, Colors),
     !.
 get_tile_colors(ID, Colors) :-
     var(ID),
-    tile_model_colors(ID, Colors).
+    get_tile_model_colors(ID, Colors).
 
 get_tile_container(ID, Container) :-
-    tile_model_container(ID, Container).
+    get_tile_model_container(ID, Container).
 
 update_grid_x(ID, X1, X2) :-
     update_tile_model_gridX(ID, X1, X2).
@@ -105,18 +105,18 @@ update_replacements(ID, X1, X2) :-
     update_tile_model_replacements(ID, X1, X2).
 
 tile_rotate_left(ID) :-
-    tile_model_colors(ID, X1),
+    get_tile_model_colors(ID, X1),
     rotate_left(X1, X2),
     update_colors(ID, X1, X2).
 
 tile_rotate_right(ID) :-
-    tile_model_colors(ID, X1),
+    get_tile_model_colors(ID, X1),
     rotate_left(X1, X2),
     update_colors(ID, X1, X2).
 
 tile_board_hash_key(ID, Key) :-
-    tile_model_gridX(ID, X),
-    tile_model_gridY(ID, Y),
+    get_tile_model_gridX(ID, X),
+    get_tile_model_gridY(ID, Y),
     board_hash_key_coords(X, Y, Key).
 
 edge_neighbor_position(ID, Edge, X > Y) :-

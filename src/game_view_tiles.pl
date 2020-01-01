@@ -188,8 +188,10 @@ get_top_left_board_tile_coords(GridX, GridY, X, Y) :-
     get_board_height(BoardHeight),
     data_translateX(TranslateX),
     data_translateY(TranslateY),
-    X is BoardLeft + TranslateX + BoardWidth / 2 + (GridX - 0.5) * TileSize,
-    Y is BoardTop + TranslateY + BoardHeight / 2 + (GridY - 0.5) * TileSize.
+    calculate_top_left_tile_coords(
+        GridX, GridY, X, Y, TileSize,
+        BoardTop, BoardLeft, BoardWidth, BoardHeight,
+        TranslateX, TranslateY).
 
 point_in_board_position(GridX, GridY, X, Y) :-
     get_top_left_board_tile_coords(GridX, GridY, TX, TY),

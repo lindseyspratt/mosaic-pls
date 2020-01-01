@@ -1,5 +1,5 @@
 :- module(draw, [draw_all_tiles/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2,
-    draw_replacements/2, draw_replacement_tile_mark/2]).
+    draw_replacements/2, draw_replacement_tile_mark/2, draw_tile/5]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(model_basics).
@@ -9,6 +9,7 @@
 :- use_module(tile_view).
 :- use_module(game_view_tiles).
 :- use_module(location_model).
+:- use_module(geometry).
 
 abstract_colors([], []).
 abstract_colors([AH|AT], [CH|CT]) :-
@@ -23,11 +24,9 @@ draw_tile(Ctx, Tile) :-
     get_tile_display_x(Tile, X),
     get_tile_display_y(Tile, Y),
     get_tile_size(Tile, Size),
-    Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
-    Center = (X + 0.5 * Size > Y + 0.5 * Size),
     get_tile_colors(Tile, AbstractColors),
     abstract_colors(AbstractColors, Colors),
-    draw_triangles(Corners, Colors, Center, Ctx),
+    draw_tile(Ctx, Colors, Size, X, Y),
     get_tile_grid_x(Tile, BX),
     get_tile_grid_y(Tile, BY),
     board_hash_key_coords(BX, BY, Text),
@@ -40,6 +39,10 @@ draw_tile(Ctx, Tile) :-
         restore
     ].
 
+draw_tile(Ctx, Colors, Size, X, Y) :-
+    Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
+    Center = (X + 0.5 * Size > Y + 0.5 * Size),
+    draw_triangles(Corners, Colors, Center, Ctx).
 
 draw_triangles([P1, P2|OtherCorners], [Color1|OtherColors], Center, Ctx) :-
    draw_triangle(P1, P2, Color1, Center, Ctx),
