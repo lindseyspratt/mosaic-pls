@@ -202,12 +202,12 @@ assert_dp(M : data_predicates(F, P, Opt, S)) :-
     ;
     assertz(data_predicates(F, M:P, Opt, S)).
 
-data_predicate_dynamics1a(_M:[], _).
+data_predicate_dynamics1a(_M:[]).
 data_predicate_dynamics1a(M:[Prefix-Suffixes-Opt|T]) :-
     data_predicate_dynamics(Suffixes, M:Prefix, Opt),
     atom_concat(Prefix, '_default_id', DefaultPredicate),
     (dynamic(M:(DefaultPredicate / 1))),
-    data_predicate_dynamics1a(M:T, Opt).
+    data_predicate_dynamics1a(M:T).
 
 data_predicate_dynamics([], _, _).
 data_predicate_dynamics([H|T], MPrefix, Opt) :-
