@@ -131,6 +131,29 @@ map_assoc(Pred, t(Key,Val,L0,R0), t(Key,Ans,L1,R1)) :- !,
 
 map_assoc(_, t, t).
 
+% This balances the tree +T giving -B
+balance_assoc(T,B) :-
+    assoc_to_list(T,L),
+    assoc_to_list(B,L).
+
+assoc_stat(Tree, Info) :-
+    assoc_stat(Tree, 0, i, Info).
+
+assoc_stat(t, Depth, InfoIn, InfoOut) :-
+    update_info(Depth, InfoIn, InfoOut).
+assoc_stat(t(_K, _V, L, R), Depth, InfoIn, InfoOut) :-
+    X is Depth + 1,
+    assoc_stat(L, X, InfoIn, InfoL),
+    assoc_stat(R, X, InfoL, InfoOut).
+
+update_info(Depth, i, i(1, Depth, 1, 1, Depth)) :- !.
+update_info(Depth, i(Count, Total, Min, Max, _Avg), i(CountOut, TotalOut, MinOut, MaxOut, AvgOut)) :-
+    MinOut is min(Min, Depth),
+    MaxOut is max(Max, Depth),
+    CountOut is Count + 1,
+    TotalOut is Total + Depth,
+    AvgOut is Total / Count.
+
 % % Test
 % 
 % insert(K,V) :-            % Insert pair K,V into the recorded
