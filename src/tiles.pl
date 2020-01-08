@@ -212,7 +212,8 @@ select1(PageX, PageY) :-
     process_select(X, Y),
     update_game_phase,
     update_selection_marker,
-    display_status.
+    display_status,
+    score_delay.
 
 setup_select1(PageX, PageY, X, Y) :-
     get_canvas_offset_top(PTop),
@@ -624,6 +625,9 @@ reposition_board_loop :-
         reposition_board_loop_delay
     ;
     true. % calculate_and_display_score.
+
+score_delay :-
+    score_delay(0).
 
 score_delay(Tile) :-
     writeln(score_delay(Tile)),

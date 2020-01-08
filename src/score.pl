@@ -47,13 +47,16 @@ score(Scores) :-
     graph(RawNodes, Edges),
     sort_cut(RawNodes, Nodes),
     wam_duration(Mark1),
-    writeln(start(components_ex)),
-    yield,
+%    writeln(start(components_ex(Nodes, Edges))),
+%    yield,
     components_ex(Nodes, Edges, Components),
-    writeln(done(components_ex)),
+%    writeln(done(components_ex(Components))),
+%    yield,
     set_components(Components),
     wam_duration(Mark2),
     components_score(Components, Scores),
+%    writeln(done(components_score(Scores))),
+%    yield,
     wam_duration(End),
     display_spans([Start, Mark1, Mark2, End], score).
 
@@ -77,8 +80,14 @@ incremental_score(NewTile, OldComponents, Components, Scores) :-
     components_score(Components, Scores).
 
 components_score(Components, Scores) :-
+%    writeln(components_score(Components)),
+%    yield,
     component_tile_sets(Components, TileSets),
+%    writeln(done(component_tile_sets(TileSets))),
+%    yield,
     tile_set_scores(TileSets, Scores).
+%    writeln(done(tile_set_scores(Scores))),
+%    yield.
 
 
 test_tiles :-
