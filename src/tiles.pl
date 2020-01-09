@@ -127,7 +127,8 @@ load_game_data_stream :-
     retract_game_data,
     copy_local_storage_to_memory_file(save_mosaic, DataMemFile),
     wam_compiler:compile_and_free_memory_file(DataMemFile),
-    reset_view_basics. % reset the HTML UI values for canvas HTML element.
+    reset_view_basics, % reset the HTML UI values for canvas HTML element.
+    init_agent.
 
 retract_game_data :-
     retract_model_basics,
@@ -137,7 +138,8 @@ retract_game_data :-
     retract_game_model_tiles,
     retract_game_view_tiles,
     retract_location_model,
-    retract_locations.
+    retract_locations,
+    retract_agent.
 
 save_game :-
     writeln('Saving...'),
@@ -220,7 +222,12 @@ complete_select :-
     update_game_phase,
     update_selection_marker,
     display_status,
-    score_delay.
+    get_game_phase(Phase),
+    (Phase \= build
+      -> score_delay
+    ;
+     true
+    ).
 
 setup_select1(PageX, PageY, X, Y) :-
     get_canvas_offset_top(PTop),

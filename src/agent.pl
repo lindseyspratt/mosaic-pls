@@ -1,4 +1,4 @@
-:- module(agent, [init_agent/0, agent/2]).
+:- module(agent, [init_agent/0, retract_agent/0, agent/2]).
 
 :- use_module(library).
 :- use_module('../proscriptls_sdk/library/data_predicates').
@@ -13,6 +13,9 @@ initdyn :-
 
 init_agent :-
     assert_data(ag([], none), 1).
+
+retract_agent :-
+    retract_all_data(data).
 
 /*
 An agent can be a player of Mosaic.
