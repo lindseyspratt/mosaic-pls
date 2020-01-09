@@ -1,6 +1,6 @@
 :- module(tiles, [display_title/0, setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0,
-        undo_last_selection/0]).
+        undo_last_selection/0, agent_select/1]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -17,13 +17,15 @@
 :- use_module(score).
 :- use_module(letters).
 :- use_module(status).
+:- use_module(agent).
 
 dummy_reference :-
     dummy_reference,
     select(_),
     load_game_data,
     save_game,
-    calculate_and_display_score.
+    calculate_and_display_score,
+    available_click(_).
 
 display_title :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
@@ -32,6 +34,7 @@ display_title :-
 setup_game_data :-
     init_model_basics(2, 4, [1,2,3,4]),
     init_game_model_tiles, % uses info in model_basics.
+    init_agent,
     update_game_phase,
     increment_turn(1), % the first increment should move the turn from the initial 0 to 1.
     create_view_basics,
@@ -211,6 +214,9 @@ select(Event) :-
 select1(PageX, PageY) :-
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y),
+    complete_select.
+
+complete_select :-
     update_game_phase,
     update_selection_marker,
     display_status,
@@ -509,6 +515,9 @@ on_click_transform_tile(Tile, X, Y) :-
     %_ >> [id -:> canvas, getContext('2d') *:> Ctx],
     writeln(transform(Tile, X, Y)),
     point_in_tile_edge(Tile, X, Y, Edge),
+    on_click_transform_edge(Tile, Edge).
+
+on_click_transform_edge(Tile, Edge) :-
     get_tile_colors(Tile, Colors),
     nth0(Edge, Colors, Color),
     get_turn(PlayerColor),
@@ -691,3 +700,63 @@ reconstruct_board_view([]).
 reconstruct_board_view([H|T]) :-
     update_board_tile_view(H),
     reconstruct_board_view(T).
+
+/*
+reclick on selected tile
+click on unselected tile in hand
+click on unselected tile in board
+click on (legal) location
+click on edge for transform
+*/
+
+available_clicks(Clicks) :-
+    setof(Click, available_click(Click), Clicks).
+
+available_click(reclick(Tile)) :-
+    get_selected_tile_id(Tile),
+    Tile \= none.
+available_click(click_hand_tile(Tile)) :-
+    get_selected_tile_id(none),
+    tile_in_active_hand(Tile),
+    get_game_phase(Phase),
+    (Phase = build;Phase = rebuild).
+available_click(click_board_tile(Tile)) :-
+    get_selected_tile_id(none),
+    tile_in_board(Tile),
+    get_game_phase(replace),
+    tile_in_replacements(Tile).
+available_click(click_edge(Tile, Edge)) :-
+    tile_in_board(Tile),
+    get_game_phase(transform),
+    get_tile_colors(Tile, Colors),
+    get_turn(PlayerColor),
+    nmember(Color, Colors, EdgePlus),
+    Edge is EdgePlus - 1,
+    edge_neighbor_tile(Tile, Edge, NeighborTile),
+    Tile < NeighborTile, % ensure each edge is only selected once.
+    PlayerColor \= Color.
+available_click(click_location(Location)) :-
+    get_legal_positions(Locations),
+    member(Location, Locations).
+
+agent_select(Click) :-
+    ask_agent(Click),
+    apply_click(Click),
+    complete_select.
+
+ask_agent(Click) :-
+    available_clicks(Clicks),
+    agent(Clicks, Click).
+
+apply_click(reclick(Tile)) :-
+    on_click_selected_tile_rotate(Tile).
+apply_click(click_hand_tile(Tile)) :-
+    on_click_active_hand_tile_select(Tile).
+apply_click(click_board_tile(Tile)) :-
+    on_click_select_replace_tile(Tile).
+apply_click(click_edge(Tile, Edge)) :-
+    on_click_transform_edge(Tile, Edge).
+apply_click(click_location(Location)) :-
+    get_location_grid_x(Location, BX),
+    get_location_grid_y(Location, BY),
+    on_click_legal_location(BX, BY).

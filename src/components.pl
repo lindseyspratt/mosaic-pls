@@ -173,10 +173,3 @@ extend_sgraph1(Node, SG, TI, TO) :-
     !,
     append(Targets, TI, TO).
 extend_sgraph1(_Node, _SG, T, T).
-
-
-difference(Minuend, Subtrahend, Difference) :-
-    setof(X, (member(X, Minuend), \+member(X, Subtrahend)), Difference)
-      -> true
-    ;
-    Difference = [].
