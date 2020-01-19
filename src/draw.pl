@@ -42,7 +42,20 @@ draw_tile(Ctx, Tile) :-
 draw_tile(Ctx, Colors, Size, X, Y) :-
     Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
     Center = (X + 0.5 * Size > Y + 0.5 * Size),
-    draw_triangles(Corners, Colors, Center, Ctx).
+    draw_triangles(Corners, Colors, Center, Ctx),
+    Ctx >> [
+        beginPath,
+        moveTo(X, Y),
+        lineTo(X + Size, Y),
+        lineTo(X + Size, Y + Size),
+        lineTo(X, Y + Size),
+        closePath,
+
+        save,
+        strokeStyle <:+ '#000',
+        stroke,
+        restore
+    ].
 
 draw_triangles([P1, P2|OtherCorners], [Color1|OtherColors], Center, Ctx) :-
    draw_triangle(P1, P2, Color1, Center, Ctx),
@@ -65,6 +78,7 @@ draw_triangle(P1x > P1y, P2x > P2y, Color, CenterX > CenterY, Ctx) :-
         save,
         fillStyle <:+ Color,
         fill,
+        strokeStyle <:+ Color,
         stroke,
         restore
     ].

@@ -410,8 +410,15 @@ incremental_find_shaped_locations(ID) :-
        -> clear_locations,
           find_shaped_locations
      ;
-     get_shaped_positions([_|_], incomplete)
-       -> true
+     get_shaped_positions([HS|TS], incomplete)
+       -> (get_replacements([]),
+           get_turn(Turn),
+           get_hand(Turn, [HH|TH])
+            -> find_minimal_mismatch_replacements([HS|TS], [HH|TH], NewReplacements),
+               set_replacements(NewReplacements)
+           ;
+           true
+          )
      ;
      wam_duration(Start),
      clear_hole_inducing_shaped_locations(ID), % some old shaped locations may have become 'hole inducing' due to new Tile on board.

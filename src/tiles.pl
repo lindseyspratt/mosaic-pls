@@ -223,11 +223,20 @@ complete_select :-
     update_selection_marker,
     display_status,
     get_game_phase(Phase),
-    (Phase \= build
+    (Phase \= build % incremental score already called for build.
       -> score_delay
     ;
      true
     ).
+%    ,
+%    (agent_player(Agent),
+%     get_turn(Agent)
+%       -> append_lists(["setTimeout(() => proscriptls('tiles:agent_select(_Click)'), 0);"], MsgCodes),
+%          eval_javascript(MsgCodes)
+%%          dom_window(_) >*> setTimeout(agent_select(_), 0)
+%     ;
+%     true
+%    ).
 
 setup_select1(PageX, PageY, X, Y) :-
     get_canvas_offset_top(PTop),
@@ -747,9 +756,15 @@ available_click(click_location(Location)) :-
     member(Location, Locations).
 
 agent_select(Click) :-
-    ask_agent(Click),
-    apply_click(Click),
-    complete_select.
+    get_turn(Agent),
+    agent_player(Agent)
+      -> ask_agent(Click),
+         apply_click(Click),
+         complete_select
+    ;
+    true.
+
+agent_player(2).
 
 ask_agent(Click) :-
     available_clicks(Clicks),

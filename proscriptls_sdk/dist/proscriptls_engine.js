@@ -47,6 +47,16 @@ function evaluate_expression(expression, evaluated)
         evaluated.value = Math.E;
         return true;
     }
+    else if (TAG(expression) === TAG_ATM && expression === lookup_atom("random_float"))
+    {
+        // returns a random value in the open interval 0.0 < Random < 1.0
+        let randomValue = Math.random();
+        while(randomValue === 0.0) {
+            randomValue = Math.random();
+        }
+        evaluated.value = randomValue;
+        return true;
+    }
     else if (TAG(expression) === TAG_STR)
     {
         var indicator;
@@ -158,6 +168,11 @@ function evaluate_expression(expression, evaluated)
             if (v[1] === 0)
                 return evaluation_error("zero_divisor");
             evaluated.value = round(v[0] /v[1]);        
+        }
+        else if (name === "random" && arity === 1) {
+            // random(L) returns integer X in range 0 =< X < L.
+            let max = Math.floor(v[0]);
+            evaluated.value =  Math.floor(Math.random() * max ); //The maximum is exclusive
         }
         else
         {
@@ -358,13 +373,13 @@ function predicate_univ(term, list_term)
 
             if(TAG(ftor_name_id)===TAG_ATM) {
                 var ftor_name = atable[VAL(ftor_name_id)];
-                list_term = memory[VAL(list_term) + 1];
+                list_term = get_arg(list_term, 1); //memory[VAL(list_term) + 1];
                 // Now write the args
                 while (TAG(list_term) === TAG_LST) {
                     // Write head
-                    memory[state.H++] = memory[VAL(list_term)];
+                    memory[state.H++] = get_arg(list_term, 0); //memory[VAL(list_term)];
                     // Update tail
-                    list_term = memory[VAL(list_term) + 1];
+                    list_term = get_arg(list_term, 1); //memory[VAL(list_term) + 1];
                     arity++;
                 }
                 // Check tail
@@ -627,17 +642,18 @@ function lookup_dynamic_functor(name, arity) {
 function emit_code(address, c)
 {
     let value;
+    c = deref(c);
 
     if(TAG(c) === TAG_INT) {
         value = VAL(c);
     } else if(TAG(c) === TAG_STR) {
         // c = extended_address(BaseC)
         // value = VAL(BaseC) ^ 0x80000000
-        let functor = VAL(memory[VAL(c)]);
+        let functor = VAL(get_arg(c, 0)); //memory[VAL(c)]);
         let functorName = atable[ftable[functor][0]];
         if(functorName === 'extended_address' &&
         ftable[functor][1] === 1) {
-            let arg = memory[VAL(c)+1];
+            let arg = get_arg(c, 1); //memory[VAL(c)+1];
             if(TAG(arg) === TAG_INT) {
                 let argValue = VAL(arg);
                 value = argValue ^ 0x80000000;
@@ -1340,8 +1356,8 @@ function convert_arg_type(storedType) {
 function type_list_to_id_array(listPL) {
 
     let result = [];
-    var head = memory[VAL(listPL)];
-    var tail = memory[VAL(listPL)+1];
+    var head = get_arg(listPL, 0); //memory[VAL(listPL)];
+    var tail = get_arg(listPL, 1); //memory[VAL(listPL)+1];
     while (true)
     {
         if(TAG(head) !== TAG_ATM &&  TAG(head) !== TAG_LST) {
@@ -1362,8 +1378,8 @@ function type_list_to_id_array(listPL) {
             return result;
         else if (TAG(tail) === TAG_LST)
         {
-            head = memory[VAL(tail)];
-            tail = memory[VAL(tail)+1];
+            head = get_arg(tail, 0); //memory[VAL(tail)];
+            tail = get_arg(tail, 1); //memory[VAL(tail)+1];
         }
         else
             throw('Invalid atom list. Last item was not NIL.');
@@ -1373,8 +1389,8 @@ function type_list_to_id_array(listPL) {
 function atom_or_var_list_to_term_array(listPL) {
 
     let result = [];
-    var head = memory[VAL(listPL)];
-    var tail = memory[VAL(listPL)+1];
+    var head = get_arg(listPL, 0); //[VAL(listPL)];
+    var tail = get_arg(listPL, 1); //memory[VAL(listPL)+1];
     while (true)
     {
         if(TAG(head) !== TAG_ATM && TAG(head) !== TAG_REF) {
@@ -1387,8 +1403,8 @@ function atom_or_var_list_to_term_array(listPL) {
             return result;
         else if (TAG(tail) === TAG_LST)
         {
-            head = memory[VAL(tail)];
-            tail = memory[VAL(tail)+1];
+            head = get_arg(tail, 0); //memory[VAL(tail)];
+            tail = get_arg(tail, 1); //memory[VAL(tail)+1];
         }
         else
             throw('Invalid atom-or-var list. Last item was not NIL.');
@@ -1399,8 +1415,8 @@ function atom_or_var_list_to_term_array(listPL) {
 function integer_list_to_term_array(listPL) {
 
     let result = [];
-    var head = memory[VAL(listPL)];
-    var tail = memory[VAL(listPL)+1];
+    var head = get_arg(listPL, 0); //memory[VAL(listPL)];
+    var tail = get_arg(listPL, 1); //memory[VAL(listPL)+1];
     while (true)
     {
         if(TAG(head) !== TAG_INT) {
@@ -1413,8 +1429,8 @@ function integer_list_to_term_array(listPL) {
             return result;
         else if (TAG(tail) === TAG_LST)
         {
-            head = memory[VAL(tail)];
-            tail = memory[VAL(tail)+1];
+            head = get_arg(tail, 0); //memory[VAL(tail)];
+            tail = get_arg(tail, 1); //memory[VAL(tail)+1];
         }
         else
             throw('Invalid integer list. Last item was not NIL.');
@@ -1424,8 +1440,8 @@ function integer_list_to_term_array(listPL) {
 function integer_list_list_to_term_array(listPL) {
 
     let result = [];
-    var head = memory[VAL(listPL)];
-    var tail = memory[VAL(listPL)+1];
+    var head = get_arg(listPL, 0); //memory[VAL(listPL)];
+    var tail = get_arg(listPL, 1); //memory[VAL(listPL)+1];
     while (true)
     {
         if(TAG(head) !== TAG_LST) {
@@ -1438,8 +1454,8 @@ function integer_list_list_to_term_array(listPL) {
             return result;
         else if (TAG(tail) === TAG_LST)
         {
-            head = memory[VAL(tail)];
-            tail = memory[VAL(tail)+1];
+            head = get_arg(tail, 0); //memory[VAL(tail)];
+            tail = get_arg(tail, 1); //memory[VAL(tail)+1];
         }
         else
             throw('Invalid integer list list. Last item was not NIL.');
@@ -1596,6 +1612,8 @@ function predicate_gensym(root, sym)
 {
     if (gensyms[root] === undefined)
         gensyms[root] = 0;
+    else gensyms[root]++;
+
     return unify(lookup_atom(atable[VAL(root)] + gensyms[root]), sym);
 }
 
@@ -2007,17 +2025,17 @@ function predicate_member_test(element, list)
     }    
     while(TAG(list) === TAG_LST)
     {
-        var head = memory[VAL(list)];
+        var head = get_arg(list, 0); //memory[VAL(list)];
         if (unify(head, element))
         {
-            update_choicepoint_data(memory[VAL(list)+1]);
+            update_choicepoint_data(get_arg(list, 1)); //memory[VAL(list)+1]);
             return true;
         } else {
             // undo any bindings created by failed unify(head, element) call.
             var n = memory[state.B];
             unwind_trail(memory[state.B + n + CP_TR], state.TR);
         }
-        list = memory[VAL(list)+1]
+        list = get_arg(list, 1); //memory[VAL(list)+1]
     }
     destroy_choicepoint();
     return false;
@@ -2065,8 +2083,8 @@ function mark_top_choicepoint(vars_list, markpoint)
     var vars = [];
     while(TAG(vars_list) === TAG_LST)
     {        
-        vars.push(memory[VAL(vars_list)]);        
-        vars_list = memory[VAL(vars_list) + 1];
+        vars.push(get_arg(vars_list, 0)); //memory[VAL(vars_list)]);
+        vars_list = get_arg(vars_list, 1); //memory[VAL(vars_list) + 1];
     }
     if (vars_list !== NIL)
         abort("Invalid list in mark_top_choicepoint");
@@ -2088,7 +2106,7 @@ function predicate_format(stream, fmt, args) {
     if (TAG(stream) === TAG_STR) {
         let ftor = VAL(memory[VAL(stream)]);
         if (atable[ftable[ftor][0]] === "atom" && ftable_arity(ftor) === 1) {
-            let arg = memory[VAL(stream)+1];
+            let arg = get_arg(stream, 1); //memory[VAL(stream)+1];
             if(TAG(arg) === TAG_REF) {
                 let result = format_to_string(fmt, args);
                 return unify(arg, lookup_atom(result));
@@ -2125,26 +2143,26 @@ function format_to_string(fmt, args) {
                     // fall-through
                 case 'w':
                     result += format_term(memory[VAL(arg)], {ignore_ops:false, numbervars:true, quoted:false});
-                    arg = memory[VAL(arg)+1];
+                    arg = get_arg(arg, 1); //memory[VAL(arg)+1];
                     break;
                 case 'W':
-                    var a = memory[VAL(arg)];
-                    arg = memory[VAL(arg)+1];
-                    var options = parse_term_options(memory[VAL(arg)]);
+                    var a = get_arg(arg, 0); //memory[VAL(arg)];
+                    arg = get_arg(arg, 1); //memory[VAL(arg)+1];
+                    var options = parse_term_options(get_arg(arg, 0));
                     result += format_term(a, options);
-                    arg = memory[VAL(arg)+1];
+                    arg = get_arg(arg, 1); //memory[VAL(arg)+1];
                     break;
                     
                 case 'i':
-                    arg = memory[VAL(arg)+1];
+                    arg = get_arg(arg, 1); //memory[VAL(arg)+1];
                     break;
                 case 'q':
-                    result += format_term(memory[VAL(arg)], {ignore_ops:false, numbervars:true, quoted:true});
-                    arg = memory[VAL(arg)+1];
+                    result += format_term(get_arg(arg, 0), {ignore_ops:false, numbervars:true, quoted:true});
+                    arg = get_arg(arg, 1); //memory[VAL(arg)+1];
                     break;
                 case 'k':
                     result += format_term(memory[VAL(arg)], {ignore_ops:true, numbervars:true, quoted:true});
-                    arg = memory[VAL(arg)+1];
+                    arg = get_arg(arg, 1); // memory[VAL(arg)+1];
                     break;
                 case 'n':
                     result += "\n";
@@ -2157,7 +2175,7 @@ function format_to_string(fmt, args) {
                     if (numarg === undefined)
                         return format_error("r,R requires radix specifier");
                     var e = {};
-                    if (!evaluate_expression(memory[VAL(arg)], e))
+                    if (!evaluate_expression(get_arg(arg, 0), e)) //memory[VAL(arg)]
                         return false;
                     if (fmt.charAt(i+1) === 'R')
                         result += e.value.toString(numarg).toUpperCase();
@@ -2408,7 +2426,7 @@ function predicate_atom_chars(atom, chars)
         while (TAG(chars) === TAG_LST)
         {
             charsJS.push(atable[VAL(memory[VAL(chars)])]);
-            chars = memory[VAL(chars)+1];
+            chars = get_arg(chars, 1); //memory[VAL(chars)+1];
         }
         if (chars !== NIL)
             return type_error("list", chars);
@@ -2442,7 +2460,7 @@ function predicate_atom_codes(atom, codes)
         while (TAG(codes) === TAG_LST)
         {
             codesJS.push(String.fromCharCode(memory[VAL(codes)]));
-            codes = memory[VAL(codes)+1];
+            codes = get_arg(codes, 1); //memory[VAL(codes)+1];
         }
         if (codes !== NIL)
             return type_error("list", codes);
@@ -2453,81 +2471,84 @@ function predicate_atom_codes(atom, codes)
 // return 0 if a === b
 // return 1 if a > b
 //
-function compare_terms(a, b)
+function compare_terms(aBase, bBase)
 {
-    switch(TAG(a))
-    {
-    case TAG_REF:
-        if (TAG(b) === TAG_REF)
-        {
-            if (a === b)
-                return 0;
-            else if (a > b)
-                return 1;
-        }
-        return -1;
-    case TAG_FLT:
-        if (TAG(b) === TAG_REF)
-            return 1;
-        if (TAG(b) === TAG_FLT)
-        {
-            if (floats[VAL(a)] === floats[VAL(b)])
-                return 0;
-            else if (floats[VAL(a)] > floats[VAL(b)])
-                return 1;
-        }
-        return -1;
-    case TAG_INT:
-        if (TAG(b) === TAG_REF || TAG(b) === TAG_FLT)
-            return 1;
-        if (TAG(b) === TAG_INT)
-        {
-            if (VAL(a) === VAL(b))
-                return 0;
-            else if (VAL(a) > VAL(b))
-                return 1;
-        }
-        return -1;
-    case TAG_ATM:
-        if (TAG(b) === TAG_REF || TAG(b) === TAG_FLT || TAG(b) === TAG_INT)
-            return 1;
-        if (TAG(b) === TAG_ATM)
-        {
-            if (atable[VAL(a)] === atable[VAL(b)])
-                return 0;
-            else if (atable[VAL(a)] > atable[VAL(b)])
-                return 1;
-        }
-        return -1;
-    case TAG_STR:
-    case TAG_LST:
-        if (TAG(b) === TAG_REF || TAG(b) === TAG_FLT || TAG(b) === TAG_INT || TAG(b) === TAG_ATM)
-            return 1;
-        var aftor;
-        var bftor;
-        if (TAG(a) === TAG_LST)
-            aftor = lookup_functor(".", 2);
-        else
-            aftor = memory[VAL(a)];
-        if (TAG(b) === TAG_LST)
-            bftor = lookup_functor(".", 2);
-        else
-            bftor = memory[VAL(b)];
-        if (ftable[VAL(aftor)][1] > ftable[VAL(bftor)][1])
-            return 1;
-        else if (ftable[VAL(aftor)][1] < ftable[VAL(bftor)][1])
+    let a = deref(aBase);
+    let b = deref(bBase);
+
+    switch(TAG(a)) {
+        case TAG_REF:
+            if (TAG(b) === TAG_REF) {
+                if (a === b)
+                    return 0;
+                else if (a > b)
+                    return 1;
+            }
             return -1;
-        // At this point the arity is equal and we must compare the functor names
-        if (atable[ftable[VAL(aftor)][0]] > atable[ftable[VAL(bftor)][0]])
-            return 1;
-        else if(atable[ftable[VAL(aftor)][0]] < atable[ftable[VAL(bftor)][0]])
+        case TAG_FLT:
+            if (TAG(b) === TAG_REF)
+                return 1;
+            if (TAG(b) === TAG_FLT) {
+                if (floats[VAL(a)] === floats[VAL(b)])
+                    return 0;
+                else if (floats[VAL(a)] > floats[VAL(b)])
+                    return 1;
+            }
             return -1;
-        // So the functors are the same and we must compare the arguments.
-        for (var i = 0; i < ftable[VAL(aftor)][1]; i++)
-        {
-            var result = compare_terms(memory[VAL(a)+1+i], memory[VAL(b)+1+i]);
+        case TAG_INT:
+            if (TAG(b) === TAG_REF || TAG(b) === TAG_FLT)
+                return 1;
+            if (TAG(b) === TAG_INT) {
+                if (VAL(a) === VAL(b))
+                    return 0;
+                else if (VAL(a) > VAL(b))
+                    return 1;
+            }
+            return -1;
+        case TAG_ATM:
+            if (TAG(b) === TAG_REF || TAG(b) === TAG_FLT || TAG(b) === TAG_INT)
+                return 1;
+            if (TAG(b) === TAG_ATM) {
+                if (atable[VAL(a)] === atable[VAL(b)])
+                    return 0;
+                else if (atable[VAL(a)] > atable[VAL(b)])
+                    return 1;
+            }
+            return -1;
+        case TAG_STR:
+            if (TAG(b) !== TAG_STR)
+                return (TAG_STR - TAG(b)) > 0 ? 1 : -1;
+
+            let aftor = get_arg(a, 0); //memory[VAL(a)];
+            let bftor = get_arg(b, 0); //memory[VAL(b)];
+            if (ftable[VAL(aftor)][1] > ftable[VAL(bftor)][1])
+                return 1;
+            else if (ftable[VAL(aftor)][1] < ftable[VAL(bftor)][1])
+                return -1;
+            // At this point the arity is equal and we must compare the functor names
+            if (atable[ftable[VAL(aftor)][0]] > atable[ftable[VAL(bftor)][0]])
+                return 1;
+            else if (atable[ftable[VAL(aftor)][0]] < atable[ftable[VAL(bftor)][0]])
+                return -1;
+            // So the functors are the same and we must compare the arguments.
+            for (var i = 0; i < ftable[VAL(aftor)][1]; i++) {
+                let result = compare_terms(memory[VAL(a) + 1 + i], memory[VAL(b) + 1 + i]);
+                if (result !== 0)
+                    return result;
+            }
+            return 0;
+
+        case TAG_LST: {
+            if (TAG(b) !== TAG_LST)
+                return (TAG_LST - TAG(b)) > 0 ? 1 : -1;
+
+            // compare the head terms
+            let result = compare_terms(memory[VAL(a)], memory[VAL(b)]);
             if (result !== 0)
                 return result;
+            else
+            // compare the tail terms
+                return compare_terms(memory[VAL(a) + 1], memory[VAL(b) + 1]);
         }
     }
     return 0;
@@ -2633,7 +2654,7 @@ function predicate_number_chars(n, chars)
         while (TAG(chars) === TAG_LST)
         {
             charsJS.push(atable[VAL(memory[VAL(chars)])]);
-            chars = memory[VAL(chars)+1];
+            chars = get_arg(chars, 1); //memory[VAL(chars)+1];
         }
         if (chars !== NIL)
             return type_error("list", chars);
@@ -2705,7 +2726,7 @@ function predicate_number_codes(n, codes)
         while (TAG(codes) === TAG_LST)
         {
             codesJS.push(String.fromCharCode(memory[VAL(codes)]));
-            codes = memory[VAL(codes)+1];
+            codes = get_arg(codes, 1); //memory[VAL(codes)+1];
         }
         if (codes !== NIL)
             return type_error("list", codes);
@@ -3083,13 +3104,13 @@ function predicate_current_predicate(indicator)
                 if (memory[VAL(indicator)] === colon) {
                     // :(ModuleName, /(Functor, Arity))
                     indicatorHasModule = true;
-                    let moduleName = memory[VAL(indicator) + 1];
-                    slashStructure = memory[VAL(indicator) + 2];
+                    let moduleName = get_arg(indicator, 1); //memory[VAL(indicator) + 1];
+                    slashStructure = get_arg(indicator, 2); //memory[VAL(indicator) + 2];
                     if (TAG(slashStructure) !== TAG_STR) {
                         return type_error('predicate_indicator', slashStructure);
                     }
-                    name = memory[VAL(slashStructure) + 1];
-                    arity = memory[VAL(slashStructure) + 2];
+                    name = get_arg(slashStructure, 1); //memory[VAL(slashStructure) + 1];
+                    arity = get_arg(slashStructure, 2); //memory[VAL(slashStructure) + 2];
 
                     if (TAG(moduleName) === TAG_REF) {
                         return instantiation_error(moduleName);
@@ -3104,8 +3125,8 @@ function predicate_current_predicate(indicator)
                     }
                 } else {
                     // VAL(indicator)] === slash2
-                    name = memory[VAL(indicator) + 1];
-                    arity = memory[VAL(indicator) + 2];
+                    name = get_arg(indicator, 1); //memory[VAL(indicator) + 1];
+                    arity = get_arg(indicator, 2); //memory[VAL(indicator) + 2];
 
                     if (TAG(name) === TAG_ATM) {
                         let nameJS = PL_get_atom_chars(name);
@@ -4034,8 +4055,8 @@ function fromByteArray(byteArray)
 function atom_list_to_array(listPL) {
 
     let result = [];
-    var head = memory[VAL(listPL)];
-    var tail = memory[VAL(listPL)+1];
+    var head = get_arg(listPL, 0); //memory[VAL(listPL)];
+    var tail = get_arg(listPL, 1); //memory[VAL(listPL)+1];
     while (true)
     {
         if(TAG(head) !== TAG_ATM) {
@@ -4048,8 +4069,8 @@ function atom_list_to_array(listPL) {
             return result;
         else if (TAG(tail) === TAG_LST)
         {
-            head = memory[VAL(tail)];
-            tail = memory[VAL(tail)+1];
+            head = get_arg(listPL, 0); //memory[VAL(tail)];
+            tail = get_arg(listPL, 1); //memory[VAL(tail)+1];
         }
         else
             throw('Invalid atom list. Last item was not NIL.');
@@ -4083,7 +4104,7 @@ function get_memory_file_id_container(term, idContainer, reportError) {
         return reportError && type_error('memory_file', term);
     var ftor = VAL(memory[VAL(term)]);
     if (atable[ftable[ftor][0]] === '$memory_file' && ftable_arity(ftor) === 1) {
-        var arg = memory[VAL(term) + 1];
+        var arg = get_arg(term, 1); //memory[VAL(term) + 1];
         if (TAG(arg) !== TAG_INT)
             return reportError && type_error("memory_file arg integer", arg);
         return getIntegerPropertyValue(arg, idContainer, reportError);
@@ -4606,23 +4627,6 @@ function deref(p)
     }
     return p;
 }
-
-// noinspection JSUnusedGlobalSymbols
-function explicit_deref(p)
-{
-    while(TAG(p) === TAG_REF && VAL(p) !== memory[VAL(p)])
-    {
-        let q = memory[VAL(p)];
-        if (q === undefined)
-        {
-            abort("Bad memory access: @" + p);
-        }
-        else
-            p = q;
-    }
-    return p;
-}
-
 
 // This should be a macro
 /**
@@ -6887,10 +6891,10 @@ function parse_term_options(options)
     {
         if (TAG(options) !== TAG_LST)
             return type_error("list", options);
-        var head = memory[VAL(options)];
+        var head = get_arg(options, 0); //memory[VAL(options)];
         if (TAG(head) !== TAG_STR)
             return type_error("option", head);
-        var ftor = memory[VAL(head)];
+        var ftor = get_arg(head, 0); //memory[VAL(head)];
         if (ftor === lookup_functor("quoted",1))
         {
             result.quoted = (memory[VAL(head)+1] === yes)  // TODO: Should this (and following) use deref?
@@ -6905,21 +6909,21 @@ function parse_term_options(options)
         }
         else if (ftor === lookup_functor("variables",1))
         {
-            result.variables = memory[VAL(head)+1];
+            result.variables = get_arg(head, 1); //memory[VAL(head)+1];
         }
         else if (ftor === lookup_functor("variable_names",1))
         {
-            result.variable_names = memory[VAL(head)+1];
+            result.variable_names = get_arg(head, 1); //memory[VAL(head)+1];
         }
         else if (ftor === lookup_functor("singletons",1))
         {
-            result.singletons = memory[VAL(head)+1];
+            result.singletons = get_arg(head, 1); //memory[VAL(head)+1];
         }
         else
         {
             return type_error(options, head);
         }
-        options =  memory[VAL(options)+1];
+        options =  get_arg(options, 1); //memory[VAL(options)+1];
     }
     return result;
 }
@@ -7052,6 +7056,8 @@ function escape_atom(a)
     {
         if (chars[i] === "'")
             result += "\\'";
+        else if (chars[i] === "\\")
+            result += "\\\\";
         else
             result += chars[i];       
     }
@@ -7070,6 +7076,7 @@ function quote_atom(a)
 
     if (a.charAt(0) >= "A" && a.charAt(0) <= "Z")
         return "'" + escape_atom(a) + "'";
+
     var chars = a.split('');
     if (is_punctuation(chars[0]))
     {
@@ -7083,7 +7090,7 @@ function quote_atom(a)
     {
         for (var j = 0; j < chars.length; j++)
         {
-            if (is_punctuation(chars[j]) || chars[j] === ' ')
+            if (is_punctuation(chars[j]) || chars[j] === ' ' || chars[j] === '\\')
                 return "'" + escape_atom(a) + "'";
         }
     }
@@ -7138,8 +7145,8 @@ function format_term(value, options)
     case TAG_FLT:
         return floats[VAL(value)] + "";
     case TAG_STR:
-        var ftor = VAL(memory[VAL(value)]);
-        let arg = memory[VAL(value)+1];
+        var ftor = VAL(get_arg(value, 0)); //memory[VAL(value)]);
+        let arg = get_arg(value, 1); //memory[VAL(value)+1];
 
         if (options.numbervars === true && ftor === VAL(lookup_functor('$VAR', 1)) && TAG(arg) === TAG_INT)
         {
@@ -7206,8 +7213,8 @@ function format_term(value, options)
             return "'.'(" + format_term(memory[VAL(value)], options) + "," + format_term(memory[VAL(value)+1], options) + ")";
         // Otherwise we need to print the list in list-form
         result = "[";
-        var head = memory[VAL(value)];
-        var tail = memory[VAL(value)+1];
+        var head = get_arg(value, 0); //memory[VAL(value)];
+        var tail = get_arg(value, 1); //memory[VAL(value)+1];
         while (true)
         {
             result += format_term(head, options);
@@ -7215,8 +7222,8 @@ function format_term(value, options)
                 return result + "]";
             else if (TAG(tail) === TAG_LST)
             {
-                head = memory[VAL(tail)];
-                tail = memory[VAL(tail)+1];
+                head = get_arg(tail, 0); //memory[VAL(tail)];
+                tail = get_arg(tail, 1); //memory[VAL(tail)+1];
                 result += ",";
             }
             else 
@@ -8114,7 +8121,7 @@ function record_term(t)
         while (TAG(t) === TAG_LST)
         {
             value.push(record_term(VAL(t)));
-            t = memory[VAL(t)+1];
+            t = get_arg(t, 1); //memory[VAL(t)+1];
         }
         list.tail = record_term(t);
         return list;
@@ -8578,7 +8585,7 @@ function PL_call(term, module)
     allocate_first_frame();
     state.P = predicates[ftor];
     for (let i = 0; i < ftable_arity(ftor); i++)
-        register[i] = memory[VAL(term) + 1 + i];
+        register[i] = get_arg(term, 1+i); //memory[VAL(term) + 1 + i];
     return wam();    
 }
 
@@ -11947,7 +11954,7 @@ function get_object_id_container(term, idContainer) {
 
 var parentMap = new Map([
     ['eventtarget', []],
-    ['window', ['eventtarget', 'windowlocalstorage', 'windowsessionstorage']],
+    ['window', ['eventtarget', 'windowlocalstorage', 'windowsessionstorage', 'windoworworkerglobalscope']],
     ['node', ['eventtarget']],
     ['parentnode', []], // ParentNode is a mixin, there is no constructor for it.
     ['document', ['node', 'parentnode']],
@@ -14520,6 +14527,35 @@ webInterfaces.set('windowsessionstorage',
         reference: {name:'WindowSessionStorage',
             standard:'https://html.spec.whatwg.org/multipage/webstorage.html#windowsessionstorage',
             mdn:'https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API/Using_the_Web_Storage_API'
+        }
+    });
+
+
+var windowOrWorkerGlobalScopeInterfaceProperties = new Map( [
+    ['caches', SimpleProperty('object', 'caches')], // CacheStorage
+    ['crossOriginIsolated', SimpleProperty('boolean', 'crossOriginIsolated')],
+    ['indexedDB', SimpleProperty('object', 'indexedDB')], // IDBFactory
+    ['isSecureContext', SimpleProperty('boolean', 'isSecureContext')],
+    ['origin', SimpleProperty('atom', 'origin')]
+]);
+
+var windowOrWorkerGlobalScopeMethodSpecs = new Map([
+    ['btoa', {name:'btoa',arguments:[{type:'string'}],returns:{type:'string'}}],
+    ['atob', {name:'atob',arguments:[{type:'string'}],returns:{type:'string'}}],
+    ['clearInterval', {name: 'clearInterval',arguments:[{type:'number'}]}],
+    ['fetch', {name: 'fetch',arguments:[{type:['string','object']},{type:'object'}],returns:{type:'object'}}], // options object is HTMLOptionsCollection?, returns is Promise
+    ['queueMicrotask', {name: 'queueMicrotask',arguments:[{type:'goal_function'}]}],
+    ['setInterval', {name: 'setInterval',arguments:[{type:'goal_function'},{type:'number'}],returns:{type:'number'}}],
+    ['setTimeout', {name: 'setTimeout',arguments:[{type:'goal_function'},{type:'number'}],returns:{type:'number'}}]
+]);
+
+webInterfaces.set('windoworworkerglobalscope',
+    {name: 'windoworworkerglobalscope',
+        properties:windowOrWorkerGlobalScopeInterfaceProperties,
+        methods:windowOrWorkerGlobalScopeMethodSpecs,
+        reference: {name:'windowOrWorkerGlobalScope',
+            standard:'https://html.spec.whatwg.org/multipage/webappapis.html#windoworworkerglobalscope-mixin',
+            mdn:'https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope'
         }
     });
 

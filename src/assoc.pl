@@ -110,10 +110,10 @@ list_to_assoc(0, List, t, List) :-
     !.
 
 list_to_assoc(N, List, t(Key,Val,L,R), Rest) :-
-        A is (N-1) // 2,
-        Z is (N-1)-A,
-        list_to_assoc(A, List, L, [Key-Val|More]),
-        list_to_assoc(Z, More, R, Rest).
+    A is (N-1) // 2,
+    Z is (N-1)-A,
+    list_to_assoc(A, List, L, [Key-Val|More]),
+    list_to_assoc(Z, More, R, Rest).
 
 %
 % map_assoc(+Pred,+In_tree,-Out_tree)
