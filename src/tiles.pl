@@ -211,22 +211,26 @@ load_game_data3 :-
 select(Event) :-
     Event >> [pageX +:> PageX, pageY +:> PageY],
     dom_release_object(Event),
-    select1(PageX, PageY).
+    select1(PageX, PageY, display).
 
-select1(PageX, PageY) :-
+select1(PageX, PageY, UI) :-
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y),
-    complete_select.
+    complete_select(UI).
 
-complete_select :-
+complete_select(UI) :-
     update_game_phase,
     update_selection_marker,
-    display_status,
-    get_game_phase(Phase),
-    (Phase \= build % incremental score already called for build.
-      -> score_delay
+    (UI = display
+      ->  display_status,
+          get_game_phase(Phase),
+          (Phase \= build % incremental score already called for build.
+            -> score_delay
+          ;
+           true
+          )
     ;
-     true
+    true
     ).
 %    ,
 %    (agent_player(Agent),
@@ -245,58 +249,82 @@ setup_select1(PageX, PageY, X, Y) :-
     Y is PageY - PTop,
     writeln(select(PageX, PageY, PLeft, PTop, X, Y)).
 
-/*
-Possible actions: select tile (edge) or legal location.
-*/
 process_select(X, Y) :-
-    point_in_tile(Tile, X, Y)
-      -> on_click_tile(Tile, X, Y)  % at most one tile contains (X, Y).
-    ;
-     point_in_legal_location(BX, BY, X, Y)
-      -> on_click_legal_location(BX, BY)
-    ;
-     true.
+    select_click(X, Y, Click),
+    !,
+    apply_click(Click).
 
-/*
-Possible select tile actions:
-    - selected a tile in active hand & phase = (build | rebuild) -> select active hand tile
-    - selected a tile on board & phase = transform -> select transformation
-    - selected a tile on board & phase = replace -> select replacement tile
-*/
-on_click_tile(ID, X, Y) :-
-    %writeln(click(ID, X, Y)),
-    get_game_phase(Phase),
-    (tile_in_active_hand(ID),
-     (Phase = build;Phase = rebuild)
-      -> on_click_active_hand_tile(ID)
-    ;
-    tile_in_board(ID)
-      -> (Phase = transform
-          -> on_click_transform_tile(ID, X, Y)
-         ;
-         Phase = replace
-          -> on_click_select_replace_tile(ID)
-         ;
-         true
-         )
-    ;
-    true
-    ).
+select_click(X, Y, Click) :-
+    available_click(Click),
+    position_in_click(Click, X, Y).
 
-/*
-Select active hand tile actions:
-    - selected tile already selected -> rotate selected hand tile
-    - selected tile not already selected -> deselected current selected hand tile, if any, and set selected hand tile.
-*/
-on_click_active_hand_tile(ID) :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    current_selected_tile(OldID),
-    (OldID = ID
-      -> on_click_selected_tile_rotate(ID)
-    ;
-    deselect_tile(OldID, Ctx),
-    on_click_active_hand_tile_select(ID)
-    ).
+select_sequence([X>Y]) :-
+    !,
+    select1(X, Y, display).
+select_sequence([X>Y, H|T]) :-
+    select1(X, Y, no_display),
+    !,
+    select_sequence([H|T]).
+
+%    writeln(next([H|T])),
+%    yield,
+%    format(atom(Next), 'setTimeout(() => proscriptls("tiles:select_sequence(~w)"),0);', [T]),
+%    atom_codes(Next, NextCodes),
+%    eval_javascript(NextCodes).
+
+%
+%/*
+%Possible actions: select tile (edge) or legal location.
+%*/
+%process_select(X, Y) :-
+%    point_in_tile(Tile, X, Y)
+%      -> on_click_tile(Tile, X, Y)  % at most one tile contains (X, Y).
+%    ;
+%     point_in_legal_location(BX, BY, X, Y)
+%      -> on_click_legal_location(BX, BY)
+%    ;
+%     true.
+%
+%/*
+%Possible select tile actions:
+%    - selected a tile in active hand & phase = (build | rebuild) -> select active hand tile
+%    - selected a tile on board & phase = transform -> select transformation
+%    - selected a tile on board & phase = replace -> select replacement tile
+%*/
+%on_click_tile(ID, X, Y) :-
+%    %writeln(click(ID, X, Y)),
+%    get_game_phase(Phase),
+%    (tile_in_active_hand(ID),
+%     (Phase = build;Phase = rebuild)
+%      -> on_click_active_hand_tile(ID)
+%    ;
+%    tile_in_board(ID)
+%      -> (Phase = transform
+%          -> on_click_transform_tile(ID, X, Y)
+%         ;
+%         Phase = replace
+%          -> on_click_select_replace_tile(ID)
+%         ;
+%         true
+%         )
+%    ;
+%    true
+%    ).
+%
+%/*
+%Select active hand tile actions:
+%    - selected tile already selected -> rotate selected hand tile
+%    - selected tile not already selected -> deselected current selected hand tile, if any, and set selected hand tile.
+%*/
+%on_click_active_hand_tile(ID) :-
+%    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+%    current_selected_tile(OldID),
+%    (OldID = ID
+%      -> on_click_selected_tile_rotate(ID)
+%    ;
+%    deselect_tile(OldID, Ctx),
+%    on_click_active_hand_tile_select(ID)
+%    ).
 
 current_selected_tile(ID) :-
     get_selected_tile_id(ID)
@@ -391,8 +419,9 @@ on_click_legal_location(BX, BY) :-
     (Phase = build
       -> set_game_phase_status(closed),
          increment_turn(_),
-         place_tile_on_board_and_draw(Ctx, Tile, BX, BY),
-         score_delay(Tile)
+         place_tile_on_board_and_draw(Ctx, Tile, BX, BY)
+%         ,
+%         score_delay(Tile)
     ;
      Phase = rebuild
        -> get_replacements(OldReplacements),
@@ -521,17 +550,17 @@ point_in_legal_location(BX, BY, X, Y) :-
 %    global array, same as is used for guiding the placement of tiles from the hands
 %    during the 'build' state of the game.
 
-/*
-Possible transform actions:
-    - PlayerColor \= selected edge Color, selected edge has neighbor, neighboring tiles are not previous edge -> close phase, setup transform locations, setup replacement tiles
-    - otherwise -> skip
-*/
-
-on_click_transform_tile(Tile, X, Y) :-
-    %_ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    writeln(transform(Tile, X, Y)),
-    point_in_tile_edge(Tile, X, Y, Edge),
-    on_click_transform_edge(Tile, Edge).
+%/*
+%Possible transform actions:
+%    - PlayerColor \= selected edge Color, selected edge has neighbor, neighboring tiles are not previous edge -> close phase, setup transform locations, setup replacement tiles
+%    - otherwise -> skip
+%*/
+%
+%on_click_transform_tile(Tile, X, Y) :-
+%    %_ >> [id -:> canvas, getContext('2d') *:> Ctx],
+%    writeln(transform(Tile, X, Y)),
+%    point_in_tile_edge(Tile, X, Y, Edge),
+%    on_click_transform_edge(Tile, Edge).
 
 on_click_transform_edge(Tile, Edge) :-
     get_tile_colors(Tile, Colors),
@@ -748,8 +777,8 @@ available_click(click_edge(Tile, Edge)) :-
     get_turn(PlayerColor),
     nmember(Color, Colors, EdgePlus),
     Edge is EdgePlus - 1,
-    edge_neighbor_tile(Tile, Edge, NeighborTile),
-    Tile < NeighborTile, % ensure each edge is only selected once.
+    edge_neighbor_tile(Tile, Edge, _NeighborTile),
+    %Tile < NeighborTile, % ensure each edge is only selected once.
     PlayerColor \= Color.
 available_click(click_location(Location)) :-
     get_legal_positions(Locations),
@@ -760,7 +789,7 @@ agent_select(Click) :-
     agent_player(Agent)
       -> ask_agent(Click),
          apply_click(Click),
-         complete_select
+         complete_select(display)
     ;
     true.
 
@@ -782,3 +811,17 @@ apply_click(click_location(Location)) :-
     get_location_grid_x(Location, BX),
     get_location_grid_y(Location, BY),
     on_click_legal_location(BX, BY).
+
+position_in_click(reclick(Tile), X, Y) :-
+    point_in_tile(Tile, X, Y).
+position_in_click(click_hand_tile(Tile), X, Y) :-
+    point_in_tile(Tile, X, Y).
+position_in_click(click_board_tile(Tile), X, Y) :-
+    point_in_tile(Tile, X, Y).
+position_in_click(click_edge(Tile, Edge), X, Y) :-
+    point_in_tile_edge(Tile, X, Y, Edge).
+position_in_click(click_location(Location), X, Y) :-
+    get_location_grid_y(Location, BY),
+    get_location_grid_x(Location, BX),
+    point_in_legal_location(BX, BY, X, Y).
+

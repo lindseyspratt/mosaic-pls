@@ -24,10 +24,11 @@ It makes valid "clicks" during its turn.
 
 agent(Clicks, Action) :-
     trim_clicks(Clicks, TrimmedClicks),
-    wam_duration(Duration),
+%    wam_duration(Duration),
     length(TrimmedClicks, Length),
-    Pick is (round(Duration) mod Length),
-    nth0(Pick, TrimmedClicks, Action),
+%    Pick is (round(Duration) mod Length),
+    random_between(1, Length, Pick),
+    nth1(Pick, TrimmedClicks, Action),
     add_click(Action).
 
 add_click(Click) :-

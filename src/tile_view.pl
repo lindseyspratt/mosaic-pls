@@ -61,9 +61,7 @@ point_in_tile_edge(ID, X, Y, Edge) :-
     data_displayX(ID, DX),
     data_displayY(ID, DY),
     data_size(ID, Size),
-    (\+ point_in_tile(ID, X, Y)
-        -> throw(click_point_not_in_tile(X, Y, ID))
-    ;
+    point_in_tile(ID, X, Y),
      TopD is Y - DY,
      RightD is DX + Size - X,
      BottomD is DY + Size - Y,
@@ -93,8 +91,7 @@ point_in_tile_edge(ID, X, Y, Edge) :-
        -> Edge = 2 % bottom
      ;
       Edge = 3 % left
-     )
-    ).
+     ).
 
 tile_view_values(ID, Values) :-
     labelled_values(data, ID, Values).
