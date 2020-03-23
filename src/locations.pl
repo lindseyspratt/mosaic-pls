@@ -9,7 +9,8 @@
     get_rebuild_positions/1, add_rebuild_position/1, find_rebuild_hole_shaped_locations/0,
     update_legal_positions/1,
     find_shaped_locations/0, incremental_find_shaped_locations/1,
-    find_legal_with_rotation_locations/1, find_legal_locations/1, find_replacements/2, update_replacements/0,
+    find_legal_with_rotation_locations/1, find_legal_with_rotation_locations/2,
+    find_legal_locations/1, find_replacements/2, update_replacements/0,
     locations_values/2, %placed_position_offset/3,
     edge_to_neighbor_edge/2]).
 
@@ -445,6 +446,10 @@ incremental_find_shaped_locations(ID) :-
 % tile selection is changed.
 
 find_legal_with_rotation_locations(Tile) :-
+    find_legal_with_rotation_locations(Tile, LegalWithRotation),
+    set_legal_positions_with_rotation(LegalWithRotation).
+
+find_legal_with_rotation_locations(Tile, LegalWithRotation) :-
     get_game_phase(rebuild),
     get_shaped_positions(ShapedLocations),
     findall(ShapedLocation,
@@ -458,9 +463,8 @@ find_legal_with_rotation_locations(Tile) :-
         LegalWithRotation
        ),
     LegalWithRotation \= [],
-    !,
-    set_legal_positions_with_rotation(LegalWithRotation).
-find_legal_with_rotation_locations(Tile) :-
+    !.
+find_legal_with_rotation_locations(Tile, LegalWithRotation) :-
     get_shaped_positions(ShapedLocations),
     get_tile_colors(Tile, TileColors),
     filter_shaped_for_legal_locations(ShapedLocations, TileColors, LegalWithRotation),
@@ -474,8 +478,7 @@ find_legal_with_rotation_locations(Tile) :-
         -> FinalLegalWithRotation = LegalByLastTilePlaced
     ;
      FinalLegalWithRotation = LegalWithRotation
-    ),
-    set_legal_positions_with_rotation(FinalLegalWithRotation).
+    ).
 
 % Legal locations for selected Tile are those locations where Tile
 % as currently oriented may be placed on the board - it will

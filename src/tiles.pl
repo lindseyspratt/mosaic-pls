@@ -343,22 +343,21 @@ Possible set selected hand tile actions:
       and display its available target locations.
 */
 on_click_active_hand_tile_select(ID) :-
-    hand_tile_selectable(ID)
-      -> set_selected_tile_id(ID),
+    hand_tile_selectable(ID),
+      set_selected_tile_id(ID),
          _ >> [id -:> canvas, getContext('2d') *:> Ctx],
          draw_all_tile(ID, Ctx),
          find_legal_with_rotation_locations(ID),
          find_legal_locations(ID),
-         draw_locations(Ctx)
-    ;
-    true.
+         draw_locations(Ctx).
 
 hand_tile_selectable(ID) :-
     get_replacements(Replacements),
     hand_tile_selectable(ID, Replacements).
 
-hand_tile_selectable(_ID, []) :-
-    !.
+hand_tile_selectable(ID, []) :-
+    !,
+    find_legal_with_rotation_locations(ID, [_|_]).
 hand_tile_selectable(ID, Replacements) :-
     tile_in_replacements(ID, Replacements).
 
@@ -799,15 +798,21 @@ ask_agent(Click) :-
     available_clicks(Clicks),
     agent(Clicks, Click).
 
-apply_click(reclick(Tile)) :-
+apply_click(Click) :-
+    get_turn(Turn),
+    get_game_phase(Phase),
+    writeln(step(Turn, Phase, apply_click(Click))),
+    apply_click1(Click).
+
+apply_click1(reclick(Tile)) :-
     on_click_selected_tile_rotate(Tile).
-apply_click(click_hand_tile(Tile)) :-
+apply_click1(click_hand_tile(Tile)) :-
     on_click_active_hand_tile_select(Tile).
-apply_click(click_board_tile(Tile)) :-
+apply_click1(click_board_tile(Tile)) :-
     on_click_select_replace_tile(Tile).
-apply_click(click_edge(Tile, Edge)) :-
+apply_click1(click_edge(Tile, Edge)) :-
     on_click_transform_edge(Tile, Edge).
-apply_click(click_location(Location)) :-
+apply_click1(click_location(Location)) :-
     get_location_grid_x(Location, BX),
     get_location_grid_y(Location, BY),
     on_click_legal_location(BX, BY).
