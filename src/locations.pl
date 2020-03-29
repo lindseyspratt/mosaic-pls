@@ -464,7 +464,7 @@ find_legal_with_rotation_locations(Tile, LegalWithRotation) :-
        ),
     LegalWithRotation \= [],
     !.
-find_legal_with_rotation_locations(Tile, LegalWithRotation) :-
+find_legal_with_rotation_locations(Tile, FinalLegalWithRotation) :-
     get_shaped_positions(ShapedLocations),
     get_tile_colors(Tile, TileColors),
     filter_shaped_for_legal_locations(ShapedLocations, TileColors, LegalWithRotation),

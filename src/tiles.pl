@@ -1,6 +1,6 @@
 :- module(tiles, [display_title/0, setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
-        save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3, reposition_board_loop/0,
-        undo_last_selection/0, agent_select/1]).
+        save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3,
+        undo_last_selection/0, agent_select/1, apply_clicks/1]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -18,6 +18,8 @@
 :- use_module(letters).
 :- use_module(status).
 :- use_module(agent).
+
+:- dynamic(interaction_counter/1).
 
 dummy_reference :-
     dummy_reference,
@@ -203,12 +205,27 @@ load_game_data3 :-
     writeln('Done.'),
     yield.
 
+get_interaction_counter(Count) :-
+    interaction_counter(Count)
+      -> true
+    ;
+    Count = 0.
+
+increment_interaction_counter :-
+    retract(interaction_counter(Count))
+      -> retractall(interaction_counter(_)), % ensure that there are no interaction_counter/1 facts.
+         Next is Count + 1,
+         asserta(interaction_counter(Next))
+    ;
+    asserta(interaction_counter(1)).
+
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates
  % within the containing HTMLCanvasElement minus the canvas offset.
  % RX = clientX - offsetX.
 
 select(Event) :-
+    increment_interaction_counter,
     Event >> [pageX +:> PageX, pageY +:> PageY],
     dom_release_object(Event),
     select1(PageX, PageY, display).
@@ -217,9 +234,13 @@ select1(PageX, PageY, UI) :-
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y),
     complete_select(UI).
+    %agent_select_delay.
 
 complete_select(UI) :-
     update_game_phase,
+    get_game_phase(Phase),
+    writeln(game_phase(Phase)),
+    yield,
     update_selection_marker,
     (UI = display
       ->  display_status,
@@ -232,15 +253,6 @@ complete_select(UI) :-
     ;
     true
     ).
-%    ,
-%    (agent_player(Agent),
-%     get_turn(Agent)
-%       -> append_lists(["setTimeout(() => proscriptls('tiles:agent_select(_Click)'), 0);"], MsgCodes),
-%          eval_javascript(MsgCodes)
-%%          dom_window(_) >*> setTimeout(agent_select(_), 0)
-%     ;
-%     true
-%    ).
 
 setup_select1(PageX, PageY, X, Y) :-
     get_canvas_offset_top(PTop),
@@ -257,6 +269,10 @@ process_select(X, Y) :-
 select_click(X, Y, Click) :-
     available_click(Click),
     position_in_click(Click, X, Y).
+
+/*
+select_sequence[597>252, 370>130])
+*/
 
 select_sequence([X>Y]) :-
     !,
@@ -653,7 +669,8 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
 
     wam_duration(Mark3),
     draw_game_tiles(Ctx),
-    reposition_board_loop_delay,
+    get_interaction_counter(InteractionCounter),
+    reposition_board_loop_delay(InteractionCounter),
 
     wam_duration(Mark4),
     incremental_find_shaped_locations(Tile),
@@ -662,12 +679,17 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     !,
     display_spans([Start, Mark1,Mark2, Mark3,  Mark4, End], place_tile_on_board_and_draw).
 
-reposition_board_loop_delay :-
+reposition_board_loop_delay(InteractionCounter) :-
     yield,
-    reposition_board_loop.
+    get_interaction_counter(CurrentCounter),
+    (InteractionCounter == CurrentCounter
+      -> reposition_board_loop(InteractionCounter)
+    ;
+    true).
 %    eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);").
 
-reposition_board_loop :-
+/*
+reposition_board_loop(InteractionCounter) :-
     reposition_board_toward_target_translation
       -> _ >>$ [id -:> canvas,
             getContext('2d') *:> Ctx,
@@ -676,23 +698,38 @@ reposition_board_loop :-
         get_tiles(TileIDs),
         draw_all_tiles(TileIDs, Ctx, W, H),
         draw_locations(Ctx),
-        reposition_board_loop_delay
+        reposition_board_loop_delay(InteractionCounter)
     ;
+    true. % calculate_and_display_score.
+*/
+
+reposition_board_loop(InteractionCounter) :-
+    reposition_board_toward_target_translation,
+    !,
+    _ >>$ [id -:> canvas,
+            getContext('2d') *:> Ctx,
+            width +:> W,
+            height +:> H],
+    get_tiles(TileIDs),
+    draw_all_tiles(TileIDs, Ctx, W, H),
+    draw_locations(Ctx),
+    reposition_board_loop_delay(InteractionCounter).
+reposition_board_loop(_InteractionCounter) :-
     true. % calculate_and_display_score.
 
 score_delay :-
     score_delay(0).
 
 score_delay(Tile) :-
-    writeln(score_delay(Tile)),
-    yield,
+%    writeln(score_delay(Tile)),
+%    yield,
     number_codes(Tile, TileCodes),
     append_lists(["setTimeout(() => proscriptls('tiles:score_delay1(", TileCodes, ")'), 0);"], MsgCodes),
     eval_javascript(MsgCodes).
 
 score_delay1(Tile) :-
-    writeln(score_delay1(Tile)),
-    yield,
+%    writeln(score_delay1(Tile)),
+%    yield,
     (get_game_phase(build)
       -> incremental_score(Tile, Score)
     ;
@@ -704,7 +741,7 @@ score_delay1(Tile) :-
      get_game_phase(transform)
       -> score(Score)
     ;
-     Score = 'score not available'
+     Score = 'score not calculated'
     ),
     display_score(Score).
 
@@ -719,6 +756,7 @@ display_score(S) :-
     !.
 
 undo_last_selection :-
+    increment_interaction_counter,
     get_selection_marker(Marker),
     writeln(undo_last_selection(target(Marker))),
     yield,
@@ -738,7 +776,8 @@ reconstruct_game_view :-
 reconstruct_board_view :-
     get_board(Board),
     reconstruct_board_view(Board),
-    reposition_board_loop_delay.
+    get_interaction_counter(Count),
+    reposition_board_loop_delay(Count).
 
 reconstruct_board_view([]).
 reconstruct_board_view([H|T]) :-
@@ -779,16 +818,29 @@ available_click(click_edge(Tile, Edge)) :-
     edge_neighbor_tile(Tile, Edge, _NeighborTile),
     %Tile < NeighborTile, % ensure each edge is only selected once.
     PlayerColor \= Color.
-available_click(click_location(Location)) :-
+available_click(click_location(BX,BY)) :-
     get_legal_positions(Locations),
-    member(Location, Locations).
+    member(Location, Locations),
+    get_location_grid_x(Location, BX),
+    get_location_grid_y(Location, BY).
+
+
+agent_select_delay :-
+    agent_player(Agent),
+    get_turn(Agent)
+      -> append_lists(["setTimeout(() => proscriptls('tiles:agent_select(_Click)'), 0);"], MsgCodes),
+         eval_javascript(MsgCodes)
+%         dom_window(_) >*> setTimeout(agent_select(_), 0)
+    ;
+    true.
 
 agent_select(Click) :-
     get_turn(Agent),
     agent_player(Agent)
       -> ask_agent(Click),
          apply_click(Click),
-         complete_select(display)
+         complete_select(display),
+         agent_select_delay
     ;
     true.
 
@@ -798,11 +850,34 @@ ask_agent(Click) :-
     available_clicks(Clicks),
     agent(Clicks, Click).
 
+/*
+apply_clicks([click_hand_tile(1), click_location(0,0), click_hand_tile(11), click_location(0,1), click_hand_tile(3), click_location(-1,0), click_hand_tile(9), click_location(1,1), click_hand_tile(8), click_location(-1,1), click_hand_tile(12), reclick(12), click_location(1,2), click_hand_tile(7)]).
+
+apply_clicks([click_edge(16,0), click_board_tile(12), click_location(2,1), click_board_tile(14), reclick(14), click_location(2,0), click_hand_tile(4), reclick(4), reclick(4), reclick(4), click_location(3,2), click_hand_tile(16), reclick(16), click_location(3,-1)]).
+
+tiles:apply_clicks([click_hand_tile(1), click_location(0,0), click_hand_tile(11), click_location(0,1), click_hand_tile(2), click_location(-1,0), click_hand_tile(12), reclick(12), click_location(1,1), click_hand_tile(3)]).
+
+*/
+
+apply_clicks([]).
+apply_clicks([H|T]) :-
+    apply_click(H),
+    apply_clicks1(T).
+
+apply_clicks1([]) :-
+    complete_select(display).
+apply_clicks1([H|T]) :-
+    complete_select(no_display),
+    apply_click(H),
+    apply_clicks1(T).
+
 apply_click(Click) :-
     get_turn(Turn),
     get_game_phase(Phase),
     writeln(step(Turn, Phase, apply_click(Click))),
-    apply_click1(Click).
+    apply_click1(Click),
+    !,
+    gc.
 
 apply_click1(reclick(Tile)) :-
     on_click_selected_tile_rotate(Tile).
@@ -812,7 +887,7 @@ apply_click1(click_board_tile(Tile)) :-
     on_click_select_replace_tile(Tile).
 apply_click1(click_edge(Tile, Edge)) :-
     on_click_transform_edge(Tile, Edge).
-apply_click1(click_location(Location)) :-
+apply_click1(click_location(BX,BY)) :-
     get_location_grid_x(Location, BX),
     get_location_grid_y(Location, BY),
     on_click_legal_location(BX, BY).
@@ -825,7 +900,7 @@ position_in_click(click_board_tile(Tile), X, Y) :-
     point_in_tile(Tile, X, Y).
 position_in_click(click_edge(Tile, Edge), X, Y) :-
     point_in_tile_edge(Tile, X, Y, Edge).
-position_in_click(click_location(Location), X, Y) :-
+position_in_click(click_location(BX,BY), X, Y) :-
     get_location_grid_y(Location, BY),
     get_location_grid_x(Location, BX),
     point_in_legal_location(BX, BY, X, Y).
