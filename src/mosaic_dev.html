@@ -22,18 +22,13 @@
 </div>
 <div id="tiles" class="mosaic-label">
     <div class="mosaic-secondary">
-        <div id="mosaic_player">
-            Player:
-            <canvas id="mosaic_player_canvas" width="30" height="30">
-            </canvas>
-        </div>
         <div id="mosaic_status">
         </div>
         <button class="mosaic-button" onclick="proscriptls ('tiles:undo_last_selection.');">
             Undo
         </button>
         <button class="mosaic-button" onclick="proscriptls ('tiles:agent_select(_).');">
-            Move Player 2
+            Agent Action
         </button>
     </div>
     <canvas id="canvas" width="800" height="600">
@@ -43,12 +38,10 @@
     </div>
 </div>
 <!--suppress JSUnresolvedLibraryURL -->
-
-<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.4/dist/proscriptls_engine.js"></script>
 <!--
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.2/dist/proscriptls_engine.js"></script>
+  -->
 <script type="text/javascript" src="../proscriptls_sdk/dist/proscriptls_engine.js"></script>
--->
-
 <!--
 <script type="text/javascript" src="../../proscriptls/dist/proscriptls_engine.js"></script>
  -->

@@ -20,6 +20,7 @@
 :- use_module(agent).
 
 :- dynamic(interaction_counter/1).
+:- dynamic(use_auto_play/1).
 
 dummy_reference :-
     dummy_reference,
@@ -49,6 +50,7 @@ setup_game_data :-
 
 start_mosaic_game :-
     setup_game_data,
+    asserta(use_auto_play(true)),
     get_canvas_width(W),
     get_canvas_height(H),
     get_context(Ctx),
@@ -98,6 +100,7 @@ load_game :-
     writeln('Load Game.'),
     load_game_data_stream,
     setup_event_handling,
+    asserta(use_auto_play(true)),
     display_game,
     display_status,
     yield,
@@ -233,8 +236,26 @@ select(Event) :-
 select1(PageX, PageY, UI) :-
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y),
-    complete_select(UI).
-    %agent_select_delay.
+    complete_select(UI),
+    (use_auto_play(true)
+      -> agent_select_delay
+    ;
+     true
+    ),
+    !.
+select1(PageX, PageY, UI) :-
+    get_game_phase(rebuild),
+    get_replacements([]),
+    get_shaped_positions([])
+      -> writeln(retrying_failed(select1(PageX, PageY, UI))),
+         find_shaped_locations, % 'reset' the shaped locations
+         \+ get_shaped_positions([]),
+         select1(PageX, PageY, UI)
+    ;
+    writeln(failed(select1(PageX, PageY, UI))),
+    !,
+    fail.
+
 
 complete_select(UI) :-
     update_game_phase,
@@ -801,6 +822,7 @@ available_click(reclick(Tile)) :-
 available_click(click_hand_tile(Tile)) :-
     get_selected_tile_id(none),
     tile_in_active_hand(Tile),
+    hand_tile_selectable(Tile),
     get_game_phase(Phase),
     (Phase = build;Phase = rebuild).
 available_click(click_board_tile(Tile)) :-

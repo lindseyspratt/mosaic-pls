@@ -4,6 +4,8 @@
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(game_model_tiles).
 :- use_module(locations).
+:- use_module(view_basics).
+:- use_module(draw).
 
 % phase: X,
 % player: Y,
@@ -11,6 +13,8 @@
 
 display_status :-
     display_status(Marker, Phase, Turn, Next),
+
+    display_player(Turn),
 
     status_element('marker: ~w', [Marker], h2, MarkerElement),
     status_element('phase: ~w', [Phase], h2, PhaseElement),
@@ -29,6 +33,14 @@ display_status(Marker, Phase, Turn, Next) :-
     get_turn(Turn),
     get_game_phase(Phase),
     next_status(Phase, Next).
+
+display_player(P) :-
+    %number_codes(P, PCodes),
+    %Node >> [id -:> mosaic_player],
+    _Canvas >> [id -:> mosaic_player_canvas, getContext('2d') *:> Ctx],
+    get_player_color(P, Color),
+    draw_tile(Ctx, [Color, Color, Color, Color], 30, 0, 0).
+
 
 status_element(Format, Args, Tag, Element) :-
     format(atom(PhaseAtom), Format, Args),
