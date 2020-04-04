@@ -31,6 +31,7 @@
      get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
      set_last_build_phase_tile_placed/1,
      last_placed_tiles/2, place_tile_in_hand/1, place_tiles_in_hand/1, place_tile_on_board/3,
+     find_orphans/1,
      get_game_phase/1, update_game_phase/0, update_game_phase/2, get_game_phase_status/1, set_game_phase_status/1,
      edge_neighbor_tile/3, edge_to_neighbor_edge/2, tile_in_inactive_hand/1,
      tile_in_active_hand/1, tile_in_board/1, get_tiles_placed/1, game_model_tiles_values/1,
@@ -525,3 +526,77 @@ undo_phase_updates :-
 undo_selection_updates(Marker) :-
     data_default_id(ID),
     undo_update(_, data_selectionMarker(ID, Marker)).
+
+find_orphans(Orphans) :-
+    get_board(Board),
+    coordinates_to_tiles(Coords, Board),
+    check_orphans(Coords, OrphanCoords),
+    coordinates_to_tiles(OrphanCoords, Orphans).
+
+coordinates_to_tiles([], []) :- !.
+coordinates_to_tiles([X>Y|TC], [Tile|TT]) :-
+    get_tile_grid_x(Tile, X),
+    get_tile_grid_y(Tile, Y),
+    coordinates_to_tiles(TC, TT).
+
+/*
+Coords is in library order on X then Y (X of same value sort together, ordered by Y).
+
+[-1>1, -1>2, 0>1, 0>3...]
+
+neighbors of X>Y are: X-1>Y, X>Y-1, X+1>Y, X>Y+1
+which sorts as: [X-1>Y, X>Y-1, X>Y+1, X+1>Y]
+
+we check in order, so X-1>Y and X>Y-1 have been processed before we get to X>Y.
+If either was present, then we removed it and X>Y. Therefore we wouldn't be inspecting X>Y. Thus X-1>Y and X>Y-1 were not present.
+So only need to inspect for X>Y+1 and X+1>Y.
+*/
+
+check_orphans(Coords, Orphans) :-
+    sort(Coords, SortedCoords),
+    check_orphans(SortedCoords, [], Orphans).
+
+check_orphans([], _, []).
+check_orphans([X>Y|T], PreviousAccompanied, Orphans) :-
+    check(X, Y, T, XYAccompanied),
+    (XYAccompanied = [],
+     \+ member(X>Y, PreviousAccompanied)
+      -> Orphans = [X>Y|Others]
+    ;
+    Orphans = Others
+    ),
+    append(PreviousAccompanied, XYAccompanied, Accompanied),
+    check_orphans(T, Accompanied, Others).
+
+check(X, Y, Rest, Accompanied) :-
+    Y1 is Y + 1,
+    X1 is X + 1,
+    check1(Rest, X, X1, Y, Y1, Accompanied).
+
+
+/*
+X>Y1 or X1>Y or done.
+if match then R = List-[X>Y,match], else R = List
+*/
+check1([], _X, _X1, _Y, _Y1, []).
+check1([A>B|T], X, X1, Y, Y1, Accompanied) :-
+    check2(A, B, X, X1, Y, Y1, T, Accompanied).
+
+check2(A, B, _X, X1, Y, _Y1, _T, Accompanied) :-
+    (A > X1
+    ;
+    A = X1,
+    B > Y),
+    !,
+    Accompanied = [].
+check2(A, B, X, X1, Y, Y1, T, Accompanied) :-
+    (A = X,
+    B = Y1
+    ;
+    A = X1,
+    B = Y),
+    !,
+    Accompanied = [A>B|AccompaniedNext],
+    check1(T, X, X1, Y, Y1, AccompaniedNext).
+check2(_A, _B, X, X1, Y, Y1, T, Accompanied) :-
+    check1(T, X, X1, Y, Y1, Accompanied).

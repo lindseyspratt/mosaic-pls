@@ -40,10 +40,17 @@ trim_clicks(ClicksIn, ClicksOut) :-
     (data_historyPhase(GamePhase)
       -> data_clickHistory(History),
          difference(ClicksIn, History, ClicksTrim),
-         (ClicksTrim = []
-           -> ClicksOut = ClicksIn
+         (ClicksTrim \= []
+           -> ClicksOut = ClicksTrim
          ;
-         ClicksOut = ClicksTrim
+          (get_triangles_per_tile(4),
+           ClicksIn = [reclick(X), reclick(X), reclick(X), reclick(X)|_]
+          ;
+           get_triangles_per_tile(6),
+           ClicksIn = [reclick(X), reclick(X), reclick(X), reclick(X), reclick(X), reclick(X)|_]
+          ) -> throw(reclick_failure(X))
+         ;
+         ClicksOut = ClicksIn
          )
     ;
     data_default_id(ID),

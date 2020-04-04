@@ -473,7 +473,17 @@ on_click_legal_location(BX, BY) :-
                get_turn_after_resolution(AfterResolutionTurn),
                (get_mismatches(Mismatches),
                 Mismatches = []
-                 -> (AfterResolutionTurn = none
+                 -> (find_orphans(Orphans),
+                     [_|_] = Orphans
+                      -> increment_turn(NextTurn),
+                         process_orphans(Orphans),
+                         (AfterResolutionTurn = none
+                           -> set_turn_after_resolution(NextTurn)
+                         ;
+                         true
+                         )
+                    ;
+                     AfterResolutionTurn = none
                       -> increment_turn(_)
                     ;
                      set_turn(AfterResolutionTurn),
@@ -530,6 +540,10 @@ process_mismatches :-
     set_mismatches([]),
     create_mismatch_shaped_locations(Mismatches),
     setup_replacements(Mismatches),
+    draw_game_tiles.
+
+process_orphans(Orphans) :-
+    setup_orphans(Orphans),
     draw_game_tiles.
 
 draw_constrained_replacements([], _Ctx).
@@ -624,6 +638,10 @@ setup_replacements(TilesForHand) :-
     get_board(BoardTiles),
     find_replacements(BoardTiles, ShapedLocations),
     place_tiles_in_hand(TilesForHand),
+    layout_hands.
+
+setup_orphans(Orphans) :-
+    place_tiles_in_hand(Orphans),
     layout_hands.
 
 draw_game_tiles_and_locations :-
