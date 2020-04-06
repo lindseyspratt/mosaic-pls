@@ -50,7 +50,7 @@ setup_game_data :-
 
 start_mosaic_game :-
     setup_game_data,
-    asserta(use_auto_play(true)),
+    enable_auto_play,
     get_canvas_width(W),
     get_canvas_height(H),
     get_context(Ctx),
@@ -221,6 +221,14 @@ increment_interaction_counter :-
          asserta(interaction_counter(Next))
     ;
     asserta(interaction_counter(1)).
+
+enable_auto_play :-
+    retractall(use_auto_play(_)),
+    asserta(use_auto_play(true)).
+
+disable_auto_play :-
+    retractall(use_auto_play(_)),
+    asserta(use_auto_play(false)).
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates
@@ -674,6 +682,7 @@ draw_locations(Ctx) :-
 % Tile is in Replacements.
 
 move_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
+    gc,
     writeln(move_tile_on_board_and_draw(Tile, X, Y)),
     get_tile_grid_x(Tile, OldX),
     get_tile_grid_y(Tile, OldY),
@@ -691,7 +700,14 @@ move_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     draw_game_tiles(Ctx).
 
 place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
+    gc,
+    writeln(place_tile_on_board_and_draw(Tile, X, Y)),
     wam_duration(Start),
+
+    get_tile_display_x(Tile, OldDisplayX),
+    get_tile_display_y(Tile, OldDisplayY),
+    get_tile_size(Tile, OldSize),
+
     place_tile_on_board(Tile, X, Y),
 
     wam_duration(Mark1),
@@ -706,6 +722,15 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     wam_duration(Mark2),
     update_board_tile_view(Tile),
 
+    get_tile_display_x(Tile, NewDisplayX),
+    get_tile_display_y(Tile, NewDisplayY),
+    get_tile_size(Tile, NewSize),
+
+    get_tile_colors(Tile, AbstractColors),
+    abstract_colors(AbstractColors, Colors),
+
+    draw_tile_animation(Ctx, Colors, OldDisplayX>OldDisplayY+OldSize, NewDisplayX>NewDisplayY+NewSize),
+
     wam_duration(Mark3),
     draw_game_tiles(Ctx),
     get_interaction_counter(InteractionCounter),
@@ -716,7 +741,34 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
 
     wam_duration(End),
     !,
+    gc,
     display_spans([Start, Mark1,Mark2, Mark3,  Mark4, End], place_tile_on_board_and_draw).
+
+draw_tile_animation(_Ctx, _Colors, End, End) :-
+    !.
+draw_tile_animation(Ctx, Colors, Start, End) :-
+    gc,
+    draw_game_tiles(Ctx),
+    next_position(Start, End, Next),
+    draw_tile(Ctx, Colors, Next),
+    yield,
+    draw_tile_animation(Ctx, Colors, Next, End).
+
+draw_tile(Ctx, Colors, X>Y+Size) :-
+    draw_tile(Ctx, Colors, Size, X, Y).
+
+next_position(TX>TY+TS, TargetTX>TargetTY+TargetS, FinalTX>FinalTY+FinalSize) :-
+    next_value(TX, TargetTX, FinalTX),
+    next_value(TY, TargetTY, FinalTY),
+    next_value(TS, TargetS, FinalSize).
+
+next_value(T, Target, Final) :-
+    New is (T * 1 + Target) / 2,
+    (abs(T - Target) < 1
+       -> Final = Target
+    ; Final = New
+    ).
+
 
 reposition_board_loop_delay(InteractionCounter) :-
     yield,

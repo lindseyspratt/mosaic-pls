@@ -1,5 +1,5 @@
 :- module(draw, [draw_all_tiles/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2,
-    draw_replacements/2, draw_replacement_tile_mark/2, draw_tile/5]).
+    draw_replacements/2, draw_replacement_tile_mark/2, draw_tile/5, abstract_colors/2]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(model_basics).
@@ -86,7 +86,9 @@ draw_triangle(P1x > P1y, P2x > P2y, Color, CenterX > CenterY, Ctx) :-
 clear_board_rect(Ctx, X, Y, W, H) :-
     Ctx >> [
         fillStyle <:+ '#999',
-        fillRect(X, Y, W, H)
+        fillRect(X, Y, W, H),
+        strokeStyle <:+ '#999',
+        stroke
     ].
 
 draw_all_tiles(AllTiles, Ctx, CW, CH) :-

@@ -2,6 +2,7 @@
 
 :- use_module(library).
 :- use_module('../proscriptls_sdk/library/data_predicates').
+:- use_module(model_basics).
 :- use_module(game_model_tiles).
 
 :- initialization(initdyn).
