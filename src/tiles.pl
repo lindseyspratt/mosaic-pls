@@ -629,11 +629,12 @@ on_click_transform_edge(Tile, Edge) :-
     ;
      writeln(transform_edge(Edge, Color)),
      edge_neighbor_tile(Tile, Edge, NeighborTile)
-      -> (last_placed_tiles(Tile, NeighborTile)
+      -> (get_selected_edge(Tile, NeighborTile)
            -> true % these tiles were placed by previous turn/player. Ignore this selection click.
          ;
           set_game_phase_status(closed),
           create_transform_shaped_locations(Tile, Edge, NeighborTile),
+          set_selected_edge(Tile, NeighborTile),
           setup_replacements([Tile, NeighborTile]),
           draw_game_tiles
          )
@@ -750,7 +751,7 @@ draw_tile_animation(Ctx, Colors, Start, End) :-
     gc,
     draw_game_tiles(Ctx),
     next_position(Start, End, Next),
-    draw_tile(Ctx, Colors, Next),
+    forall(true, draw_tile(Ctx, Colors, Next)),
     yield,
     draw_tile_animation(Ctx, Colors, Next, End).
 

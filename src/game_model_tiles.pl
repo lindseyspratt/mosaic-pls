@@ -30,7 +30,7 @@
      get_mismatches/1, set_mismatches/1,
      get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
      set_last_build_phase_tile_placed/1,
-     last_placed_tiles/2, place_tile_in_hand/1, place_tiles_in_hand/1, place_tile_on_board/3,
+     get_selected_edge/2, set_selected_edge/2, place_tile_in_hand/1, place_tiles_in_hand/1, place_tile_on_board/3,
      find_orphans/1,
      get_game_phase/1, update_game_phase/0, update_game_phase/2, get_game_phase_status/1, set_game_phase_status/1,
      edge_neighbor_tile/3, edge_to_neighbor_edge/2, tile_in_inactive_hand/1,
@@ -50,7 +50,7 @@ initdyn :-
         data_predicates(gmt, data, [undoable],
             [tile_counter, tiles, hands, board,
              tilesPlaced, boardHash, mismatches,
-             lastPlacedTile1, lastPlacedTile2, lastBuildPhaseTilePlacedID,
+             selectedEdge, lastBuildPhaseTilePlacedID,
              turn, turnAfterResolution, selectedTileID, replacements, gamePhase, gamePhaseStatus, selectionMarker
             ])]).
 
@@ -120,7 +120,7 @@ condense_name2(H, CondensedNameCodes, CondensedTail) :-
     CondensedNameCodes = [H|CondensedTail].
 
 init_game_model_tiles :-
-    assert_data(gmt(0, [], [], [], 0, [], [], none, none, none, 0, none, none, [], none, closed, 0), 1),
+    assert_data(gmt(0, [], [], [], 0, [], [], none, none, 0, none, none, [], none, closed, 0), 1),
     build_tiles.
 
 save_game_model_tiles_stream(Stream) :-
@@ -276,7 +276,20 @@ set_last_build_phase_tile_placed(ID) :-
     data_default_id(GameModelTilesID),
     set_data_lastBuildPhaseTilePlacedID(GameModelTilesID, ID).
 
-last_placed_tiles(Tile1, Tile2) :-
+% An edge is defined by two orthogonally neighboring grid locations: (X > Y1, X > Y2) where abs(Y1 - Y2) = 1,
+% or (X1 > Y, X2 > Y) where abs(X1 - X2) = 1.
+% The edge structure is a pair of points (X1>Y1, X2>Y2) where X1 <= X2 and Y1 <= Y2.
+
+get_selected_edge(Tile1, Tile2) :-
+    tiles_to_edge(Tile1, Tile2, Edge),
+    data_selectedEdge(Edge).
+
+set_selected_edge(Tile1, Tile2) :-
+    tiles_to_edge(Tile1, Tile2, Edge),
+    data_default_id(GameModelTilesID),
+    set_data_selectedEdge(GameModelTilesID, Edge).
+
+tiles_to_edge(Tile1, Tile2, edge(Edge1, Edge2)) :-
     get_tile_grid_x(Tile1, GridX1),
     get_tile_grid_y(Tile1, GridY1),
     get_tile_grid_x(Tile2, GridX2),
@@ -285,14 +298,12 @@ last_placed_tiles(Tile1, Tile2) :-
      ;
      GridX1 = GridX2,
      GridY1 > GridY2
-    ) -> SortedTile1 = Tile2,
-         SortedTile2 = Tile1
+    ) -> Edge1 = (GridX2 > GridY2),
+         Edge2 = (GridX1 > GridY1)
     ;
-    SortedTile1 = Tile1,
-    SortedTile2 = Tile2
-    ),
-    data_lastPlacedTile1(SortedTile1),
-    data_lastPlacedTile2(SortedTile2).
+    Edge1 = (GridX1 > GridY1),
+    Edge2 = (GridX2 > GridY2)
+    ).
 
 add_board_tile(Tile) :-
     data_default_id(ID),
