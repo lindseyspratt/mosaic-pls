@@ -1,6 +1,7 @@
 :- module(score,
     [score/1, incremental_score/2, components_score/2, get_components/1, save_score_stream/1,
-     test_tiles/0, test_tiles2/0, test_tiles2/2, clear_score/0, create_score/0]).
+     test_tiles/0, test_tiles2/0, test_tiles2/2, clear_score/0, create_score/0,
+     get_totals/1, add_totals/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 
@@ -14,18 +15,19 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(s, data, [undoable], [components])]).
+    data_predicate_dynamics([data_predicates(s, data, [undoable], [components,totals])]).
 
 dummy_reference :-
     dummy_reference,
     data_components(_).
 
 create_score:-
-    assert_data(s([]), 1).
+    assert_data(s([],[]), 1).
 
 clear_score :-
     data_default_id(ID),
-    clear_components(ID).
+    clear_components(ID),
+    clear_totals(ID).
 
 get_components(Components) :-
     data_components(Components).
@@ -37,6 +39,17 @@ save_score_stream(Stream) :-
     writeln(save_score),
     save_data_stream(data, Stream),
     writeln(done(save_score)).
+
+add_totals(Turn, Score) :-
+    data_default_id(ID),
+    update_data_totals(ID, Old, [Turn-Score|Old]).
+
+get_totals(Totals) :-
+    data_totals(Totals).
+
+clear_totals(ID) :-
+    clear_data_totals(ID).
+
 
 % score/1 can be run at any time the board is 'stable'.
 % incremental_score/2 uses the Components recorded

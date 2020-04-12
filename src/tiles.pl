@@ -823,23 +823,32 @@ score_delay1(Tile) :-
 %    writeln(score_delay1(Tile)),
 %    yield,
     (get_game_phase(build)
-      -> incremental_score(Tile, Score)
+      -> incremental_score(Tile, Score),
+         get_turn(Turn),
+         add_totals(Turn, Score)
     ;
      get_game_phase(rebuild),
      get_turn(Turn),
      get_hand(Turn, [])
-      -> score(Score)
+      -> score(Score),
+         add_totals(Turn, Score)
     ;
      get_game_phase(transform)
-      -> score(Score)
+      -> score(Score),
+         get_turn(Turn),
+         add_totals(Turn, Score)
     ;
      Score = 'score not calculated'
     ),
-    display_score(Score).
+    get_totals(Totals),
+    display_score(Totals).
 
 calculate_and_display_score :-
     score(S),
-    display_score(S).
+    get_turn(Turn),
+    add_totals(Turn, S),
+    get_totals(Totals),
+    display_score(Totals).
 
 display_score(S) :-
     format(atom(Score), '~w', [S]),
