@@ -26,6 +26,7 @@
      get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
      get_turn/1, set_turn/1, increment_turn/1, previous_turn/2, get_turn_after_resolution/1, set_turn_after_resolution/1,
      get_selected_tile_id/1, set_selected_tile_id/1, get_selection_marker/1, update_selection_marker/0,
+     get_round/1, increment_round/0,
      get_replacements/1, set_replacements/1, remove_tile_from_replacements/1,
      get_mismatches/1, set_mismatches/1,
      get_board_tile_by_grid/2, get_last_build_phase_tile_placed/1,
@@ -51,7 +52,7 @@ initdyn :-
             [tile_counter, tiles, hands, board,
              tilesPlaced, boardHash, mismatches,
              selectedEdge, lastBuildPhaseTilePlacedID,
-             turn, turnAfterResolution, selectedTileID, replacements, gamePhase, gamePhaseStatus, selectionMarker
+             turn, turnAfterResolution, round, selectedTileID, replacements, gamePhase, gamePhaseStatus, selectionMarker
             ])]).
 
 dummy_reference :-
@@ -120,7 +121,7 @@ condense_name2(H, CondensedNameCodes, CondensedTail) :-
     CondensedNameCodes = [H|CondensedTail].
 
 init_game_model_tiles :-
-    assert_data(gmt(0, [], [], [], 0, [], [], none, none, 0, none, none, [], none, closed, 0), 1),
+    assert_data(gmt(0, [], [], [], 0, [], [], none, none, 0, none, 0, none, [], none, closed, 0), 1),
     build_tiles.
 
 save_game_model_tiles_stream(Stream) :-
@@ -215,9 +216,23 @@ increment_turn(NewTurn) :-
     NewTurn is (OldTurn mod NumberOfPlayers) + 1,
     update_data_turn(GameModelTilesID, OldTurn, NewTurn).
 
-previous_turn(Turn, PreviousTurn) :-
+get_round(Counter) :-
+    data_round(Counter).
+
+increment_round :-
+    data_default_id(GameModelTilesID),
+    data_round(GameModelTilesID, Counter),
+    Next is Counter + 1,
+    set_data_round(GameModelTilesID, Next).
+
+previous_turn(Round/Turn, RoundForPreviousTurn/PreviousTurn) :-
     get_number_of_players(NumberOfPlayers),
-    PreviousTurn is ((((Turn-1) mod NumberOfPlayers) - 1) mod NumberOfPlayers) + 1.
+    PreviousTurn is ((((Turn-1) mod NumberOfPlayers) - 1) mod NumberOfPlayers) + 1,
+    (PreviousTurn > Turn
+      -> RoundForPreviousTurn is Round - 1
+    ;
+     RoundForPreviousTurn = Round
+    ).
 
 get_turn_after_resolution(Turn) :- data_turnAfterResolution(Turn).
 

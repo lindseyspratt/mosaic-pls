@@ -272,6 +272,12 @@ complete_select(UI) :-
     writeln(game_phase(Phase)),
     yield,
     update_selection_marker,
+    ((Phase = build;Phase = transform),
+     get_turn(1)
+      -> increment_round
+    ;
+    true
+    ),
     (UI = display
       ->  display_status,
           get_game_phase(Phase),
@@ -826,18 +832,21 @@ score_delay1(Tile) :-
     (get_game_phase(build)
       -> incremental_score(Tile, Score),
          get_turn(Turn),
-         add_totals(Turn, Score)
+         get_round(Round),
+         add_totals(Round/Turn, Score)
     ;
      get_game_phase(rebuild),
      get_turn(Turn),
      get_hand(Turn, [])
       -> score(Score),
-         add_totals(Turn, Score)
+         get_round(Round),
+         add_totals(Round/Turn, Score)
     ;
      get_game_phase(transform)
       -> score(Score),
          get_turn(Turn),
-         add_totals(Turn, Score)
+         get_round(Round),
+         add_totals(Round/Turn, Score)
     ;
      Score = 'score not calculated'
     ),
@@ -847,19 +856,79 @@ score_delay1(Tile) :-
 calculate_and_display_score :-
     score(S),
     get_turn(Turn),
-    add_totals(Turn, S),
+    get_round(Round),
+    add_totals(Round/Turn, S),
     get_totals(Totals),
     display_score(Totals).
 
+/*
+<table>
+<tr><th>1</th><th>2</th></tr>
+<tr><td>125</td><td><b>37</b></td></tr>
+<tr><td><b>144</b></td><td>40</td></tr>
+<tr><td>74</td><td><b>44</b></td></tr>
+</table>
+*/
 display_score(S) :-
+    score_html_table(S, TableBodyCodes),
+    get_number_of_players(NumberOfPlayers),
+    score_table_header_items(1, NumberOfPlayers, HeaderCodes),
+    append_lists(["<table><tr><th>Round</th>", HeaderCodes, "</tr>", TableBodyCodes, "</table>"], TableCodes),
+    atom_codes(Table, TableCodes),
     (assess_winner(S, Winner)
-        -> format(atom(Score), 'Winner: ~w. ~w', [Winner, S])
+        -> get_player_color(Winner, Color),
+           format(atom(Score), '<b>Winner: <span style="background-color:~w;">~w</span></b><br>~w', [Color, Winner, Table])
     ;
-     format(atom(Score), '~w', [S])
+     format(atom(Score), '~w', [Table])
     ),
     atom_codes(Score, ScoreCodes),
     _ >> [id -:> score, innerHTML <:+ ScoreCodes],
     !.
+
+score_table_header_items(Player, Player, Codes) :-
+    !,
+    score_table_header_item(Player, Codes).
+score_table_header_items(Player, NumberOfPlayers, Codes) :-
+    score_table_header_item(Player, ItemCodes),
+    append(ItemCodes, NextCodes, Codes),
+    Next is Player + 1,
+    score_table_header_items(Next, NumberOfPlayers, NextCodes).
+
+score_table_header_item(Player, Codes) :-
+    get_player_color(Player, Color),
+    format(atom(Item), '<th><div style="background-color:~w;">~w</div></th>', [Color, Player]),
+    atom_codes(Item, Codes).
+
+score_html_table([], []).
+score_html_table([Round/Turn-Score|OtherScores], TableCodes) :-
+    score_html_row(Round, Turn, Score, DataCodes),
+    append_lists(["<tr>", DataCodes, "</tr>", OtherCodes], TableCodes),
+    score_html_table(OtherScores, OtherCodes).
+
+score_html_row(Round, HighlightTurn, Score, RowCodes) :-
+    format(atom(RoundItem), '<td>~w</td>', [Round]),
+    atom_codes(RoundItem, RoundCodes),
+    append(RoundCodes, ScoreCodes, RowCodes),
+    sort(Score, SortedScore),
+    score_html_row1(SortedScore, HighlightTurn, ScoreCodes).
+
+score_html_row1([], _, []).
+score_html_row1([Turn-Value|T], HighlightTurn, RowCodes) :-
+    (Value >= 100
+      -> format(atom(Item1), '<div class="mosaic-winning">~w</div>', [Value])
+    ;
+     Item1 = Value
+    ),
+    (Turn = HighlightTurn
+      -> format(atom(Item2), '<div class="mosaic-current">~w</div>', [Item1])
+    ;
+     Item2 = Item1
+    ),
+    format(atom(Datum), '<td>~w</td>', [Item2]),
+    atom_codes(Datum, DatumCodes),
+    append(DatumCodes, OtherCodes, RowCodes),
+    score_html_row1(T, HighlightTurn, OtherCodes).
+
 
 undo_last_selection :-
     increment_interaction_counter,

@@ -98,3 +98,15 @@ h1, h2, h3, h4, h5, h6 {
     float: right;
     font-size: 12px;
 }
+
+.mosaic-player-1 {
+    background-color: #dedbc8;
+}
+
+.mosaic-current {
+    font-weight: bold;
+}
+
+.mosaic-winning {
+    background-color: #dedbc8;
+}

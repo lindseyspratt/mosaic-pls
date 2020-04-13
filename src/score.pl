@@ -40,12 +40,13 @@ save_score_stream(Stream) :-
     save_data_stream(data, Stream),
     writeln(done(save_score)).
 
-add_totals(Turn, Score) :-
+add_totals(RoundTurnAfterScore, Score) :-
+    previous_turn(RoundTurnAfterScore, RoundTurnForScore),
     data_default_id(ID),
     data_totals(ID, Old),
     get_number_of_players(NumberOfPlayers),
     Limit is NumberOfPlayers * 2,
-    append_limit([Turn-Score], Old, Limit, New),
+    append_limit([RoundTurnForScore-Score], Old, Limit, New),
     set_data_totals(ID, New).
 
 append_limit([], Tail, Limit, Result) :-
@@ -72,12 +73,11 @@ clear_totals(ID) :-
 % for two values of IDX with ScoresNX: previousPlayer(IDX, IDY), setof(V, (member(IDY-V, ScoresNX), V >= 100), Vs).
 % If (length(Vs, L), L > 1) then IDY wins.
 assess_winner(Scores, Winner) :-
-    member(LastTurn-_, Scores),
-    previous_turn(LastTurn, PreviousTurn),
-    findall(V, (member(LastTurn-CheckScore, Scores), member(PreviousTurn-V, CheckScore), V >= 100), Vs),
+    member(Turn-_, Scores),
+    findall(V, (member(Turn-CheckScore, Scores), member(Turn-V, CheckScore), V >= 100), Vs),
     length(Vs, Length),
     Length > 1,
-    Winner = PreviousTurn.
+    Winner = Turn.
 
 % score/1 can be run at any time the board is 'stable'.
 % incremental_score/2 uses the Components recorded
