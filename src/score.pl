@@ -1,7 +1,7 @@
 :- module(score,
     [score/1, incremental_score/2, components_score/2, get_components/1, save_score_stream/1,
      test_tiles/0, test_tiles2/0, test_tiles2/2, clear_score/0, create_score/0,
-     get_totals/1, add_totals/2]).
+     get_totals/1, add_totals/2, assess_winner/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 
@@ -42,7 +42,25 @@ save_score_stream(Stream) :-
 
 add_totals(Turn, Score) :-
     data_default_id(ID),
-    update_data_totals(ID, Old, [Turn-Score|Old]).
+    data_totals(ID, Old),
+    get_number_of_players(NumberOfPlayers),
+    Limit is NumberOfPlayers * 2,
+    append_limit([Turn-Score], Old, Limit, New),
+    set_data_totals(ID, New).
+
+append_limit([], Tail, Limit, Result) :-
+    limit(Tail, Limit, Result).
+append_limit(_, _, 0, []) :-
+    !.
+append_limit([H|T], Tail, Limit, [H|Result]) :-
+    Next is Limit - 1,
+    append_limit(T, Tail, Next, Result).
+
+limit([], _, []) :- !.
+limit(_, 0, []) :- !.
+limit([H|T], Limit, [H|Result]) :-
+    Next is Limit - 1,
+    limit(T, Next, Result).
 
 get_totals(Totals) :-
     data_totals(Totals).
@@ -50,6 +68,16 @@ get_totals(Totals) :-
 clear_totals(ID) :-
     clear_data_totals(ID).
 
+% S = [ID1-Scores11, ID2-Scores21, ...]
+% for two values of IDX with ScoresNX: previousPlayer(IDX, IDY), setof(V, (member(IDY-V, ScoresNX), V >= 100), Vs).
+% If (length(Vs, L), L > 1) then IDY wins.
+assess_winner(Scores, Winner) :-
+    member(LastTurn-_, Scores),
+    previous_turn(LastTurn, PreviousTurn),
+    findall(V, (member(LastTurn-CheckScore, Scores), member(PreviousTurn-V, CheckScore), V >= 100), Vs),
+    length(Vs, Length),
+    Length > 1,
+    Winner = PreviousTurn.
 
 % score/1 can be run at any time the board is 'stable'.
 % incremental_score/2 uses the Components recorded

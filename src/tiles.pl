@@ -107,9 +107,10 @@ load_game :-
     setup_score.
 
 setup_score :-
-    get_components(Components),
-    components_score(Components, Scores),
-    display_score(Scores).
+%    get_components(Components),
+%    components_score(Components, _Scores),
+    get_totals(Totals),
+    display_score(Totals).
 
 % setup_event_handling prepares the game to accept mouse clicks.
 % removeEventListener in case one is already present - this method succeeds even if there is no
@@ -851,7 +852,11 @@ calculate_and_display_score :-
     display_score(Totals).
 
 display_score(S) :-
-    format(atom(Score), '~w', [S]),
+    (assess_winner(S, Winner)
+        -> format(atom(Score), 'Winner: ~w. ~w', [Winner, S])
+    ;
+     format(atom(Score), '~w', [S])
+    ),
     atom_codes(Score, ScoreCodes),
     _ >> [id -:> score, innerHTML <:+ ScoreCodes],
     !.

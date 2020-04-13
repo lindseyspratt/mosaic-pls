@@ -24,7 +24,7 @@
     [init_game_model_tiles/0, save_game_model_tiles/0, load_game_model_tiles/0,
      save_game_model_tiles_stream/1, retract_game_model_tiles/0,
      get_tiles/1, get_total_tiles_in_game/1, get_board/1, get_hands/1, get_hand/2,
-     get_turn/1, set_turn/1, increment_turn/1, get_turn_after_resolution/1, set_turn_after_resolution/1,
+     get_turn/1, set_turn/1, increment_turn/1, previous_turn/2, get_turn_after_resolution/1, set_turn_after_resolution/1,
      get_selected_tile_id/1, set_selected_tile_id/1, get_selection_marker/1, update_selection_marker/0,
      get_replacements/1, set_replacements/1, remove_tile_from_replacements/1,
      get_mismatches/1, set_mismatches/1,
@@ -214,6 +214,10 @@ increment_turn(NewTurn) :-
     get_number_of_players(NumberOfPlayers),
     NewTurn is (OldTurn mod NumberOfPlayers) + 1,
     update_data_turn(GameModelTilesID, OldTurn, NewTurn).
+
+previous_turn(Turn, PreviousTurn) :-
+    get_number_of_players(NumberOfPlayers),
+    PreviousTurn is ((((Turn-1) mod NumberOfPlayers) - 1) mod NumberOfPlayers) + 1.
 
 get_turn_after_resolution(Turn) :- data_turnAfterResolution(Turn).
 
