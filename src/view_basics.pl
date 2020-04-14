@@ -32,7 +32,7 @@ create_view_basics :-
         assert_data(
             vb(W, H, OffsetTop, OffsetLeft, Ctx,
                ['#008800', '#4444FF'], ['#CCFFCC', '#CCCCFF'],
-               55, 4, 5, 75, 100, 0, 800, 600), 1).
+               50, 4, 5, 70, 100, 0, 700, 600), 1).
 
 reset_view_basics :-
           _Canvas >> [id -:> canvas,

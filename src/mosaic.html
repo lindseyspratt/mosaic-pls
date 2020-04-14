@@ -11,14 +11,17 @@
 <body onload="proscriptls_init ('tiles:display_title.');">
 <div class="mosaic-description">
     <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game.');">
-        Start
+        New
     </button>
     <button class="mosaic-button" onclick="proscriptls ('tiles:save_game_stream.');">
         Save
     </button>
     <button class="mosaic-button" onclick="proscriptls ('tiles:load_game.');">
-        Load
+        Resume
     </button>
+    <div id="score">
+
+    </div>
 </div>
 <div id="tiles" class="mosaic-label">
     <div class="mosaic-secondary">
@@ -41,9 +44,6 @@
     </div>
     <canvas id="canvas" width="800" height="600">
     </canvas>
-    <div id="score">
-
-    </div>
 </div>
 <!--suppress JSUnresolvedLibraryURL -->
 
