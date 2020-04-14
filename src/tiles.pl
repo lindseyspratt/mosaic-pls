@@ -1,6 +1,6 @@
 :- module(tiles, [display_title/0, setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3,
-        undo_last_selection/0, agent_select/1, apply_clicks/1]).
+        undo_last_selection/0, agent_select/1, apply_clicks/1, toggle_auto_play_and_update_button/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -230,6 +230,25 @@ enable_auto_play :-
 disable_auto_play :-
     retractall(use_auto_play(_)),
     asserta(use_auto_play(false)).
+
+toggle_auto_play :-
+    use_auto_play(true)
+      -> disable_auto_play
+    ;
+    enable_auto_play.
+
+toggle_auto_play_and_update_button :-
+    toggle_auto_play,
+    update_auto_play_buttons.
+
+update_auto_play_buttons :-
+    (use_auto_play(true)
+      -> _ >> [id -:> auto_play_button, innerText <:+ "Disable Auto Play for Player 2"],
+     _ >> [id -:> move_button, disabled <:- true]
+    ;
+     _ >> [id -:> auto_play_button, innerText <:+ "Enable Auto Play for Player 2"],
+     _ >> [id -:> move_button, disabled <:- false]
+    ).
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates

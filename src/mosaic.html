@@ -32,7 +32,10 @@
         <button class="mosaic-button" onclick="proscriptls ('tiles:undo_last_selection.');">
             Undo
         </button>
-        <button class="mosaic-button" onclick="proscriptls ('tiles:agent_select(_).');">
+        <button class="mosaic-button" id="auto_play_button" onclick="proscriptls ('tiles:toggle_auto_play_and_update_button.');">
+            Disable Auto Play for Player 2
+        </button>
+        <button class="mosaic-button" id="move_button" onclick="proscriptls ('tiles:agent_select(_).');" disabled="true">
             Move Player 2
         </button>
     </div>
