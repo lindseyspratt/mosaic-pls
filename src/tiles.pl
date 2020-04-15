@@ -690,6 +690,7 @@ setup_replacements(TilesForHand) :-
 
 setup_orphans(Orphans) :-
     place_tiles_in_hand(Orphans),
+    find_shaped_locations,
     layout_hands.
 
 draw_game_tiles_and_locations :-
