@@ -39,7 +39,7 @@
 :- module(model_basics, [init_model_basics/3, save_model_basics/0, load_model_basics/0,
     save_model_basics_stream/1, retract_model_basics/0,
     get_hand_color_ids/1, get_number_of_players/1, get_triangles_per_tile/1,
-    rotate_right/2, rotate_left/2, board_hash_key_coords/3,
+    rotate_right/2, rotate_left/2, matching_rotations/3, board_hash_key_coords/3,
     tile_colors_match_constraint_colors/2, tile_colors_mismatch_constraint_colors/4,
     edge_neighbor_offset/2, display_spans/2, values/1]).
 
@@ -164,6 +164,19 @@ rotate_right([H|T], Rotated) :-
  */
 rotate_left(L, [Last|Prefix]) :-
     append(Prefix, [Last], L).
+
+
+matching_rotations(Colors, Constraint, Rotation) :-
+    rotate_left(Colors, FinalColors),
+    matching_rotations(Colors, FinalColors, Constraint, Rotation).
+
+matching_rotations(Colors, FinalColors, Constraint, Rotation) :-
+    tile_colors_match_constraint_colors(Colors, Constraint)
+      -> Colors = Rotation
+    ;
+    Colors \= FinalColors,
+    rotate_right(Colors, NextColors),
+    matching_rotations(NextColors, FinalColors, Constraint, Rotation).
 
 /**
  * board_hash_key_coords funtion converts a pair of coordinates to a unique string used as a lookup key.

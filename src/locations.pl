@@ -796,18 +796,6 @@ location_edge_second_neighbor_tile(ID, Edge, NeighborTile) :-
     location_edge_second_neighbor_position(ID, Edge, Position),
     get_board_tile_by_grid(Position, NeighborTile).
 
-matching_rotations(Colors, Constraint, Rotation) :-
-    rotate_left(Colors, FinalColors),
-    matching_rotations(Colors, FinalColors, Constraint, Rotation).
-
-matching_rotations(Colors, FinalColors, Constraint, Rotation) :-
-    tile_colors_match_constraint_colors(Colors, Constraint)
-      -> Colors = Rotation
-    ;
-    Colors \= FinalColors,
-    rotate_right(Colors, NextColors),
-    matching_rotations(NextColors, FinalColors, Constraint, Rotation).
-
 locations_values(ID, Values) :-
     labelled_values(data, ID, Values).
 

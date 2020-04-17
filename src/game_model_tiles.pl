@@ -36,7 +36,7 @@
      get_game_phase/1, update_game_phase/0, update_game_phase/2, get_game_phase_status/1, set_game_phase_status/1,
      edge_neighbor_tile/3, edge_to_neighbor_edge/2, tile_in_inactive_hand/1,
      tile_in_active_hand/1, tile_in_board/1, get_tiles_placed/1, game_model_tiles_values/1,
-     undo_phase_updates/0, undo_selection_updates/1, write_undo_history/1]).
+     undo_phase_updates/0, undo_selection_updates/1, write_undo_history/1, describe_board_tiles/1, setup_board_tiles/1]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -630,3 +630,15 @@ check2(A, B, X, X1, Y, Y1, T, Accompanied) :-
     check1(T, X, X1, Y, Y1, AccompaniedNext).
 check2(_A, _B, X, X1, Y, Y1, T, Accompanied) :-
     check1(T, X, X1, Y, Y1, Accompanied).
+
+describe_board_tiles(Info) :-
+    get_board(Board),
+    setof(X>Y-Colors, (member(Tile,Board), get_tile_grid_x(Tile, X), get_tile_grid_y(Tile, Y), get_tile_colors(Tile, Colors)), Info).
+
+setup_board_tiles([]).
+setup_board_tiles([X>Y-TargetColors|Info]) :-
+    get_tile_container(Tile, hand(_)),
+    get_tile_colors(Tile, Colors),
+    matching_rotations(Colors, TargetColors, _),
+    place_tile_on_board(Tile, X, Y),
+    setup_board_tiles(Info).
