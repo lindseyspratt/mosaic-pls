@@ -262,7 +262,7 @@ select(Event) :-
     select1(PageX, PageY, display).
 
 select1(PageX, PageY, UI) :-
-    canvas_cursor(wait),
+    indicate_waiting(wait),
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y, Action),
     (Action = skip(_)
@@ -275,10 +275,10 @@ select1(PageX, PageY, UI) :-
       true
      )
     ),
-    canvas_cursor(initial),
+    indicate_waiting(initial),
     !.
 select1(PageX, PageY, UI) :-
-    canvas_cursor(initial),
+    indicate_waiting(initial),
     get_game_phase(rebuild),
     get_replacements([]),
     get_shaped_positions([])
@@ -291,9 +291,12 @@ select1(PageX, PageY, UI) :-
     !,
     fail.
 
-canvas_cursor(Cursor) :-
-    _ >> [id -:> canvas, style +:> Style],
-    Style >*> setProperty(cursor, Cursor).
+indicate_waiting(wait) :-
+    Div >> [id -:> waiting],
+    toggle_dom_element_class(Div, loader, add).
+indicate_waiting(initial) :-
+    Div >> [id -:> waiting],
+    toggle_dom_element_class(Div, loader, remove).
 
 complete_select(UI) :-
     update_game_phase,
@@ -861,7 +864,7 @@ score_delay :-
 score_delay(Tile) :-
 %    writeln(score_delay(Tile)),
 %    yield,
-    canvas_cursor(wait),
+    indicate_waiting(wait),
     number_codes(Tile, TileCodes),
     append_lists(["setTimeout(() => proscriptls('tiles:score_delay1(", TileCodes, ")'), 0);"], MsgCodes),
     eval_javascript(MsgCodes).
@@ -869,7 +872,7 @@ score_delay(Tile) :-
 score_delay1(Tile) :-
 %    writeln(score_delay1(Tile)),
 %    yield,
-    canvas_cursor(wait),
+    indicate_waiting(wait),
     (get_game_phase(build)
       -> incremental_score(Tile, Score),
          get_turn(Turn),
@@ -893,18 +896,18 @@ score_delay1(Tile) :-
     ),
     get_totals(Totals),
     display_score(Totals),
-    canvas_cursor(initial).
+    indicate_waiting(initial).
 
 
 calculate_and_display_score :-
-    canvas_cursor(wait),
+    indicate_waiting(wait),
     score(S),
     get_turn(Turn),
     get_round(Round),
     add_totals(Round/Turn, S),
     get_totals(Totals),
     display_score(Totals),
-    canvas_cursor(initial).
+    indicate_waiting(initial).
 
 /*
 <table>
@@ -1053,10 +1056,10 @@ agent_select_delay :-
          eval_javascript(MsgCodes)
 %         dom_window(_) >*> setTimeout(agent_select(_), 0)
     ;
-    canvas_cursor(initial).
+    indicate_waiting(initial).
 
 agent_select(Click) :-
-    canvas_cursor(wait),
+    indicate_waiting(wait),
     get_turn(Agent),
     agent_player(Agent)
       -> ask_agent(Click),
@@ -1068,7 +1071,7 @@ agent_select(Click) :-
           agent_select_delay
          )
     ;
-    canvas_cursor(initial).
+    indicate_waiting(initial).
 
 agent_player(2).
 

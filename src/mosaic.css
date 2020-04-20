@@ -100,9 +100,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .mosaic-secondary {
-    width: 200px;
+    width: 150px;
     float: right;
-    font-size: 12px;
+    font-size: 10px;
 }
 
 .mosaic-player-1 {
@@ -120,10 +120,10 @@ h1, h2, h3, h4, h5, h6 {
 body {
     display: grid;
     grid-template-areas:
-        "game game game"
-        "status1 score status2"
-        "console console console";
-    grid-template-columns: 1fr 1fr 1fr;
+        "game game game game"
+        "status1 waiting score status2"
+        "console console console console";
+    grid-template-columns: 1fr 1fr 1fr 1fr;
 }
 
 game {
@@ -135,6 +135,9 @@ status1 {
     grid-area: status1;
 }
 
+waiting {
+    grid-area: waiting;
+}
 score {
     grid-area: score;
 }
@@ -145,4 +148,18 @@ status2 {
 
 console {
     grid-area: console;
+}
+
+.loader {
+    border: 16px solid #f3f3f3; /* Light grey */
+    border-top: 16px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
