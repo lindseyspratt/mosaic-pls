@@ -16,8 +16,11 @@
 </game>
 <status1>
 <div class="mosaic-description">
-    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game.');">
-        New
+    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(2).');">
+        New Two Player Game
+    </button>
+    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(3).');">
+        New Three Player Game
     </button>
     <button class="mosaic-button" onclick="proscriptls ('tiles:save_game_stream.');">
         Save
@@ -48,10 +51,10 @@
             Undo
         </button>
         <button class="mosaic-button" id="auto_play_button" onclick="proscriptls ('tiles:toggle_auto_play_and_update_button.');">
-            Disable Auto Play for Player 2
+            Disable Auto Play for Player Two
         </button>
         <button class="mosaic-button" id="move_button" onclick="proscriptls ('tiles:agent_select(_).');" disabled="true">
-            Move Player 2
+            Move Player Two
         </button>
     </div>
 </status2>

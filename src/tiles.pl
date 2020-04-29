@@ -1,4 +1,4 @@
-:- module(tiles, [display_title/0, setup_game_data/0, start_mosaic_game/0, clear_mosaic_game/0, score_delay1/1,
+:- module(tiles, [display_title/0, setup_game_data/1, start_mosaic_game/1, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3,
         undo_last_selection/0, agent_select/1, apply_clicks/1, toggle_auto_play_and_update_button/0]).
 
@@ -19,8 +19,11 @@
 :- use_module(status).
 :- use_module(agent).
 
+:- meta_predicate(fail_save((:))).
+
 :- dynamic(interaction_counter/1).
 :- dynamic(use_auto_play/1).
+:- dynamic(fail_saved/1).
 
 dummy_reference :-
     dummy_reference,
@@ -28,14 +31,16 @@ dummy_reference :-
     load_game_data,
     save_game,
     calculate_and_display_score,
-    available_click(_).
+    select_click(_,_,_),
+    available_click(_),
+    draw_tile_animation1(_,_,_,_,_).
 
 display_title :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     letters:display_letters([m,o,s,a,i,c], Ctx, 20, 100, 100, _).
 
-setup_game_data :-
-    init_model_basics(2, 4, [1,2,3,4]),
+setup_game_data(NumberOfPlayers) :-
+    init_model_basics(NumberOfPlayers, 4, [1,2,3,4]),
     init_game_model_tiles, % uses info in model_basics.
     init_agent,
     update_game_phase,
@@ -48,8 +53,8 @@ setup_game_data :-
     create_score,
     !.
 
-start_mosaic_game :-
-    setup_game_data,
+start_mosaic_game(NumberOfPlayers) :-
+    setup_game_data(NumberOfPlayers),
     enable_auto_play,
     get_canvas_width(W),
     get_canvas_height(H),
@@ -330,10 +335,18 @@ setup_select1(PageX, PageY, X, Y) :-
     writeln(select(PageX, PageY, PLeft, PTop, X, Y)).
 
 process_select(X, Y, Action) :-
-    select_click(X, Y, Click)
-     -> apply_click(Click, Action)
+    fail_save(select_click(X, Y, Click))
+     -> fail_save(apply_click(Click, Action))
     ;
     Action = skip(no_selectable_item).
+
+fail_save(Goal) :-
+    once(Goal),
+    asserta(fail_saved(Goal)),
+    fail.
+fail_save(Goal) :-
+    retract(fail_saved(Goal)),
+    writeln(retract(fail_saved(Goal))).
 
 select_click(X, Y, Click) :-
     available_click(Click),
@@ -683,7 +696,7 @@ on_click_transform_edge(Tile, Edge, Action) :-
           set_game_phase_status(closed),
           create_transform_shaped_locations(Tile, Edge, NeighborTile),
           set_selected_edge(Tile, NeighborTile),
-          setup_replacements([Tile, NeighborTile]),
+          setup_replacements([Tile-PlayerColor, NeighborTile-PlayerColor]),
           draw_game_tiles
          )
     ;
@@ -694,7 +707,8 @@ setup_replacements(TilesForHand) :-
     get_shaped_positions(ShapedLocations),
     get_board(BoardTiles),
     find_replacements(BoardTiles, ShapedLocations),
-    place_tiles_in_hand(TilesForHand),
+    findall(X, member(X-_, TilesForHand), Xs),
+    place_tiles_in_hand(Xs),
     layout_hands.
 
 setup_orphans(Orphans) :-
@@ -747,16 +761,17 @@ move_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     remove_tile_from_replacements(Tile),
     clear_shaped_location_for_tile(Tile),
     update_board_tile_view(Tile),
-    draw_game_tiles(Ctx).
+    fail_save(draw_game_tiles(Ctx)).
 
 place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     gc,
     writeln(place_tile_on_board_and_draw(Tile, X, Y)),
+    statistics,
     wam_duration(Start),
 
-    get_tile_display_x(Tile, OldDisplayX),
-    get_tile_display_y(Tile, OldDisplayY),
-    get_tile_size(Tile, OldSize),
+%    get_tile_display_x(Tile, OldDisplayX),
+%    get_tile_display_y(Tile, OldDisplayY),
+%    get_tile_size(Tile, OldSize),
 
     place_tile_on_board(Tile, X, Y),
 
@@ -772,17 +787,19 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     wam_duration(Mark2),
     update_board_tile_view(Tile),
 
-    get_tile_display_x(Tile, NewDisplayX),
-    get_tile_display_y(Tile, NewDisplayY),
-    get_tile_size(Tile, NewSize),
+%    get_tile_display_x(Tile, NewDisplayX),
+%    get_tile_display_y(Tile, NewDisplayY),
+%    get_tile_size(Tile, NewSize),
+%
+%    get_tile_colors(Tile, AbstractColors),
+%    abstract_colors(AbstractColors, Colors),
 
-    get_tile_colors(Tile, AbstractColors),
-    abstract_colors(AbstractColors, Colors),
-
-    draw_tile_animation(Ctx, Colors, OldDisplayX>OldDisplayY+OldSize, NewDisplayX>NewDisplayY+NewSize),
+%    draw_tile_animation(Ctx, Colors, OldDisplayX>OldDisplayY+OldSize, NewDisplayX>NewDisplayY+NewSize),
+    statistics,
 
     wam_duration(Mark3),
-    draw_game_tiles(Ctx),
+    center_board,
+    fail_save(draw_game_tiles(Ctx)),
     get_interaction_counter(InteractionCounter),
     reposition_board_loop_delay(InteractionCounter),
 
@@ -797,12 +814,30 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
 draw_tile_animation(_Ctx, _Colors, End, End) :-
     !.
 draw_tile_animation(Ctx, Colors, Start, End) :-
-    gc,
-    draw_game_tiles(Ctx),
-    next_position(Start, End, Next),
-    forall(true, draw_tile(Ctx, Colors, Next)),
+%    gc,
+    writeln(draw_tile_animation(Start)),
+    fail_save_dta(Ctx, Colors, Start, End, Next),
     yield,
     draw_tile_animation(Ctx, Colors, Next, End).
+
+
+fail_save_dta(Ctx, Colors, Start, End, Next) :-
+    once_dta(Ctx, Colors, Start, End, Next),
+    asserta(fail_saved(draw_tile_animation1(Next))),
+%    writeln(asserted(Next)),
+    fail.
+fail_save_dta(_Ctx, _Colors, _Start, _End, Next) :-
+    retract(fail_saved(draw_tile_animation1(Next))),
+    writeln(retracted(Next)).
+
+once_dta(Ctx, Colors, Start, End, Next) :-
+    draw_tile_animation1(Ctx, Colors, Start, End, Next),
+    !.
+
+draw_tile_animation1(Ctx, Colors, Start, End, Next) :-
+    draw_game_tiles(Ctx),
+    next_position(Start, End, Next),
+    draw_tile(Ctx, Colors, Next).
 
 draw_tile(Ctx, Colors, X>Y+Size) :-
     draw_tile(Ctx, Colors, Size, X, Y).
@@ -829,31 +864,13 @@ reposition_board_loop_delay(InteractionCounter) :-
     true).
 %    eval_javascript("setTimeout(() => proscriptls('tiles:reposition_board_loop'), 30);").
 
-/*
-reposition_board_loop(InteractionCounter) :-
-    reposition_board_toward_target_translation
-      -> _ >>$ [id -:> canvas,
-            getContext('2d') *:> Ctx,
-            width +:> W,
-            height +:> H],
-        get_tiles(TileIDs),
-        draw_all_tiles(TileIDs, Ctx, W, H),
-        draw_locations(Ctx),
-        reposition_board_loop_delay(InteractionCounter)
-    ;
-    true. % calculate_and_display_score.
-*/
-
 reposition_board_loop(InteractionCounter) :-
     reposition_board_toward_target_translation,
     !,
-    _ >>$ [id -:> canvas,
-            getContext('2d') *:> Ctx,
-            width +:> W,
-            height +:> H],
-    get_tiles(TileIDs),
-    draw_all_tiles(TileIDs, Ctx, W, H),
-    draw_locations(Ctx),
+    fail_save(draw_game_tiles_and_locations),
+    gc,
+    writeln(reposition_board_loop),
+    statistics,
     reposition_board_loop_delay(InteractionCounter).
 reposition_board_loop(_InteractionCounter) :-
     true. % calculate_and_display_score.

@@ -405,7 +405,9 @@ place_tile_on_board(Tile, GridX, GridY) :-
       -> remove_tile_from_board_hash(Tile),
          update_grid_x(Tile, _, GridX),
          update_grid_y(Tile, _, GridY),
-         add_board_hash_tile(Tile)
+         add_board_hash_tile(Tile),
+         neighbor_mismatches(Tile, Mismatches), % mismatch possible in 3 or 4 player game
+         add_board_mismatches(Mismatches)
     ;
      throw(mosaic_internal('invalid container type (place_tile_on_board)', Container))
     ).
@@ -435,7 +437,7 @@ neighbor_mismatch(Edge, Tile, TileColors, Mismatches, Tail) :-
          (nth0(NeighborEdge, NeighborColors, TileColor)
            -> Mismatches = Tail
          ;
-         Mismatches = [NeighborID|Tail]
+         Mismatches = [NeighborID-TileColor|Tail]
          )
     ;
     Mismatches = Tail.

@@ -94,6 +94,7 @@ clear_board_rect(Ctx, X, Y, W, H) :-
 draw_all_tiles(AllTiles, Ctx, CW, CH) :-
     center_board,
     clear_board_rect(Ctx, 0, 0, CW, CH),
+    draw_hand_labels(Ctx, CW, CH),
     draw_all_tiles1(AllTiles, Ctx).
 
 draw_all_tiles1([], _).
@@ -117,6 +118,43 @@ draw_all_tile(Tile, Ctx) :-
      true
     ),
     draw_replacements(Tile, Ctx).
+
+draw_hand_labels(Ctx, CW, CH) :-
+    get_number_of_players(NOP),
+    get_label_height(LabelHeight),
+    get_hand_margin(Margin),
+    draw_hand_labels(NOP, Ctx, CW, CH, LabelHeight, Margin).
+
+draw_hand_labels(0, _Ctx, _CW, _CH, _LabelHeight, _Margin) :-
+    !.
+draw_hand_labels(ID, Ctx, CW, CH, LabelHeight, Margin) :-
+    ID > 0,
+    draw_hand_label(ID, Ctx, CW, CH, LabelHeight, Margin),
+    NextID is ID - 1,
+    draw_hand_labels(NextID, Ctx, CW, CH, LabelHeight, Margin).
+
+draw_hand_label(1, Ctx, _CW, _CH, LabelHeight, Margin) :-
+    draw_label(Ctx, Margin, LabelHeight, 'Player One').
+draw_hand_label(2, Ctx, CW, _CH, LabelHeight, Margin) :-
+    get_number_of_players(NOP),
+    get_hand_margin(Margin),
+    get_hand_tile_size(TileSize),
+    get_label_width(LabelWidth),
+    X is CW - max(LabelWidth, (NOP - 1) * (Margin + TileSize)),
+    draw_label(Ctx, X, LabelHeight, 'Player Two').
+draw_hand_label(3, Ctx, CW, _CH, LabelHeight, Margin) :-
+    get_hand_tile_size(TileSize),
+    X is (CW - 8 * (Margin + TileSize)) / 2,
+    draw_label(Ctx, X, LabelHeight, 'Player Three').
+
+draw_label(Ctx, X, Y, Text) :-
+    Ctx >> [
+        save,
+        font <:+ '18px serif',
+        fillStyle <:+ '#000',
+        fillText(Text, X, Y),
+        restore
+    ].
 
 draw_replacements(Tile, Ctx) :-
     (get_replacements(Rs),
@@ -194,7 +232,8 @@ draw_replacement_tile_mark(Tile, Ctx) :-
 
 draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx) :-
 	get_turn(GT),
-	highlight_color(GT, Color),
+	get_highlight_color(GT, Color),
+	%highlight_color(GT, Color),
 
     Ctx >> [
         save,
@@ -232,8 +271,8 @@ draw_legal_positions([H|T], Ctx, TileSize) :-
     Ctx >*> fillRect(X, Y, TileSize, TileSize),
     draw_legal_positions(T, Ctx, TileSize).
 
-highlight_color(1, '#CCFFCC').
-highlight_color(2, '#CCCCFF').
+%highlight_color(1, '#CCFFCC').
+%highlight_color(2, '#CCCCFF').
 
 clear_location_views(Locations, Ctx) :-
     get_board_tile_size(TileSize),

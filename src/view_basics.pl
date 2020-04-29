@@ -4,7 +4,8 @@
      view_basics_values/1,
      get_canvas_width/1, get_canvas_height/1, get_canvas_offset_top/1, get_canvas_offset_left/1,
      get_context/1, get_player_color/2, get_highlight_color/2,
-     get_hand_tile_size/1, get_hand_padding/1, get_hand_margin/1, get_board_tile_size/1,
+     get_hand_tile_size/1, get_hand_padding/1, get_hand_margin/1,
+     get_label_width/1, get_label_height/1, get_board_tile_size/1,
      get_board_left/1, get_board_top/1, get_board_width/1, get_board_height/1
 ]).
 
@@ -19,6 +20,7 @@ initdyn :-
         [data_predicates(vb, data, [ephemeral],
             [canvasWidth, canvasHeight, canvasOffsetTop, canvasOffsetLeft, context,
              colors, highlightColors, handTileSize, handPadding, handMargin,
+             labelWidth, labelHeight,
              boardTileSize, boardLeft, boardTop, boardWidth, boardHeight
             ])
         ]).
@@ -31,8 +33,8 @@ create_view_basics :-
             @ dom_page_offset(OffsetTop, OffsetLeft)],
         assert_data(
             vb(W, H, OffsetTop, OffsetLeft, Ctx,
-               ['#008800', '#4444FF'], ['#CCFFCC', '#CCCCFF'],
-               50, 4, 5, 70, 100, 0, 700, 600), 1).
+               ['#008800', '#4444FF', '#FFE222'], ['#CCFFCC', '#CCCCFF', '#FFEAC4'],
+               50, 4, 5, 100, 24, 70, 100, 0, 700, 600), 1).
 
 reset_view_basics :-
           _Canvas >> [id -:> canvas,
@@ -117,6 +119,10 @@ get_hand_tile_size(X) :- data_handTileSize(X).
 get_hand_padding(X) :- data_handPadding(X).
 
 get_hand_margin(X) :- data_handMargin(X).
+
+get_label_width(X) :- data_labelWidth(X).
+
+get_label_height(X) :- data_labelHeight(X).
 
 get_board_tile_size(X) :- data_boardTileSize(X).
 

@@ -10,6 +10,9 @@ h1, h2, h3, h4, h5, h6 {
     font-family: arial, verdana, sans-serif;
 }
 
+player {
+    color: #CCCCFF;
+}
 .mosaic-description {
     width: 150px;
     float: left;

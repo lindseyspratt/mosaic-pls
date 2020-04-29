@@ -50,27 +50,56 @@ layout_hands([H|T], ID) :-
 layout_hand(HandID, HandTiles) :-
     get_hand_padding(Padding),
     get_hand_margin(Margin),
+    get_label_height(LabelHeight),
+%    get_label_width(LabelWidth),
     get_hand_tile_size(TileSize),
     (HandID = 1
-      -> X = Margin
+      -> X = Margin,
+         Y is Margin + LabelHeight,
+         Direction = y
     ;
-     get_canvas_width(Width),
-     X is Width - (Margin + TileSize)
+     HandID = 2
+      -> get_canvas_width(Width),
+         get_number_of_players(NOP),
+         X is Width - (NOP - 1) * (Margin + TileSize),
+         Y is Margin + LabelHeight,
+         Direction = y
+    ;
+     HandID = 3
+      -> X is Margin + 3 * TileSize,
+         Y is Margin + LabelHeight,
+         Direction = x
     ),
-    layout_hand(HandTiles, 0, X, Margin, TileSize, Padding).
+    layout_hand(HandTiles, 0, 0, 8, X, Y, Direction, TileSize, Padding).
 
 % layout_hand(HandTiles, Offset, TileSize, Padding)
-layout_hand([], _, _, _, _, _).
-layout_hand([H|T], Offset, X, Y, TileSize, Padding) :-
-    layout_hand_tile(H, Offset, X, Y, TileSize, Padding),
-    NextOffset is Offset + 1,
-    layout_hand(T, NextOffset, X, Y, TileSize, Padding).
+layout_hand([], _, _, _, _, _, _, _, _).
+layout_hand([H|T], Offset, SegmentOffset, Segment, X, Y, Direction, TileSize, Padding) :-
+    layout_hand_tile(H, Offset, SegmentOffset, X, Y, Direction, TileSize, Padding),
+    (Segment > 1
+      -> NextSegment is Segment - 1,
+         NextSegmentOffset is SegmentOffset,
+         NextOffset is Offset + 1
+    ;
+     NextSegment = 8,
+     NextSegmentOffset is SegmentOffset + 1,
+     NextOffset = 0
+    ),
+    layout_hand(T, NextOffset, NextSegmentOffset, NextSegment, X, Y, Direction, TileSize, Padding).
 
-layout_hand_tile(Tile, Offset, X, Y, TileSize, Padding) :-
+layout_hand_tile(Tile, Offset, SegmentOffset, X, Y, Direction, TileSize, Padding) :-
     set_tile_size(Tile, TileSize),
-    set_tile_display_x(Tile, X),
-    AdjustedY is Y + Offset * (TileSize + Padding),
-    set_tile_display_y(Tile, AdjustedY).
+    (Direction = y
+      -> AdjustedX is X + SegmentOffset * (TileSize + Padding),
+         AdjustedY is Y + Offset * (TileSize + Padding),
+         set_tile_display_x(Tile, AdjustedX),
+         set_tile_display_y(Tile, AdjustedY)
+    ;
+     AdjustedY is Y + SegmentOffset * (TileSize + Padding),
+     AdjustedX is X + Offset * (TileSize + Padding),
+     set_tile_display_x(Tile, AdjustedX),
+     set_tile_display_y(Tile, AdjustedY)
+    ).
 
 % fails if no repositioning to do.
 reposition_board_toward_target_translation :-
@@ -112,6 +141,11 @@ repo2(Tile) :-
     set_tile_display_x(Tile, X),
     set_tile_display_y(Tile, Y).
 
+/*
+The 'display' positions of the tiles have the translate_x/y values included when calculating
+from the grid x/y values.
+Thus, the targetTranslate x/y values subtract the 'adjust' coordinates from the translate x/y values.
+*/
 center_board :-
     get_board(Board),
     length(Board, Length),
@@ -131,7 +165,7 @@ center_board :-
     get_board_width(BoardWidth),
     get_board_top(BoardTop),
     get_board_height(BoardHeight),
-    TargetTranslateX is (TranslateX - (AdjustRight + AdjustLeft) / 2) + (BoardLeft + BoardWidth) / 2,
+    TargetTranslateX is (TranslateX - (AdjustRight + AdjustLeft) / 2) + (BoardLeft + BoardWidth) / 2 + 100,
     TargetTranslateY is (TranslateY - (AdjustBottom + AdjustTop) / 2) + (BoardTop + BoardHeight) / 2,
     set_target_translate_x(TargetTranslateX),
     set_target_translate_y(TargetTranslateY)

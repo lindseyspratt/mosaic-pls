@@ -71,10 +71,12 @@ create_transform_shaped_locations(Tile, Edge, NeighborTile) :-
     get_turn(PlayerColor),
     % create constraints for replacement locations
     get_tile_colors(Tile, Colors),
-    select_nth0(Edge, Colors, _, TransformColors, PlayerColor),
+    select_nth0(Edge, Colors, _, RawTransformColors, PlayerColor),
+    adapt_transform_colors(PlayerColor, RawTransformColors, TransformColors),
     edge_to_neighbor_edge(Edge, NeighborEdge),
     get_tile_colors(NeighborTile, NeighborColors),
-    select_nth0(NeighborEdge, NeighborColors, _, TransformNeighborColors, PlayerColor),
+    select_nth0(NeighborEdge, NeighborColors, _, RawTransformNeighborColors, PlayerColor),
+    adapt_transform_colors(PlayerColor, RawTransformNeighborColors, TransformNeighborColors),
     get_tile_grid_x(Tile, TX),
     get_tile_grid_y(Tile, TY),
     create_location(TileLocation, TX, TY),
@@ -85,6 +87,54 @@ create_transform_shaped_locations(Tile, Edge, NeighborTile) :-
     set_location_constraints(NeighborLocation, TransformNeighborColors),
     set_shaped_positions([TileLocation, NeighborLocation], incomplete).
 
+% The RawTransformColors may contain more than two colors. In this case,
+% among the three edges (for a 4 triangle tile) that is not reserved  is a color
+% different from the color of the other two non-reserved edges and different from the
+% color of the reserved edge. This isolated edge color must be converted to the
+% reserved color.
+% For the 6 triangle tile: the 5 non-reserved edges may be two colors that are not
+% the reserved color. One of these two colors has either 1 or 2 edges where the other
+% color has 4 or 3 edges, respectively.
+% The color with 1 or 2 edges is the isolated color: it must be replaced by the
+% reserved color.
+
+adapt_transform_colors(ReservedColor, RawTransformColors, TransformColors) :-
+    color_edges(RawTransformColors, ColorEdges),
+    length(ColorEdges, ColorCount),
+    (ColorCount > 2
+      -> delete(ColorEdges, ReservedColor-_, [A-AE, B-BE]),
+         length(AE, AELength),
+         length(BE, BELength),
+         (AELength < BELength
+           -> IsolatedColor = A,
+              IsolatedEdges = AE
+         ;
+         IsolatedColor = B,
+         IsolatedEdges = BE
+         ),
+         replace_isolated_colors(IsolatedEdges, ReservedColor, RawTransformColors, TransformColors)
+    ;
+     TransformColors = RawTransformColors
+    ).
+
+replace_isolated_colors([], _, TransformColors, TransformColors).
+replace_isolated_colors([H|T], ReservedColor, TransformColorsIn, TransformColorsOut) :-
+    select_nth0(H, TransformColorsIn, _, TransformColorsNext, ReservedColor),
+    replace_isolated_colors(T, ReservedColor, TransformColorsNext, TransformColorsOut).
+
+color_edges(Colors, ColorEdgesOut) :-
+    color_edges(Colors, 0, [], ColorEdgesOut).
+
+color_edges([], _, ColorEdges, ColorEdges).
+color_edges([H|T], Edge, ColorEdgesIn, ColorEdgesOut) :-
+    (select(H-BIn,ColorEdgesIn,H-[Edge|BIn],ColorEdgesNext)
+      -> true
+    ;
+    ColorEdgesNext = [H-[Edge]|ColorEdgesIn]
+    ),
+    NextEdge is Edge + 1,
+    color_edges(T, NextEdge, ColorEdgesNext, ColorEdgesOut).
+
 create_mismatch_shaped_locations(Mismatches) :-
     clear_locations,
     % create constraints for replacement locations
@@ -93,14 +143,15 @@ create_mismatch_shaped_locations(Mismatches) :-
 
 % create_mismatch_locations(Mismatches, Locations)
 create_mismatch_locations([], []).
-create_mismatch_locations([H|T], [HL|TL]) :-
-    create_mismatch_location(H, HL),
+create_mismatch_locations([H-ReservedColor|T], [HL|TL]) :-
+    create_mismatch_location(H, ReservedColor, HL),
     create_mismatch_locations(T, TL).
 
-create_mismatch_location(Mismatch, Location) :-
+create_mismatch_location(Mismatch, ReservedColor, Location) :-
     neighbor_constraints(Mismatch, NeighborConstraints),
     get_tile_colors(Mismatch, Colors),
-    adjust_mismatch_constraints(NeighborConstraints, Colors, Constraints),
+    adjust_mismatch_constraints(NeighborConstraints, Colors, RawConstraints),
+    adapt_transform_colors(ReservedColor, RawConstraints, Constraints),
     get_tile_grid_x(Mismatch, TX),
     get_tile_grid_y(Mismatch, TY),
     create_location(Location, TX, TY),
