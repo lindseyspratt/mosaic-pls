@@ -293,8 +293,9 @@ check_tile_ortho_neighbors([H|T], TilePosition) :-
 check_tile_ortho_neighbor(DX > DY, TX > TY) :-
     LX is DX + TX,
     LY is DY + TY,
-    get_location_grid_x(Location, LX),
-    get_location_grid_y(Location, LY)
+    \+(get_tile_grid_x(Tile, LX),
+       get_tile_grid_y(Tile, LY)
+      )
       -> (L2X is LX + DX,
           L2Y is LY + DY,
           get_location_grid_x(Location2, L2X),
@@ -856,15 +857,19 @@ locations_values(ID, Values) :-
 % The replacement tiles are recorded using set_replacements/1.
 
 find_replacements(Tiles, Locations) :-
+    find_replacements(Tiles, Locations, ReplacementTiles),
+    set_replacements(ReplacementTiles).
+
+find_replacements(Tiles, Locations, ReplacementTiles) :-
     find_exact_replacements(Tiles, Locations, TileLocationReplacementMap), % TileLocationReplacementMap = [Tile-Locations, ...]
-    invert_map(TileLocationReplacementMap, ReplacementMap),
+    trim_replacements(TileLocationReplacementMap, TrimmedTileLocationReplacementMap),
+    invert_map(TrimmedTileLocationReplacementMap, ReplacementMap),
     irreplaceable_locations(Locations, ReplacementMap, IrreplaceableLocations), % ReplacementMap = [Location-Tiles, ...]
     (IrreplaceableLocations = []
       -> replacement_map_tiles(ReplacementMap, ReplacementTiles)
     ;
      find_minimal_mismatch_replacements(IrreplaceableLocations, Tiles, ReplacementTiles)
-    ),
-    set_replacements(ReplacementTiles).
+    ).
 
 update_replacements :-
     get_replacements(OldReplacements),
@@ -975,6 +980,48 @@ find_exact_replacement3(Location, Colors, Matches, MatchesTail) :-
       -> Matches = [Location|MatchesTail]
     ;
     Matches = MatchesTail.
+
+trim_replacements([], []).
+trim_replacements([Tile-Locations|TIn], [Tile-TrimmedLocations|TOut]) :-
+    trim_replacement(Locations, [], TrimmedLocations),
+    trim_replacements(TIn, TOut).
+
+trim_replacement([], TrimmedLocations, TrimmedLocations).
+trim_replacement([Location|OtherLocations], TrimmedLocationsIn, TrimmedLocationsOut) :-
+    get_location_constraints(Location, Constraint),
+    extend_most_specific_constraints(TrimmedLocationsIn, Constraint, Location, TrimmedLocationsNext),
+    trim_replacement(OtherLocations, TrimmedLocationsNext, TrimmedLocationsOut).
+
+% All of the old 'most specific' constraints have the
+% same number of 'match any' constraints.
+% Compare number of the NewConstraint 'match any' constraints to the number
+% of 'match any' constraints in the first of the 'old' 'most specific' locations.
+
+extend_most_specific_constraints([], _NewConstraint, NewLocation, [NewLocation]).
+extend_most_specific_constraints([OldLocation|OtherOldLocations], NewConstraint, NewLocation, MostSpecific) :-
+    get_location_constraints(OldLocation, OldConstraint),
+    match_any_count(OldConstraint, OldCount),
+    match_any_count(NewConstraint, NewCount),
+    (OldCount > NewCount
+      -> MostSpecific = [NewLocation]
+    ;
+     OldCount = NewCount
+      -> MostSpecific = [NewLocation,OldLocation|OtherOldLocations]
+    ;
+     MostSpecific = [OldLocation|OtherOldLocations]
+    ).
+
+match_any_count(Constraint, Count) :-
+    match_any_count(Constraint, 0, Count).
+
+match_any_count([], Count, Count).
+match_any_count([H|T], CountIn, CountOut) :-
+    (H = -1 % indicates 'match any'
+      -> CountNext is CountIn + 1
+    ;
+    CountNext = CountIn
+    ),
+    match_any_count(T, CountNext, CountOut).
 
 irreplaceable_locations([], _, []).
 irreplaceable_locations([H|T], ReplacementMap, IrreplaceableLocations) :-

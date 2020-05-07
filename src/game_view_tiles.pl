@@ -165,7 +165,7 @@ center_board :-
     get_board_width(BoardWidth),
     get_board_top(BoardTop),
     get_board_height(BoardHeight),
-    TargetTranslateX is (TranslateX - (AdjustRight + AdjustLeft) / 2) + (BoardLeft + BoardWidth) / 2 + 100,
+    TargetTranslateX is (TranslateX - (AdjustRight + AdjustLeft) / 2) + (BoardLeft + BoardWidth) / 2,
     TargetTranslateY is (TranslateY - (AdjustBottom + AdjustTop) / 2) + (BoardTop + BoardHeight) / 2,
     set_target_translate_x(TargetTranslateX),
     set_target_translate_y(TargetTranslateY)

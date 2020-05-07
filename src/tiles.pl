@@ -59,8 +59,10 @@ start_mosaic_game(NumberOfPlayers) :-
     get_canvas_width(W),
     get_canvas_height(H),
     get_context(Ctx),
+%    _Canvas2 >> [id -:> canvas2, getContext('2d') *:> Ctx2],
     _Canvas >> [id -:> canvas,
         addEventListener(click, [object-E]^select(E))],
+%        addEventListener(mousemove, [object-E]^tooltip(E, Ctx2))],
     get_tiles(TileIDs),
     draw_all_tiles(TileIDs, Ctx, W, H).
 
@@ -123,8 +125,7 @@ setup_score :-
 
 setup_event_handling :-
     _Canvas >> [id -:> canvas,
-        removeEventListener(click, [object-E]^select(E))],
-    _Canvas >> [id -:> canvas,
+        removeEventListener(click, [object-E]^select(E)),
         addEventListener(click, [object-E]^select(E))].
 
 display_game :-
@@ -798,8 +799,8 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     statistics,
 
     wam_duration(Mark3),
-    center_board,
-    fail_save(draw_game_tiles(Ctx)),
+%    fail_save(draw_game_tiles(Ctx)),
+    draw_game_tiles(Ctx),
     get_interaction_counter(InteractionCounter),
     reposition_board_loop_delay(InteractionCounter),
 

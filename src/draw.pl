@@ -1,5 +1,5 @@
 :- module(draw, [draw_all_tiles/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2,
-    draw_replacements/2, draw_replacement_tile_mark/2, draw_tile/5, abstract_colors/2]).
+    draw_replacements/2, draw_replacement_tile_mark/2, draw_tile/5, abstract_colors/2, draw_label/4]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(model_basics).

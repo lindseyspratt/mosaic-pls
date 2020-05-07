@@ -31,10 +31,12 @@ create_view_basics :-
             width +:> W,
             height +:> H,
             @ dom_page_offset(OffsetTop, OffsetLeft)],
+        BoardWidth is W - 100,
+        BoardHeight is H - 100,
         assert_data(
             vb(W, H, OffsetTop, OffsetLeft, Ctx,
                ['#008800', '#4444FF', '#FFE222'], ['#CCFFCC', '#CCCCFF', '#FFEAC4'],
-               50, 4, 5, 100, 24, 70, 100, 0, 700, 600), 1).
+               50, 4, 5, 100, 24, 70, 100, 100, BoardWidth, BoardHeight), 1).
 
 reset_view_basics :-
           _Canvas >> [id -:> canvas,
