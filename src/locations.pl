@@ -3,7 +3,7 @@
      save_locations_stream/1, retract_locations/0,
     create_transform_shaped_locations/3, create_mismatch_shaped_locations/1,
     clear_locations/0, clear_shaped_location_for_tile/1,
-    get_shaped_positions/1,
+    get_shaped_positions/1, get_shaped_positions/2,
     get_legal_positions/1, set_legal_positions/1, get_legal_positions_with_rotation/1,
     set_legal_positions_with_rotation/1, get_irreplaceables/1, set_irreplaceables/1,
     get_rebuild_positions/1, add_rebuild_position/1, find_rebuild_hole_shaped_locations/0,
@@ -40,8 +40,9 @@
 % is run and the game phase becomes rebuild.
 
 initdyn :-
+    data_mode(Mode),
     data_predicate_dynamics(
-        [data_predicates(loc, data, [undoable],
+        [data_predicates(loc, data, [Mode],
             [locationCounter, shapedPositions, shapedPositionsComplete,
              legalPositions, legalPositionsWithRotation, irreplaceables, rebuildPositions
             ])
@@ -452,41 +453,42 @@ find_shaped_locations :-
 % of at least 1 and the current shape locations must have a
 % neighbor count of at least 2.
 
+incremental_find_shaped_locations(_ID) :-
+    get_board(B),
+    length(B, L),
+    (L = 2
+    ;
+     L > 2,
+     get_shaped_positions([])
+    ),
+    !,
+    clear_locations,
+    find_shaped_locations.
+incremental_find_shaped_locations(_ID) :-
+    get_shaped_positions([HS|TS], incomplete),
+    !,
+    (get_replacements([]),
+       get_turn(Turn),
+       get_hand(Turn, [HH|TH])
+        -> find_minimal_mismatch_replacements([HS|TS], [HH|TH], NewReplacements),
+           set_replacements(NewReplacements)
+       ;
+       true
+    ).
 incremental_find_shaped_locations(ID) :-
-     get_board(B),
-     length(B, L),
-     ((L = 2
-      ;
-       L > 2,
-       get_shaped_positions([])
-      )
-       -> clear_locations,
-          find_shaped_locations
-     ;
-     get_shaped_positions([HS|TS], incomplete)
-       -> (get_replacements([]),
-           get_turn(Turn),
-           get_hand(Turn, [HH|TH])
-            -> find_minimal_mismatch_replacements([HS|TS], [HH|TH], NewReplacements),
-               set_replacements(NewReplacements)
-           ;
-           true
-          )
-     ;
-     wam_duration(Start),
-     clear_hole_inducing_shaped_locations(ID), % some old shaped locations may have become 'hole inducing' due to new Tile on board.
-     incremental_candidate_spaces(ID, Candidates),
-     wam_duration(Mark1),
-     shaped_candidates(Candidates, NewShapedLocations),
-     wam_duration(Mark2),
-     get_shaped_positions(OldShapedLocations, Complete),
-     append(NewShapedLocations, OldShapedLocations, ShapedLocations),
-     set_shaped_positions(ShapedLocations, Complete),
-     clear_unused_locations,
-     wam_duration(End),
-     !,
-     display_spans([Start, Mark1, Mark2, End], find_shaped_locations)
-     ).
+    wam_duration(Start),
+    clear_hole_inducing_shaped_locations(ID), % some old shaped locations may have become 'hole inducing' due to new Tile on board.
+    fail_save(incremental_candidate_spaces(ID, Candidates)),
+    wam_duration(Mark1),
+    fail_save(shaped_candidates(Candidates, NewShapedLocations)),
+    wam_duration(Mark2),
+    get_shaped_positions(OldShapedLocations, Complete),
+    append(NewShapedLocations, OldShapedLocations, ShapedLocations),
+    set_shaped_positions(ShapedLocations, Complete),
+    clear_unused_locations,
+    wam_duration(End),
+    !,
+    display_spans([Start, Mark1, Mark2, End], find_shaped_locations).
 
 % Legal-with-rotation locations are shaped locations that
 % a particular tile can occupy in some rotation (not necessarily
@@ -622,7 +624,7 @@ tiles_from_location_replacements([H|T], [Tile|TK]) :-
 
 candidate_spaces([], Candidates, Candidates).
 candidate_spaces([H|T], CandidatesSoFar, CandidatesTotal) :-
-    candidate_space(H, CandidatesSoFar, CandidatesNext),
+    fail_save(candidate_space(H, CandidatesSoFar, CandidatesNext)),
     candidate_spaces(T, CandidatesNext, CandidatesTotal).
 
 candidate_space(PlacedTile, CandidatesIn, CandidatesOut) :-

@@ -47,8 +47,9 @@
 :- initialization(initdyn).
 
 initdyn :-
+    data_mode(Mode),
     data_predicate_dynamics([
-        data_predicates(gmt, data, [undoable],
+        data_predicates(gmt, data, [Mode],
             [tile_counter, tiles, hands, board,
              tilesPlaced, boardHash, mismatches,
              selectedEdge, lastBuildPhaseTilePlacedID,

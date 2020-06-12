@@ -16,8 +16,9 @@
 :- initialization(initdyn).
 
 initdyn :-
+    data_mode(Mode),
     data_predicate_dynamics(
-        [data_predicates(lm, data, [undoable],
+        [data_predicates(lm, data, [Mode],
             [gridX,gridY,neighbors,orthogonalNeighbors,byLastTilePlaced,
              constraints,forcedColors,replacements,minimumMismatch
             ])

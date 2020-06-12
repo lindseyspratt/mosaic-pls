@@ -34,19 +34,19 @@ create_tile_view(ID, DisplayX, DisplayY, Size) :-
     assert_data(tv(DisplayX, DisplayY, Size), ID).
 
 get_tile_display_x(ID, Value) :-
-    data_displayX(ID, Value).
+    get_data_displayX(ID, Value).
 
 set_tile_display_x(ID, Value) :-
     set_data_displayX(ID, Value).
 
 get_tile_display_y(ID, Value) :-
-    data_displayY(ID, Value).
+    get_data_displayY(ID, Value).
 
 set_tile_display_y(ID, Value) :-
     set_data_displayY(ID, Value).
 
 get_tile_size(ID, Value) :-
-    data_size(ID, Value).
+    get_data_size(ID, Value).
 
 set_tile_size(ID, Value) :-
     set_data_size(ID, Value).

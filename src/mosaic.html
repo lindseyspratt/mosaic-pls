@@ -22,6 +22,9 @@
     <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(3).');">
         New Three Player Game
     </button>
+    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(4).');">
+        New Four Player Game
+    </button>
     <button class="mosaic-button" onclick="proscriptls ('tiles:save_game_stream.');">
         Save
     </button>
@@ -47,9 +50,8 @@
         </div>
         <div id="mosaic_status">
         </div>
-        <button class="mosaic-button" onclick="proscriptls ('tiles:undo_last_selection.');">
-            Undo
-        </button>
+        <div id="undo_button">
+        </div>
         <button class="mosaic-button" id="auto_play_button" onclick="proscriptls ('tiles:toggle_auto_play_and_update_button.');">
             Disable Auto Play for Player Two
         </button>
@@ -59,19 +61,22 @@
     </div>
 </status2>
 <!--suppress JSUnresolvedLibraryURL -->
-
-<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.5/dist/proscriptls_engine.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.8/dist/proscriptls_engine.js"></script>
 <!--
-<script type="text/javascript" src="../proscriptls_sdk/dist/proscriptls_engine.js"></script>
--->
 
+<script type="text/javascript" src="../proscriptls_sdk/dist/proscriptls_engine.js"></script>
+
+-->
 <!--
 <script type="text/javascript" src="../../proscriptls/dist/proscriptls_engine.js"></script>
  -->
 <script type="text/javascript" src="proscriptls_state_tiles.js"></script>
 
 <console>
+    <!--
 <script type="text/javascript" src="../proscriptls_sdk/terminal/proscriptls_interpreter_terminal.js"></script>
+-->
+<script type="text/javascript" src="../../proscriptls/terminal/proscriptls_interpreter_terminal.js"></script>
 <div id="proscriptinterpreter">
 </div>
 </console>

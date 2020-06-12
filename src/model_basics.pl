@@ -41,7 +41,8 @@
     get_hand_color_ids/1, get_number_of_players/1, get_triangles_per_tile/1,
     rotate_right/2, rotate_left/2, matching_rotations/3, board_hash_key_coords/3,
     tile_colors_match_constraint_colors/2, tile_colors_mismatch_constraint_colors/4,
-    edge_neighbor_offset/2, display_spans/2, values/1]).
+    edge_neighbor_offset/2, display_spans/2, values/1,
+    data_mode/1]).
 
 :- reexport(['../proscriptls_sdk/library/undo']).
 
@@ -55,6 +56,8 @@ initdyn :-
         [data_predicates(gmb, data, [ephemeral],
             [numberOfPlayers, trianglesPerTile, abstractColors, handColorIDSequences])
         ]).
+
+data_mode(undoable).
 
 % init(2, 4, [a,b,c,d])
 init_model_basics(NOP, TPT, AC) :-
@@ -154,7 +157,7 @@ get_triangles_per_tile(TPT) :-
  * @type {function( number[]): number[]}
  */
 rotate_right([H|T], Rotated) :-
-    append(T, [H], Rotated).
+    once(append(T, [H], Rotated)).
 
 /**
  * rotate_left creates a version of the input color sequence
@@ -163,7 +166,7 @@ rotate_right([H|T], Rotated) :-
  * @type {function( number[]): number[]}
  */
 rotate_left(L, [Last|Prefix]) :-
-    append(Prefix, [Last], L).
+    once(append(Prefix, [Last], L)).
 
 
 matching_rotations(Colors, Constraint, Rotation) :-

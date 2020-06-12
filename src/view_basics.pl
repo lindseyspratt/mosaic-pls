@@ -12,6 +12,7 @@
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(library).
 :- use_module('../proscriptls_sdk/library/object').
+:- use_module(model_basics).
 
 :- initialization(initdyn).
 
@@ -33,10 +34,13 @@ create_view_basics :-
             @ dom_page_offset(OffsetTop, OffsetLeft)],
         BoardWidth is W - 100,
         BoardHeight is H - 100,
+        get_number_of_players(NOP),
+        HTS is 96 / NOP + 10,
+        BTS is 132 / NOP + 10,
         assert_data(
             vb(W, H, OffsetTop, OffsetLeft, Ctx,
-               ['#008800', '#4444FF', '#FFE222'], ['#CCFFCC', '#CCCCFF', '#FFEAC4'],
-               50, 4, 5, 100, 24, 70, 100, 100, BoardWidth, BoardHeight), 1).
+               ['#008800', '#4444FF', '#FFE222', '#FF63D0'], ['#CCFFCC', '#CCCCFF', '#FFEAC4', '#FFCBEA'],
+               HTS, 4, 5, 100, 24, BTS, 100, 100, BoardWidth, BoardHeight), 1).
 
 reset_view_basics :-
           _Canvas >> [id -:> canvas,

@@ -1,4 +1,4 @@
-:- module(draw, [draw_all_tiles/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2,
+:- module(draw, [draw_all_tiles/4, draw_all_tiles_no_center/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2,
     draw_replacements/2, draw_replacement_tile_mark/2, draw_tile/5, abstract_colors/2, draw_label/4]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
@@ -37,7 +37,8 @@ draw_tile(Ctx, Tile) :-
         fillText(Text, X+5, Y+10),
         fillText(TileAtom, X+20, Y+20),
         restore
-    ].
+    ],
+    !. % several predicates in this clause leave choicepoints (needlessly). This cut removes them.
 
 draw_tile(Ctx, Colors, Size, X, Y) :-
     Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
@@ -62,6 +63,7 @@ draw_triangles([P1, P2|OtherCorners], [Color1|OtherColors], Center, Ctx) :-
    draw_triangles1([P2|OtherCorners], OtherColors, P1, Center, Ctx).
 
 draw_triangles1([P1], [Color], P2, Center, Ctx) :-
+   !,
    draw_triangle(P1, P2, Color, Center, Ctx).
 draw_triangles1([P1, P2|OtherCorners], [Color1|OtherColors], FirstP, Center, Ctx) :-
    draw_triangle(P1, P2, Color1, Center, Ctx),
@@ -93,6 +95,9 @@ clear_board_rect(Ctx, X, Y, W, H) :-
 
 draw_all_tiles(AllTiles, Ctx, CW, CH) :-
     center_board,
+    draw_all_tiles_no_center(AllTiles, Ctx, CW, CH).
+
+draw_all_tiles_no_center(AllTiles, Ctx, CW, CH) :-
     clear_board_rect(Ctx, 0, 0, CW, CH),
     draw_hand_labels(Ctx, CW, CH),
     draw_all_tiles1(AllTiles, Ctx).
@@ -146,6 +151,11 @@ draw_hand_label(3, Ctx, CW, _CH, LabelHeight, Margin) :-
     get_hand_tile_size(TileSize),
     X is (CW - 8 * (Margin + TileSize)) / 2,
     draw_label(Ctx, X, LabelHeight, 'Player Three').
+draw_hand_label(4, Ctx, CW, CH, _LabelHeight, Margin) :-
+    get_hand_tile_size(TileSize),
+    X is (CW - 8 * (Margin + TileSize)) / 2,
+    Y is CH - Margin,
+    draw_label(Ctx, X, Y, 'Player Four').
 
 draw_label(Ctx, X, Y, Text) :-
     Ctx >> [

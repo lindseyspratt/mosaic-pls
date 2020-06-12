@@ -2,6 +2,11 @@
 
 :- use_module(library).
 
+dummy_reference :-
+    dummy_reference,
+    sgraph(_,_),
+    extend_sgraph(_,_,_).
+
 % merge_components([[a,b], [c,d], [e,f]], [[b,d,g]], M).
 
 merge_components(Components1, Components2, MergedComponents) :-
@@ -106,8 +111,8 @@ sort_lists1([H|T], [HS|TS]) :-
 % repeat.
 
 components_ex(Nodes, Edges, Components) :-
-    sgraph(Edges, RSG),
-    balance_assoc(RSG, SG),
+    fail_save(sgraph(Edges, RSG)),
+    fail_save(balance_assoc(RSG, SG)),
     !,
 %    writeln(done(sgraph(SG))),
 %    yield,
@@ -116,17 +121,15 @@ components_ex(Nodes, Edges, Components) :-
 components_ex([], _Edges, _Seen, []).
 components_ex([H|T], Edges, Seen, Components) :-
     component_ex(H, Edges, Seen, SeenNext, Components, ComponentsTail),
+    !,
+    gc,
     components_ex(T, Edges, SeenNext, ComponentsTail).
 
 component_ex(H, _Edges, Seen, Seen, Components, Components) :-
     member(H, Seen),
     !.
 component_ex(H, Edges, Seen, SeenNext, Components, ComponentsTail) :-
-%    writeln(start(component_ex([H]))),
-%    yield,
     component_ex([H], Edges, [], Component),
-%    writeln(done(component_ex(Component))),
-%    yield,
     Components = [Component|ComponentsTail],
     append(Seen, Component, SeenNext).
 
@@ -134,8 +137,6 @@ component_ex(Nodes, Edges, ComponentIn, ComponentOut) :-
     append(Nodes, ComponentIn, ComponentNext),
     extend_sgraph(Nodes, Edges, ExtendedNodes),
     difference(ExtendedNodes, ComponentNext, NewExtendedNodes),
-%    writeln(step(component_ex(Nodes, ComponentIn, ComponentNext, NewExtendedNodes))),
-%    yield,
     component_ex1(NewExtendedNodes, Edges, ComponentNext, ComponentOut).
 
 component_ex1([], _Edges, ComponentOut, ComponentOut) :-

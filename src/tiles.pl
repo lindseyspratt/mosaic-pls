@@ -19,11 +19,8 @@
 :- use_module(status).
 :- use_module(agent).
 
-:- meta_predicate(fail_save((:))).
-
 :- dynamic(interaction_counter/1).
 :- dynamic(use_auto_play/1).
-:- dynamic(fail_saved/1).
 
 dummy_reference :-
     dummy_reference,
@@ -33,11 +30,27 @@ dummy_reference :-
     calculate_and_display_score,
     select_click(_,_,_),
     available_click(_),
-    draw_tile_animation1(_,_,_,_,_).
+    draw_tile_animation1(_,_,_,_,_),
+    unbound_action.
 
 display_title :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
-    letters:display_letters([m,o,s,a,i,c], Ctx, 20, 100, 100, _).
+    letters:display_letters([m,o,s,a,i,c], Ctx, 20, 100, 100, _),
+    data_mode(Mode),
+    setup_undo_button(Mode).
+
+setup_undo_button(ephemeral).
+/*
+        <button class="mosaic-button" onclick="proscriptls ('tiles:undo_last_selection.');">
+            Undo
+        </button>
+*/
+setup_undo_button(undoable) :-
+    Div >-> id :> undo_button,
+    create_dom_element(button, Button),
+    Button >> [class <:- 'mosaic-button', addEventListener(click, tiles:undo_last_selection), innerText <:+ "Undo"],
+    append_dom_node_child(Div, Button).
+
 
 setup_game_data(NumberOfPlayers) :-
     init_model_basics(NumberOfPlayers, 4, [1,2,3,4]),
@@ -263,14 +276,17 @@ update_auto_play_buttons :-
 
 select(Event) :-
     increment_interaction_counter,
-    Event >> [pageX +:> PageX, pageY +:> PageY],
+    once(Event >> [pageX +:> PageX, pageY +:> PageY]),
     dom_release_object(Event),
     select1(PageX, PageY, display).
+
+:- dynamic(unbound_action/0).
 
 select1(PageX, PageY, UI) :-
     indicate_waiting(wait),
     setup_select1(PageX, PageY, X, Y),
     process_select(X, Y, Action),
+    process_unbound_action(Action),
     (Action = skip(_)
       -> writeln(Action)
     ;
@@ -298,10 +314,10 @@ select1(PageX, PageY, UI) :-
     fail.
 
 indicate_waiting(wait) :-
-    Div >> [id -:> waiting],
+    once(Div >> [id -:> waiting]),
     toggle_dom_element_class(Div, loader, add).
 indicate_waiting(initial) :-
-    Div >> [id -:> waiting],
+    once(Div >> [id -:> waiting]),
     toggle_dom_element_class(Div, loader, remove).
 
 complete_select(UI) :-
@@ -313,6 +329,22 @@ complete_select(UI) :-
     ((Phase = build;Phase = transform),
      get_turn(1)
       -> increment_round
+    ;
+    Phase = rebuild,
+    get_shaped_positions(_, incomplete)
+      -> (get_location_replacements(_, [_|_])
+          -> findall(RL, get_location_replacements(RL, [_|_]), RLs),
+             get_turn(Turn),
+             get_hand(Turn, Hand),
+             find_replacements(Hand, RLs),
+             writeln(complete_select(recalc_location_replacements, RLs))
+        ;
+        get_shaped_positions(RLs, incomplete),
+        get_turn(Turn),
+        get_hand(Turn, Hand),
+        find_replacements(Hand, RLs),
+        writeln(complete_select(recalc_incomplete_shaped_locations, Hand, RLs))
+        )
     ;
     true
     ),
@@ -341,13 +373,17 @@ process_select(X, Y, Action) :-
     ;
     Action = skip(no_selectable_item).
 
-fail_save(Goal) :-
-    once(Goal),
-    asserta(fail_saved(Goal)),
-    fail.
-fail_save(Goal) :-
-    retract(fail_saved(Goal)),
-    writeln(retract(fail_saved(Goal))).
+process_unbound_action(Action) :-
+    Action \= unbound_action
+      -> retractall(unbound_action) % clear previous unbound_action, if any.
+    ;
+    retract(unbound_action) % check for immediately previous unbound_action.
+      -> writeln(second_unbound_action),
+         fail % if there were two unbound actions in a row, then report and fail.
+    ;
+    Action = unbound_action,
+    writeln(Action),
+    asserta(unbound_action).
 
 select_click(X, Y, Click) :-
     available_click(Click),
@@ -432,7 +468,10 @@ current_selected_tile(ID) :-
 
 deselect_tile(ID, Ctx) :-
     ID \= none
-      -> set_selected_tile_id(none),
+      -> restore_tile_original_colors(ID),
+         set_selected_tile_id(none),
+         get_shaped_positions(OldLocations),
+         clear_location_views(OldLocations, Ctx),
          draw_all_tile(ID, Ctx)
      ;
      true.
@@ -444,8 +483,10 @@ Possible set selected hand tile actions:
 on_click_active_hand_tile_select(ID, Action) :-
     hand_tile_selectable(ID)
       -> Action = select_hand_tile(ID),
+         current_selected_tile(OldID),
+         once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
+         deselect_tile(OldID, Ctx),
          set_selected_tile_id(ID),
-         _ >> [id -:> canvas, getContext('2d') *:> Ctx],
          draw_all_tile(ID, Ctx),
          find_legal_with_rotation_locations(ID),
          find_legal_locations(ID),
@@ -490,7 +531,7 @@ on_click_select_replace_tile(ID, Action) :-
       -> on_click_selected_tile_rotate(ID, Action)
     ;
     Action = select_replacement(ID),
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
     deselect_tile(OldID, Ctx),
     set_selected_tile_id(ID),
     find_legal_with_rotation_locations(ID),
@@ -516,7 +557,7 @@ Possible location actions:
 on_click_legal_location(BX, BY, Action) :-
     get_selected_tile_id(Tile),
     set_selected_tile_id(none),
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
     get_game_phase(Phase),
     (Phase = build
       -> Action = move_hand_tile_to_board(Tile, BX, BY),
@@ -567,6 +608,11 @@ on_click_legal_location(BX, BY, Action) :-
                 )
                )
           ;
+          Replacements = [],
+          get_shaped_positions([RLH|RLT], incomplete)
+            -> find_replacements(Hand, [RLH|RLT]),
+               writeln(rebuild(recalc_replacements, Hand, [RLH|RLT]))
+          ;
           true
           )
     ;
@@ -606,6 +652,7 @@ on_click_legal_location(BX, BY, Action) :-
 
 process_mismatches :-
     get_mismatches(Mismatches),
+    writeln(process_mismatches(Mismatches)),
     set_mismatches([]),
     create_mismatch_shaped_locations(Mismatches),
     setup_replacements(Mismatches),
@@ -633,13 +680,29 @@ on_click_tile_rotate(ID, _X, _Y) :-
     ).
 
 on_click_selected_tile_rotate(ID, rotate(ID)) :-
-    _ >> [id -:> canvas, getContext('2d') *:> Ctx],
+    once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
+    initialize_tile_original_colors(ID),
     tile_rotate_right(ID),
     draw_all_tile(ID, Ctx),
     get_shaped_positions(OldLocations),
     clear_location_views(OldLocations, Ctx),
     find_legal_locations(ID),
     draw_locations(Ctx).
+
+initialize_tile_original_colors(ID) :-
+    get_tile_original_colors(ID, none)
+      -> get_tile_colors(ID, OriginalColors),
+         set_tile_original_colors(ID, OriginalColors)
+    ;
+    true.
+
+restore_tile_original_colors(ID) :-
+    get_tile_original_colors(ID, OriginalColors),
+    OriginalColors \= none
+      -> set_tile_original_colors(ID, none),
+         set_colors(ID, OriginalColors)
+    ;
+    true.
 
 point_in_legal_location(BX, BY, X, Y) :-
      wam_duration(Start),
@@ -734,7 +797,7 @@ draw_game_tiles(Ctx) :-
     get_canvas_width(W),
     get_canvas_height(H),
     get_tiles(TileIDs),
-    draw_all_tiles(TileIDs, Ctx, W, H).
+    draw_all_tiles_no_center(TileIDs, Ctx, W, H).
 
 draw_locations(Ctx) :-
     get_legal_positions(LegalPositions),
@@ -762,6 +825,7 @@ move_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     remove_tile_from_replacements(Tile),
     clear_shaped_location_for_tile(Tile),
     update_board_tile_view(Tile),
+    center_board,
     fail_save(draw_game_tiles(Ctx)).
 
 place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
@@ -799,8 +863,9 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     statistics,
 
     wam_duration(Mark3),
-%    fail_save(draw_game_tiles(Ctx)),
-    draw_game_tiles(Ctx),
+    center_board,
+    fail_save(draw_game_tiles(Ctx)),
+%    draw_game_tiles(Ctx),
     get_interaction_counter(InteractionCounter),
     reposition_board_loop_delay(InteractionCounter),
 
@@ -857,6 +922,7 @@ next_value(T, Target, Final) :-
 
 
 reposition_board_loop_delay(InteractionCounter) :-
+%    true.
     yield,
     get_interaction_counter(CurrentCounter),
     (InteractionCounter == CurrentCounter
@@ -888,26 +954,20 @@ score_delay(Tile) :-
     eval_javascript(MsgCodes).
 
 score_delay1(Tile) :-
-%    writeln(score_delay1(Tile)),
-%    yield,
     indicate_waiting(wait),
+    get_turn(Turn),
+    get_round(Round),
     (get_game_phase(build)
       -> incremental_score(Tile, Score),
-         get_turn(Turn),
-         get_round(Round),
          add_totals(Round/Turn, Score)
     ;
      get_game_phase(rebuild),
-     get_turn(Turn),
      get_hand(Turn, [])
       -> score(Score),
-         get_round(Round),
          add_totals(Round/Turn, Score)
     ;
      get_game_phase(transform)
       -> score(Score),
-         get_turn(Turn),
-         get_round(Round),
          add_totals(Round/Turn, Score)
     ;
      Score = 'score not calculated'
@@ -1040,13 +1100,13 @@ available_click(reclick(Tile)) :-
     get_selected_tile_id(Tile),
     Tile \= none.
 available_click(click_hand_tile(Tile)) :-
-    get_selected_tile_id(none),
+    %get_selected_tile_id(none),
     tile_in_active_hand(Tile),
     hand_tile_selectable(Tile),
     get_game_phase(Phase),
     (Phase = build;Phase = rebuild).
 available_click(click_board_tile(Tile)) :-
-    get_selected_tile_id(none),
+    %get_selected_tile_id(none),
     tile_in_board(Tile),
     get_game_phase(replace),
     tile_in_replacements(Tile).
@@ -1080,7 +1140,8 @@ agent_select(Click) :-
     indicate_waiting(wait),
     get_turn(Agent),
     agent_player(Agent)
-      -> ask_agent(Click),
+      -> check_replacements(Agent),
+         ask_agent(Click),
          apply_click(Click, Action),
          (Action = skip(_)
            -> writeln(Action)
@@ -1091,7 +1152,27 @@ agent_select(Click) :-
     ;
     indicate_waiting(initial).
 
+check_replacements(Turn) :-
+    get_replacements(R),
+    R \= [],
+    get_hand(Turn, Hand),
+    member(M, R),
+    member(M, Hand),
+    \+(get_location_replacements(_, LR),
+       member(M, LR))
+      -> (get_shaped_positions(RLs, incomplete)
+           -> find_replacements(Hand, RLs),
+              writeln(check_replacements(recalc(Hand, RLs)))
+         ;
+          set_replacements([]),
+          writeln(check_replacements(clear))
+         )
+    ;
+    true.
+
 agent_player(2).
+agent_player(3).
+agent_player(4).
 
 ask_agent(Click) :-
     available_clicks(Clicks),
@@ -1135,8 +1216,7 @@ apply_click1(click_board_tile(Tile), Action) :-
 apply_click1(click_edge(Tile, Edge), Action) :-
     on_click_transform_edge(Tile, Edge, Action).
 apply_click1(click_location(BX,BY), Action) :-
-    get_location_grid_x(Location, BX),
-    get_location_grid_y(Location, BY),
+    once(get_location_at_grid_point(_, BX, BY)),
     on_click_legal_location(BX, BY, Action).
 
 position_in_click(reclick(Tile), X, Y) :-
@@ -1150,5 +1230,9 @@ position_in_click(click_edge(Tile, Edge), X, Y) :-
 position_in_click(click_location(BX,BY), X, Y) :-
     get_location_grid_y(Location, BY),
     get_location_grid_x(Location, BX),
-    point_in_legal_location(BX, BY, X, Y).
+    point_in_legal_location(BX, BY, X, Y),
+    !. % there is at most one Location containing X/Y.
 
+get_location_at_grid_point(Location, BX, BY) :-
+    get_location_grid_x(Location, BX),
+    get_location_grid_y(Location, BY).

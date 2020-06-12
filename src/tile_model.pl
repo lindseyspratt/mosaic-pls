@@ -26,10 +26,13 @@
 
 :- module(tile_model, [create_tile_model/5, save_tile_model/0, load_tile_model/0,
     save_tile_model_stream/1, retract_tile_model/0,
-    create_tile_model/7, get_tile_grid_x/2, get_tile_grid_y/2,
+    get_tile_grid_x/2, get_tile_grid_y/2,
     get_tile_colors/2, get_tile_container/2,
     update_grid_x/3, update_grid_y/3, update_container/3, update_replacements/3,
-    tile_rotate_left/1, tile_rotate_right/1, tile_board_hash_key/2, edge_neighbor_position/3]).
+    set_colors/2,
+    tile_rotate_left/1, tile_rotate_right/1,
+    get_tile_original_colors/2, clear_tile_original_colors/1, set_tile_original_colors/2,
+    tile_board_hash_key/2, edge_neighbor_position/3]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -39,9 +42,10 @@
 :- initialization(initdyn).
 
 initdyn :-
+    data_mode(Mode),
     data_predicate_dynamics(
-        [data_predicates(tm, tile_model, [undoable],
-            [gridX,gridY,colors,container,replacements,minimumMismatch])
+        [data_predicates(tm, tile_model, [Mode],
+            [gridX,gridY,colors,container,replacements,minimumMismatch,originalColors])
         ]).
 
 save_tile_model_stream(Stream) :-
@@ -67,10 +71,10 @@ dummy_reference :-
 
 
 create_tile_model(ID, GridX,GridY,Colors,Container) :-
-    create_tile_model(ID, GridX,GridY,Colors,Container,[],[]).
+    create_tile_model(ID, GridX,GridY,Colors,Container,[],[],none).
 
-create_tile_model(ID, GridX,GridY,Colors,Container,Replacements,MinimumMismatch) :-
-    assert_data(tm(GridX,GridY,Colors,Container,Replacements,MinimumMismatch), ID).
+create_tile_model(ID, GridX,GridY,Colors,Container,Replacements,MinimumMismatch,Original) :-
+    assert_data(tm(GridX,GridY,Colors,Container,Replacements,MinimumMismatch,Original), ID).
 
 get_tile_grid_x(ID, GridX) :-
     get_tile_model_gridX(ID, GridX).
@@ -104,6 +108,9 @@ update_container(ID, X1, X2) :-
 update_replacements(ID, X1, X2) :-
     update_tile_model_replacements(ID, X1, X2).
 
+set_colors(ID, X) :-
+    set_tile_model_colors(ID, X).
+
 tile_rotate_left(ID) :-
     get_tile_model_colors(ID, X1),
     rotate_left(X1, X2),
@@ -113,6 +120,15 @@ tile_rotate_right(ID) :-
     get_tile_model_colors(ID, X1),
     rotate_left(X1, X2),
     update_colors(ID, X1, X2).
+
+get_tile_original_colors(ID, Colors) :-
+    get_tile_model_originalColors(ID, Colors).
+
+set_tile_original_colors(ID, Colors) :-
+    set_tile_model_originalColors(ID, Colors).
+
+clear_tile_original_colors(ID) :-
+    clear_tile_model_originalColors(ID).
 
 tile_board_hash_key(ID, Key) :-
     get_tile_model_gridX(ID, X),

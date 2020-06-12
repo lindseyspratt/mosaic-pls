@@ -15,11 +15,13 @@
 :- initialization(initdyn).
 
 initdyn :-
-    data_predicate_dynamics([data_predicates(s, data, [undoable], [components,totals])]).
+    data_mode(Mode),
+    data_predicate_dynamics([data_predicates(s, data, [Mode], [components,totals])]).
 
 dummy_reference :-
     dummy_reference,
-    data_components(_).
+    data_components(_),
+    graph(_,_).
 
 create_score:-
     assert_data(s([],[]), 1).
@@ -84,22 +86,13 @@ assess_winner(Scores, Winner) :-
 % by score/1.
 
 score(Scores) :-
-    wam_duration(Start),
-    graph(RawNodes, Edges),
-    sort_cut(RawNodes, Nodes),
-    wam_duration(Mark1),
-%    writeln(start(components_ex(Nodes, Edges))),
-%    yield,
-    components_ex(Nodes, Edges, Components),
-%    writeln(done(components_ex(Components))),
-%    yield,
-    set_components(Components),
-    wam_duration(Mark2),
-    components_score(Components, Scores),
-%    writeln(done(components_score(Scores))),
-%    yield,
-    wam_duration(End),
-    display_spans([Start, Mark1, Mark2, End], score).
+    graph,
+    gc,
+    unique_nodes,
+    gc,
+    components_ex,
+    get_components(Components),
+    components_score(Components, Scores).
 
 set_components(Components) :-
     data_default_id(ID),
@@ -121,15 +114,8 @@ incremental_score(NewTile, OldComponents, Components, Scores) :-
     components_score(Components, Scores).
 
 components_score(Components, Scores) :-
-%    writeln(components_score(Components)),
-%    yield,
     component_tile_sets(Components, TileSets),
-%    writeln(done(component_tile_sets(TileSets))),
-%    yield,
     tile_set_scores(TileSets, Scores).
-%    writeln(done(tile_set_scores(Scores))),
-%    yield.
-
 
 test_tiles :-
     init_model_basics(2, 4, [1,2,3,4]),
@@ -165,6 +151,25 @@ test_tiles2(4, S) :-
     place_tile_on_board(12, -1, 1),
     incremental_score(12, S).
 
+:- dynamic(graph_nodes/1).
+:- dynamic(graph_unique_nodes/1).
+:- dynamic(graph_edges/1).
+
+lookup_node(Term, ID) :-
+    format(atom(ID), '~w', [Term]).
+
+get_node_term(ID, Term) :-
+    var(ID)
+     -> lookup_node(Term, ID)
+    ;
+    atom_to_term(ID, Term, _).
+
+unique_nodes :-
+    graph_nodes(RawNodes),
+    fail_save(sort_cut(RawNodes, Nodes)),
+    retractall(graph_unique_nodes(_)),
+    asserta(graph_unique_nodes(Nodes)).
+
 /*
 Create a graph from the board tiles.
 The graph has one or more nodes for each tile.
@@ -173,6 +178,24 @@ Each tile region is connected to one or more side nodes.
 The side node of one tile is connected by a graph edge to
 a side node of an adjacent tile.
 */
+graph :-
+    fail_save(graph(Nodes, Edges)),
+    retractall(graph_nodes(_)),
+    asserta(graph_nodes(Nodes)),
+    retractall(graph_edges(_)),
+    asserta(graph_edges(Edges)).
+
+
+components_ex :-
+    graph_unique_nodes(Nodes),
+    graph_edges(Edges),
+    length(Nodes, NodeCount),
+    length(Edges, EdgeCount),
+    writeln(components_ex_counts(NodeCount, EdgeCount)),
+    yield,
+    components_ex(Nodes, Edges, Components),
+    set_components(Components).
+
 graph(Nodes, Edges) :-
     get_board(Board),
     graph(Board, Nodes, Edges).
@@ -192,8 +215,9 @@ graph1(Tile, Nodes, NodesTail, Edges, EdgesTail) :-
     get_tile_colors(Tile, Colors),
     Colors = [FirstColor|_],
     Regions = [FirstRegion-FirstColor|_],
-    graph1(Colors, 0, none, none, FirstColor, FirstRegion, Tile, Regions, Nodes, NodesTail, Edges, EdgesTail),
-    bind_regions(Regions).
+    graph1(Colors, 0, none, none, FirstColor, FirstRegion, Tile, Regions, GenNodes, Nodes, NodesTail, Edges, EdgesTail),
+    bind_regions(Regions),
+    generate_nodes(GenNodes).
 
 bind_regions(Regions) :-
     region_components(Regions, Components),
@@ -239,6 +263,11 @@ bind_region_component([], _).
 bind_region_component([Counter-_|T], Counter) :-
     bind_region_component(T, Counter).
 
+generate_nodes([]).
+generate_nodes([Term - Node|T]) :-
+    lookup_node(Term, Node),
+    generate_nodes(T).
+
 % If the current color is the same as the previous color then the region is the same.
 % Else if the current color is the same as the first color and the current color
 % is the last color, then the last region is merged with the first region.
@@ -247,12 +276,13 @@ bind_region_component([Counter-_|T], Counter) :-
 % unify with the first color region.
 % The regions are later bound to numbers 1 to N by bind_regions/2.
 
-graph1([], _, _, _, _, _, _Tile, [], Nodes, Nodes, Edges, Edges).
+graph1([], _, _, _, _, _, _Tile, [], [], Nodes, Nodes, Edges, Edges).
 graph1([H|T], PreviousSideCounter, Region, PreviousColor, FirstColor, FirstRegion,
         Tile,
         Regions,
-        [Tile-NextRegion+H, Tile/SideCounter|NodesInterim], NodesTail,
-        [edge(Tile-NextRegion+H, Tile/SideCounter)|EdgesInterim], EdgesTail) :-
+        [(Tile-NextRegion+H) - Node1, (Tile/SideCounter) - Node2|GenNodesNext],
+        [Node1, Node2|NodesInterim], NodesTail,
+        [edge(Node1, Node2)|EdgesInterim], EdgesTail) :-
     SideCounter is PreviousSideCounter + 1,
     (H = PreviousColor
       -> NextRegion = Region,
@@ -266,7 +296,7 @@ graph1([H|T], PreviousSideCounter, Region, PreviousColor, FirstColor, FirstRegio
      Regions = [NextRegion-H|RegionsTail] % NextRegionCounter is an unbound variable that *may* identify a new region.
     ),
     graph1(T, SideCounter, NextRegion, H, FirstColor, FirstRegion, Tile, RegionsTail,
-            NodesInterim, NodesTail, EdgesInterim, EdgesTail).
+            GenNodesNext, NodesInterim, NodesTail, EdgesInterim, EdgesTail).
 
 adjacent_tile_edges([], Edges, Edges).
 adjacent_tile_edges([Tile|OtherTiles], Edges, EdgesTail) :-
@@ -336,8 +366,10 @@ ateDXDY3(Tile, Edges, EdgesTail, TilePositionIndex, OtherTile, OtherTilePosition
     nth1(TilePositionIndex, Colors, TileColor),
     get_tile_colors(OtherTile, OtherColors),
     nth1(OtherTilePositionIndex, OtherColors, TileColor),
+    lookup_node(Tile/TilePositionIndex, Node1),
+    lookup_node(OtherTile/OtherTilePositionIndex, Node2),
     !,
-    Edges = [edge(Tile/TilePositionIndex, OtherTile/OtherTilePositionIndex)|EdgesTail].
+    Edges = [edge(Node1, Node2)|EdgesTail].
 ateDXDY3(_Tile, Edges, Edges, _TilePositionIndex, _OtherTile, _OtherTilePositionIndex).
 
 get_neighboring_tile(Tile, DX, DY, TilePositionIndex, OtherTile, OtherTilePositionIndex) :-
@@ -365,8 +397,12 @@ component_tile_set([H|T], Color, [Tile|OtherTiles]) :-
     component_tile_set(T, Color, OtherTiles).
 
 % Tile-NextRegion, Tile/SideCounter
-node_tile(Tile-_Region + Color, Tile, Color).
-node_tile(Tile/_SideCounter, Tile, _).
+node_tile(NodeID, Tile, Color) :-
+    get_node_term(NodeID, Term),
+    node_tile1(Term, Tile, Color).
+
+node_tile1(Tile-_Region + Color, Tile, Color) :- !.
+node_tile1(Tile/_SideCounter, Tile, _).
 
 % tile_set_scores(TileSets, Scores)
 tile_set_scores(TileSets, Scores) :-

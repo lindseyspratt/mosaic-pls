@@ -66,8 +66,16 @@ layout_hand(HandID, HandTiles) :-
          Direction = y
     ;
      HandID = 3
-      -> X is Margin + 3 * TileSize,
+      -> get_number_of_players(NOP),
+         X is Margin + NOP * TileSize,
          Y is Margin + LabelHeight,
+         Direction = x
+    ;
+     HandID = 4
+      -> get_canvas_height(Height),
+         get_number_of_players(NOP),
+         X is Margin + NOP * TileSize,
+         Y is Height - ((NOP - 1) * (Margin + TileSize) + LabelHeight),
          Direction = x
     ),
     layout_hand(HandTiles, 0, 0, 8, X, Y, Direction, TileSize, Padding).
@@ -114,11 +122,11 @@ repo(TX, TY, TargetTX, TargetTY) :-
     NewTX is (TX * 3 + TargetTX) / 4,
     NewTY is (TY * 3 + TargetTY) / 4,
 
-    (abs(NewTX - TargetTX) < 1
+    (abs(NewTX - TargetTX) =< 2
       -> FinalTX = TargetTX
     ; FinalTX = NewTX
     ),
-    (abs(TY - TargetTY) < 1
+    (abs(TY - TargetTY) =< 2
       -> FinalTY = TargetTY
     ; FinalTY = NewTY
     ),
