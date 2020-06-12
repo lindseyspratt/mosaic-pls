@@ -64,6 +64,7 @@ setup_game_data(NumberOfPlayers) :-
     create_locations,
     find_shaped_locations,
     create_score,
+    update_auto_play_buttons,
     !.
 
 start_mosaic_game(NumberOfPlayers) :-
@@ -261,13 +262,29 @@ toggle_auto_play_and_update_button :-
     update_auto_play_buttons.
 
 update_auto_play_buttons :-
-    (use_auto_play(true)
-      -> _ >> [id -:> auto_play_button, innerText <:+ "Disable Auto Play for Player 2"],
-     _ >> [id -:> move_button, disabled <:- true]
+    use_auto_play(true)
+      -> auto_play_message("Disable", AutoMessage, MoveMessage),
+         _ >> [id -:> auto_play_button, innerText <:+ AutoMessage],
+         _ >> [id -:> move_button, innerText <:+ MoveMessage, disabled <:- true]
     ;
-     _ >> [id -:> auto_play_button, innerText <:+ "Enable Auto Play for Player 2"],
-     _ >> [id -:> move_button, disabled <:- false]
-    ).
+     auto_play_message("Enable", AutoMessage, MoveMessage),
+     _ >> [id -:> auto_play_button, innerText <:+ AutoMessage],
+     _ >> [id -:> move_button, innerText <:+ MoveMessage, disabled <:- false].
+
+auto_play_message(Prefix, AutoMessage, MoveMessage) :-
+    get_number_of_players(NOP),
+    (NOP = 2
+      -> Suffix = "Player Two"
+    ;
+    NOP = 3
+      -> Suffix = "Players Two and Three"
+    ;
+    NOP = 4
+      -> Suffix = "Players Two, Three, and Four"
+    ),
+    append(Prefix, Tail, AutoMessage),
+    append(" Auto Play for ", Suffix, Tail),
+    append("Move " , Suffix, MoveMessage).
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates
