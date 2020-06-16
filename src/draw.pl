@@ -1,5 +1,6 @@
 :- module(draw, [draw_all_tiles/4, draw_all_tiles_no_center/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2,
-    draw_replacements/2, draw_replacement_tile_mark/2, draw_tile/5, abstract_colors/2, draw_label/4]).
+    draw_replacements/2, draw_replacement_tile_mark/2, draw_replacement_tile_mark/5, draw_tile/5, abstract_colors/2, draw_label/4,
+    draw_triangle/5, draw_selected_tile_mark/5, draw_legal_position_with_rotation/5, draw_legal_position/5]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(model_basics).
@@ -178,7 +179,11 @@ draw_selected_tile_mark(Tile, Ctx) :-
     get_tile_display_x(Tile, X),
     get_tile_display_y(Tile, Y),
     get_tile_size(Tile, Size),
+	get_turn(GT),
+	get_highlight_color(GT, Color),
+    draw_selected_tile_mark(X, Y, Size, Color, Ctx).
 
+draw_selected_tile_mark(X, Y, Size, Color, Ctx) :-
     MidX is X + (Size / 2),
     MidY is Y + (Size / 2),
     Adjust is Size / 4,
@@ -191,10 +196,6 @@ draw_selected_tile_mark(Tile, Ctx) :-
 	HorizontalLeftY = MidY,
 	HorizontalRightX is MidX+Adjust,
 	HorizontalRightY = MidY,
-
-	get_turn(GT),
-	get_highlight_color(GT, Color),
-	%highlight_color(GT, Color),
 
 	Ctx >> [
 	    save,
@@ -220,14 +221,14 @@ draw_replacement_tile_mark(Tile, Ctx) :-
     get_tile_display_x(Tile, X),
     get_tile_display_y(Tile, Y),
     get_tile_size(Tile, Size),
+	get_turn(GT),
+	get_highlight_color(GT, Color),
+    draw_replacement_tile_mark(X, Y, Size, Color, Ctx).
 
+draw_replacement_tile_mark(X, Y, Size, Color, Ctx) :-
     MidX is X + (Size / 2),
     MidY is Y + (Size / 2),
     Adjust is Size / 4,
-
-	get_turn(GT),
-	get_highlight_color(GT, Color),
-    %highlight_color(GT, Color),
 
 	Ctx >> [
 	    save,
@@ -243,16 +244,8 @@ draw_replacement_tile_mark(Tile, Ctx) :-
 draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx) :-
 	get_turn(GT),
 	get_highlight_color(GT, Color),
-	%highlight_color(GT, Color),
 
-    Ctx >> [
-        save,
-        beginPath,
-        fillStyle <:+ Color,
-        strokeStyle <:+ Color,
-        lineWidth <:+ 3,
-        globalAlpha <:+ 0.8
-    ],
+    setup_draw_legal_position(Color, Ctx),
 
     get_board_tile_size(TileSize),
 
@@ -260,29 +253,62 @@ draw_legal_moves(LegalPositions, LegalPositionsWithRotation, Ctx) :-
 
     draw_legal_positions(LegalPositions, Ctx, TileSize),
 
-    Ctx >*> restore.
+    finish_draw_legal_position(Ctx).
 
 draw_legal_positions_with_rotations([], _, _).
 draw_legal_positions_with_rotations([H|T], Ctx, TileSize) :-
+    draw_legal_position_with_rotation(H, Ctx, TileSize),
+    draw_legal_positions_with_rotations(T, Ctx, TileSize).
+
+draw_legal_position_with_rotation(H, Ctx, TileSize) :-
     get_location_grid_x(H, BX),
     get_location_grid_y(H, BY),
     get_top_left_board_tile_coords(BX, BY, X, Y),
+    draw_legal_position_with_rotation(X, Y, Ctx, TileSize).
+
+draw_legal_position_with_rotation(X, Y, Color, Ctx, TileSize) :-
+    setup_draw_legal_position(Color, Ctx),
+    draw_legal_position_with_rotation(X, Y, Ctx, TileSize),
+    finish_draw_legal_position(Ctx).
+
+draw_legal_position_with_rotation(X, Y, Ctx, TileSize) :-
     Ctx >*> [
         rect(X, Y, TileSize, TileSize),
         stroke
-    ],
-    draw_legal_positions_with_rotations(T, Ctx, TileSize).
+    ].
 
 draw_legal_positions([], _, _).
 draw_legal_positions([H|T], Ctx, TileSize) :-
+    draw_legal_position(H, Ctx, TileSize),
+    draw_legal_positions(T, Ctx, TileSize).
+
+draw_legal_position(H, Ctx, TileSize) :-
     get_location_grid_x(H, BX),
     get_location_grid_y(H, BY),
     get_top_left_board_tile_coords(BX, BY, X, Y),
-    Ctx >*> fillRect(X, Y, TileSize, TileSize),
-    draw_legal_positions(T, Ctx, TileSize).
+    draw_legal_position(X, Y, Ctx, TileSize).
 
-%highlight_color(1, '#CCFFCC').
-%highlight_color(2, '#CCCCFF').
+
+draw_legal_position(X, Y, Color, Ctx, TileSize) :-
+    setup_draw_legal_position(Color, Ctx),
+    draw_legal_position(X, Y, Ctx, TileSize),
+    finish_draw_legal_position(Ctx).
+
+setup_draw_legal_position(Color, Ctx) :-
+    Ctx >> [
+        save,
+        beginPath,
+        fillStyle <:+ Color,
+        strokeStyle <:+ Color,
+        lineWidth <:+ 3,
+        globalAlpha <:+ 0.8
+    ].
+
+finish_draw_legal_position(Ctx) :-
+    Ctx >*> restore.
+
+draw_legal_position(X, Y, Ctx, TileSize) :-
+    Ctx >*> fillRect(X, Y, TileSize, TileSize).
 
 clear_location_views(Locations, Ctx) :-
     get_board_tile_size(TileSize),

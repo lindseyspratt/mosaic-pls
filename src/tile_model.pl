@@ -67,7 +67,8 @@ dummy_reference :-
     tile_model_colors(_),
     tile_model_container(_),
     tile_model_replacements(_),
-    tile_model_minimumMismatch(_).
+    tile_model_minimumMismatch(_),
+    tile_model_originalColors(_).
 
 
 create_tile_model(ID, GridX,GridY,Colors,Container) :-

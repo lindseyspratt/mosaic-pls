@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Description</title>
+    <link rel="StyleSheet" href="mosaic.css" type="text/css" media="ALL">
+    <!-- proscriptls interpreter -->
+    <script src="../proscriptls_sdk/terminal/jquery-3.3.1.js"></script>
+    <script src="../proscriptls_sdk/terminal/jquery_terminal.js"></script>
+    <link href="../proscriptls_sdk/terminal/jquery_terminal.css" rel="stylesheet"/>
+</head>
+<body onload="proscriptls_init ('doc:setup_doc.');">
+<title_canvas>
+    <canvas id="title_canvas" width="1000px" height="200px"></canvas>
+</title_canvas>
+<description>
+<p>
+    In 2 player game get 100 points or more at the end of two of your 'transform' turns in a row.
+</p>
+    <p>
+You get points for regions of your color:
+a region spans 2 or more tiles and the score for a region is the square of the number of tiles spanned by that region.
+</p>
+    <canvas id="region_spans" width="1000px" height="200px"></canvas>
+<p>
+    There are two phases of game play: <i>build</i> and <i>transform</i>.
+    In the build phase the players build the board.
+</p>
+    <canvas id="build" width="1000px" height="200px"></canvas>
+
+    In the transform phase the players take turns transforming the board.
+    <canvas id="transform" width="1000px" height="200px"></canvas>
+
+    <ul>
+    <li>
+        Build:
+    In the build phase players take turns placing tiles from their hands into the board until all tiles have been placed.
+        <ul>
+            <li>Color constraint: Adjacent tile edge colors must match.</li>
+            <li>Shape constraint 1: A tile cannot be placed in the board such that there is a single-tile-sized space with another tile on the other side of that space.
+                <canvas id="shape_1" width="1000px" height="200px"></canvas>
+            </li>
+            <li>Shape constraint 2:
+    The first tile placed may be any tile in the first player's hand.
+    The second tile placed must be placed orthogonally next to the first tile.
+                After the first two tile plays, a tile must be placed with at least two neighbors at least one of which is orthogonal.</li>
+    <li>Recency constraint: The active player may place any tile with a in their hand that satisfies the color and shape constraints into the board.
+    If the selected hand tile can be placed next to the tile most recently added to the board
+        (without violating the color and shape constraints) then it must be so placed.</li>
+        </ul>
+    </li>
+        <canvas id="build_detail_a" width="1000px" height="200px"></canvas>
+        <br>
+        <canvas id="build_detail_b" width="1000px" height="200px"></canvas>
+        <li>
+    <p>Transform:
+    A transform turn starts with a player choosing an orthogonally adjacent pair of tiles to be transformed where the adjacent color is *not* that player's color.
+    These two tiles are removed to that player's hand.
+    These two tiles must be replaced by two other tiles from the board that are identical except that the adjacent colors are changed to the player's color.
+    The removal of one or both of these replacement tiles from the board may leave behind a hole, a violation of shape constraint 1.
+    The player rebuilds the board, placing their hand tiles back into the board.
+    </p>
+    <p>Holes and mismatches:
+    If there are any holes then the hand tiles must be used to fill those holes.
+    Once there are no holes the hand tile(s) may be placed in any location that honors the color and shape constraints.
+    If a hand tile can be used to fill a hole such that it honors the color constraint then it must do so.
+    Having filled any holes with no color mismatches (if possible), then if a hand tile can be used to fill a remaining hole with only one mismatched side then it must do so.
+    In general if all holes that could be filled with zero to N mismatches have been filled, then if there is a tile that fills a hole with N+1 mismatches then it must do so.
+    </p>
+            <p>
+                Orphaned tiles: a tile is orphaned if after all plays have been made that tile has less than two adjacent tiles.
+            </p>
+    <p>
+    When the transforming player has emptied their hand then their transform turn is done.
+    If there are any mismatched orthogonally adjacent tiles in the board (as a result of replacements), then these mismatches must be resolved by the next player.
+    The mismatched tiles, those adjacent to the replacing tiles, are removed from the board to the resolving player's hand.
+        Also, any orphaned tiles are removed from the board and added to the resolving player's hand.
+    Each mismatched tile must be replaced by a tile that is identical except the side orthogonally adjacent to the forcing tile - this side color must be changed to match the forcing tile.
+    There may be multiple forcing tiles next to the same mismatched tile.
+    The new replacing tile must match all of these forcing tiles.
+    If the forcing tiles around a single location are more than two colors, then the replacing tile for that hole must minimize the color mismatches it forces.
+    </p>
+            <p>
+        After all forced plays any remaining hand tiles are added to the board.
+        This ends the resolving player's turn.
+        If there are mismatched tiles or orphaned tiles then the next player becomes the resolving player.
+    </p>
+            <canvas id="transform_detail_a" width="1000px" height="300px"></canvas>
+            <br>
+            <canvas id="transform_detail_b" width="1000px" height="300px"></canvas>
+            <br>
+            <canvas id="transform_detail_c" width="1000px" height="300px"></canvas>
+        </li>
+    </ul>
+
+</p>
+</description>
+<!--suppress JSUnresolvedLibraryURL -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.8/dist/proscriptls_engine.js"></script>
+<script type="text/javascript" src="proscriptls_state_doc.js"></script>
+
+<console>
+    <script type="text/javascript" src="../proscriptls_sdk/terminal/proscriptls_interpreter_terminal.js"></script>
+
+    <div id="proscriptinterpreter">
+    </div>
+</console>
+</body>
+</html>

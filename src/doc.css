@@ -1,0 +1,23 @@
+
+body {
+    display: grid;
+    grid-template-areas:
+            "title_canvas"
+            "description"
+            "console";
+    grid-template-columns: 1fr;
+}
+
+title_canvas {
+    grid-area: title_canvas;
+    justify-self: center;
+}
+
+description {
+    grid-area: description;
+    justify-self: center;
+}
+
+console {
+    grid-area: console;
+}

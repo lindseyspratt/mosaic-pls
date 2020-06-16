@@ -120,39 +120,6 @@ player {
     background-color: #dedbc8;
 }
 
-body {
-    display: grid;
-    grid-template-areas:
-        "game game game game"
-        "status1 waiting score status2"
-        "console console console console";
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-}
-
-game {
-    grid-area: game;
-    justify-self: center;
-}
-
-status1 {
-    grid-area: status1;
-}
-
-waiting {
-    grid-area: waiting;
-}
-score {
-    grid-area: score;
-}
-
-status2 {
-    grid-area: status2;
-}
-
-console {
-    grid-area: console;
-}
-
 .loader {
     border: 16px solid #f3f3f3; /* Light grey */
     border-top: 16px solid #3498db; /* Blue */

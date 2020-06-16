@@ -1,5 +1,5 @@
 :- module(view_basics,
-    [create_view_basics/0, save_view_basics/0, load_view_basics/0,
+    [create_view_basics/0, create_view_basics/1, save_view_basics/0, load_view_basics/0,
      save_view_basics_stream/1, retract_view_basics/0, reset_view_basics/0,
      view_basics_values/1,
      get_canvas_width/1, get_canvas_height/1, get_canvas_offset_top/1, get_canvas_offset_left/1,
@@ -27,7 +27,10 @@ initdyn :-
         ]).
 
 create_view_basics :-
-        _Canvas >> [id -:> canvas,
+    create_view_basics(canvas).
+
+create_view_basics(CanvasID) :-
+        _Canvas >> [id -:> CanvasID,
             getContext('2d') *:> Ctx,
             width +:> W,
             height +:> H,

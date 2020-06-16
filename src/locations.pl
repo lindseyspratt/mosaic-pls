@@ -50,7 +50,9 @@ initdyn :-
 
 dummy_reference :-
     dummy_reference,
-    data_locationCounter(_).
+    data_locationCounter(_),
+    incremental_candidate_spaces(_,_),
+    candidate_space(_,_,_).
 
 create_locations :-
     assert_data(loc(0, [], [], [], [], [], []), 1).
