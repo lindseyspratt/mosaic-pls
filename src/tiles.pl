@@ -1,6 +1,7 @@
 :- module(tiles, [display_title/0, setup_game_data/1, start_mosaic_game/1, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3,
-        undo_last_selection/0, agent_select/1, apply_clicks/1, toggle_auto_play_and_update_button/0]).
+        undo_last_selection/0, agent_select/1, apply_clicks/1,
+        toggle_auto_play_and_update_button/0, toggle_debugging_and_update_button/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -37,14 +38,14 @@ display_title :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     letters:display_letters([m,o,s,a,i,c], Ctx, 20, 100, 100, _),
     data_mode(Mode),
-    setup_undo_button(Mode).
+    setup_undo_button(Mode),
+    gc,
+    enable_auto_play,
+    update_auto_play_buttons,
+    disable_debugging,
+    update_debugging_button.
 
 setup_undo_button(ephemeral).
-/*
-        <button class="mosaic-button" onclick="proscriptls ('tiles:undo_last_selection.');">
-            Undo
-        </button>
-*/
 setup_undo_button(undoable) :-
     Div >-> id :> undo_button,
     create_dom_element(button, Button),
@@ -273,18 +274,46 @@ update_auto_play_buttons :-
 
 auto_play_message(Prefix, AutoMessage, MoveMessage) :-
     get_number_of_players(NOP),
-    (NOP = 2
-      -> Suffix = "Player Two"
+    !,
+       (NOP = 2
+           -> Suffix = "Player Two"
+         ;
+          NOP = 3
+           -> Suffix = "Players Two and Three"
+         ;
+          NOP = 4
+           -> Suffix = "Players Two, Three, and Four"
+         ),
+         append(Prefix, Tail, AutoMessage),
+         append(" Auto Play for ", Suffix, Tail),
+         append("Move " , Suffix, MoveMessage).
+auto_play_message(Prefix, AutoMessage, MoveMessage) :-
+    append(Prefix, " Auto Play", AutoMessage),
+    MoveMessage = "Move Player(s)".
+
+toggle_debugging :-
+    use_debugging(true)
+      -> disable_debugging
     ;
-    NOP = 3
-      -> Suffix = "Players Two and Three"
+    enable_debugging.
+
+toggle_debugging_and_update_button :-
+    toggle_debugging,
+    update_debugging_button.
+
+update_debugging_button :-
+    dom_window(_W) >+> document :> D,
+    D >*> getElementsByTagName(console, C),
+    C >+> style :> Style,
+    (use_debugging(true)
+      -> _ >> [id -:> debug_button, innerText <:+ "Disable Debugging"],
+         Style >*> setProperty(display, block)
     ;
-    NOP = 4
-      -> Suffix = "Players Two, Three, and Four"
-    ),
-    append(Prefix, Tail, AutoMessage),
-    append(" Auto Play for ", Suffix, Tail),
-    append("Move " , Suffix, MoveMessage).
+    true
+      -> _ >> [id -:> debug_button, innerText <:+ "Enable Debugging"],
+         Style >*> setProperty(display, none)
+    ).
+
 
  % clientX and clientY are coordinates within the containing HTMLCanvasElement
  % It appears that the rendering coordinates (e.g. moveTo(RX, RY)) are coordinates
@@ -1117,7 +1146,6 @@ available_click(reclick(Tile)) :-
     get_selected_tile_id(Tile),
     Tile \= none.
 available_click(click_hand_tile(Tile)) :-
-    %get_selected_tile_id(none),
     tile_in_active_hand(Tile),
     hand_tile_selectable(Tile),
     get_game_phase(Phase),

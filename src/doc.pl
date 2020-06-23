@@ -30,68 +30,77 @@ display_title :-
     letters:display_letters([m,o,s,a,i,c], Ctx, 20, 100, 100, _).
 
 display_region_spans :-
-    _Canvas >> [id -:> region_spans, getContext('2d') *:> Ctx],
+    _Canvas >> [id -:> region_spans, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
     get_player_color(1, Color1),
     get_player_color(2, Color2),
     get_board_tile_size(Size),
-    display_region_span_1(Ctx, Color1, Color2, Size, -8, -2),
-    display_region_span_2(Ctx, Color1, Color2, Size, -4, -1).
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 4,
+    display_region_span_1(Ctx, Color1, Color2, Size, ShiftX1, -2),
+    display_region_span_2(Ctx, Color1, Color2, Size, ShiftX2, -1).
 
 display_region_span_1(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('region of 2 tiles. 4 points.',
+    display_tiles(['region of 2 tiles.', '4 points.'], 'panel 1.1',
         [0 > 0 - [C1, C1, C2, C2],
          -1 > 0 - [C1, C2, C1, C2]
         ], Ctx, Size, ShiftX, ShiftY, separator).
 
 display_region_span_2(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('region of 6 tiles. 36 points.',
+    display_tiles(['region of 6 tiles.', '36 points.'], 'panel 1.2',
         [0 > -1 - [C2, C1, C1, C2],
          1 > -1 - [C2, C2, C1, C1],
          0 > 0 - [C1, C2, C1, C2],
          1 > 0 - [C1, C1, C1, C2],
          0 > 1 - [C1, C1, C2, C2],
          1 > 1 - [C1, C2, C2, C1]
-        ], Ctx, Size, ShiftX, ShiftY).
+        ], Ctx, Size, ShiftX, ShiftY, no_separator).
 
 display_build :-
-    _Canvas >> [id -:> build, getContext('2d') *:> Ctx],
+    _Canvas >> [id -:> build, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
     get_player_color(1, C1),
     get_player_color(2, C2),
     get_board_tile_size(Size),
-    display_build_1(Ctx, C1, C2, Size, -10, 0),
-    display_build_2(Ctx, C1, C2, Size, -5, 0),
-    display_build_3(Ctx, C1, C2, Size, 0, 0).
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 5,
+    ShiftX3 is ShiftX2 + 5,
+    display_build_1(Ctx, C1, C2, Size, ShiftX1, -1),
+    display_build_2(Ctx, C1, C2, Size, ShiftX2, -1),
+    display_build_3(Ctx, C1, C2, Size, ShiftX3, -1).
 
 display_build_1(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('First tile placed in board by player 1.',
+    display_tiles(['First tile placed', 'in board by player 1.'], 'panel 2.1',
         [0 > 0 - [C2, C1, C1, C1]
         ], Ctx, Size, ShiftX, ShiftY, separator).
 
 display_build_2(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('Second tile placed in board by player 2.',
+    display_tiles(['Second tile placed', 'in board by player 2.'], 'panel 2.2',
         [0 > 0 - [C2, C1, C1, C1],
          0 > -1 - [C2, C2, C2, C2]
         ], Ctx, Size, ShiftX, ShiftY, separator).
 
 display_build_3(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('Third tile placed in board by player 1.',
+    display_tiles(['Third tile placed', 'in board by player 1.'], 'panel 2.3',
         [0 > 0 - [C2, C1, C1, C1],
          0 > -1 - [C2, C2, C2, C2],
          1 > -1 - [C1, C2, C1, C2]
-        ], Ctx, Size, ShiftX, ShiftY).
+        ], Ctx, Size, ShiftX, ShiftY, no_separator).
 
 display_transform :-
-    _Canvas >> [id -:> transform, getContext('2d') *:> Ctx],
+    _Canvas >> [id -:> transform, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
     get_player_color(1, C1),
     get_player_color(2, C2),
     get_board_tile_size(Size),
-    display_transform_1(Ctx, C1, C2, Size, -12, -1),
-    display_transform_2(Ctx, C1, C2, Size, -7, -1),
-    display_transform_3(Ctx, C1, C2, Size, 0, -1),
-    display_transform_4(Ctx, C1, C2, Size, 7, -1).
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 5,
+    ShiftX3 is ShiftX2 + 7,
+    ShiftX4 is ShiftX3 + 7,
+    display_transform_1(Ctx, C1, C2, Size, ShiftX1, -1),
+    display_transform_2(Ctx, C1, C2, Size, ShiftX2, -1),
+    display_transform_3(Ctx, C1, C2, Size, ShiftX3, -1),
+    display_transform_4(Ctx, C1, C2, Size, ShiftX4, -1).
 
 display_transform_1(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('Transform shared sides of two tiles.',
+    display_tiles(['Transform shared sides', 'of two tiles.'], 'panel 3.1',
         [0 > -1 - [C2, C1, C1, C2],
          1 > -1 - [C2, C2, C1, C1],
          2 > -1 - [C2, C1, C2, C2],
@@ -102,49 +111,49 @@ display_transform_1(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
          1 > 1 - [C1, C2, C2, C1]
         ], Ctx, Size, ShiftX, ShiftY, separator),
     get_highlight_color(2, Color),
-    display_edge_mark([0> -1 - 3, 0>0 - 1], Color, Ctx, Size, ShiftX, ShiftY).
+    display_edge_mark([0> -1 - 2, 0>0 - 0], Color, Ctx, Size, ShiftX, ShiftY).
 
 display_transform_2(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
-    display_tiles('Select replacement tiles.',
+    display_tiles('Select replacement tiles.', 'panel 3.2',
         [1 > -1 - [C2, C2, C1, C1],
          2 > -1 - [C2, C1, C2, C2],
          1 > 0 - [C1, C1, C1, C2],
          2 > 0 - [C2, C2, C2, C1],
          0 > 1 - [C1, C1, C2, C2],
          1 > 1 - [C1, C2, C2, C1]
-        ], Ctx, Size1, ShiftX1, ShiftY1),
+        ], Ctx, Size1, ShiftX1, ShiftY1, no_separator),
     get_highlight_color(2, Color),
     display_replacement_tile_mark(2, -1, Color, Ctx, Size1, ShiftX1, ShiftY1),
     display_replacement_tile_mark(2, 0, Color, Ctx, Size1, ShiftX1, ShiftY1),
     ShiftX2 is ShiftX1 + 4,
     ShiftY2 is ShiftY1,
     Size2 is Size1 * 0.75,
-    display_tiles('Hand tiles.',
+    display_tiles('Hand tiles.', '',
         [0 > -1 - [C2, C1, C1, C2],
          0 > 0 - [C1, C2, C1, C2]
         ], Ctx, Size2, ShiftX2, ShiftY2, separator).
 
 display_transform_3(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
-    display_tiles('Replacement done - rebuild.',
+    display_tiles(['Replacement done', '- rebuild.'], 'panel 3.3',
         [0 > -1 - [C2, C1, C2, C2],
          1 > -1 - [C2, C2, C1, C1],
          0 > 0 - [C2, C2, C1, C2],
          1 > 0 - [C1, C1, C1, C2],
          0 > 1 - [C1, C1, C2, C2],
          1 > 1 - [C1, C2, C2, C1]
-        ], Ctx, Size1, ShiftX1, ShiftY1),
+        ], Ctx, Size1, ShiftX1, ShiftY1, no_separator),
     get_highlight_color(2, Color),
-    display_edge_mark([0> -1 - 3, 0>0 - 1], Color, Ctx, Size1, ShiftX1, ShiftY1),
+    display_edge_mark([0> -1 - 2, 0>0 - 0], Color, Ctx, Size1, ShiftX1, ShiftY1),
     ShiftX2 is ShiftX1 + 3,
     ShiftY2 is ShiftY1,
     Size2 is Size1 * 0.75,
-    display_tiles('Hand tiles.',
+    display_tiles('Hand tiles.', '',
         [0 > -1 - [C2, C1, C1, C2],
          0 > 0 - [C1, C2, C1, C2]
         ], Ctx, Size2, ShiftX2, ShiftY2, separator).
 
 display_transform_4(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
-    display_tiles('Transform done.',
+    display_tiles('Transform done.', 'panel 3.4',
         [-1 > -1 - [C2, C2, C1, C1],
          0 > -1 - [C2, C1, C2, C2],
          1 > -1 - [C2, C2, C1, C1],
@@ -153,9 +162,9 @@ display_transform_4(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          1 > 0 - [C1, C1, C1, C2],
          0 > 1 - [C1, C1, C2, C2],
          1 > 1 - [C1, C2, C2, C1]
-        ], Ctx, Size1, ShiftX1, ShiftY1),
+        ], Ctx, Size1, ShiftX1, ShiftY1, no_separator),
     get_highlight_color(2, Color),
-    display_edge_mark([0> -1 - 3, 0>0 - 1], Color, Ctx, Size1, ShiftX1, ShiftY1).
+    display_edge_mark([0> -1 - 2, 0>0 - 0], Color, Ctx, Size1, ShiftX1, ShiftY1).
 
 display_edge_mark([], _Color, _Ctx, _Size, _ShiftX, _ShiftY).
 display_edge_mark([X>Y - Edge|T], Color, Ctx, Size, ShiftX, ShiftY) :-
@@ -163,12 +172,19 @@ display_edge_mark([X>Y - Edge|T], Color, Ctx, Size, ShiftX, ShiftY) :-
     display_edge_mark(T, Color, Ctx, Size, ShiftX, ShiftY).
 
 display_tiles(Label, Defs, Ctx, Size, ShiftX, ShiftY) :-
-    display_tiles(Label, Defs, Ctx, Size, ShiftX, ShiftY, no_separator).
+    display_tiles(Label, '', Defs, Ctx, Size, ShiftX, ShiftY, no_separator).
 
-display_tiles(Label, Defs, Ctx, Size, ShiftX, ShiftY, Separator) :-
+display_tiles(Label, BottomLabel, Defs, Ctx, Size, ShiftX, ShiftY, Separator) :-
     display_tiles(Defs, Ctx, Size, ShiftX, ShiftY),
     box(Defs, Left, Top, Right, Bottom),
     draw_label(Ctx, Label, ShiftX, ShiftY, Left, Top),
+    (BottomLabel \= ''
+      -> Mid is (Left + Right)/2,
+         Bottom2 is Bottom + 2,
+         draw_label(Ctx, BottomLabel, ShiftX, ShiftY, Mid, Bottom2)
+    ;
+     true
+    ),
     (Separator = separator
       -> RightS is Right + ShiftX + 1,
          TopS is Top + ShiftY,
@@ -227,10 +243,15 @@ draw_label(Ctx, Msg, BX, BY, GridX, GridY) :-
     GX is BX + GridX,
     GY is BY + GridY,
     get_top_left_board_tile_coords(GX, GY, X, Y),
+    (Msg = [First,Second]
+      -> FillText = [fillText(First, X, Y-30), fillText(Second, X, Y-15)]
+    ;
+    FillText = fillText(Msg, X, Y-15)
+    ),
     Ctx >> [
         save,
         fillStyle <:+ '#000',
-        fillText(Msg, X, Y-15),
+        FillText,
         restore
     ].
 
@@ -254,41 +275,23 @@ display_edge_mark1(GridX, GridY, Edge, Color, Ctx, Size, ShiftX, ShiftY) :-
     get_top_left_board_tile_coords(GX, GY, X, Y),
     draw_edge_mark(X, Y, Edge, Color, Ctx, Size).
 
-draw_edge_mark(X, Y, Edge, Color, Ctx, Size) :-
-    MidX is X + (Size / 2),
-    MidY is Y + (Size / 2),
-    Adjust is Size / 6,
-    edge_offsets(Edge, X, Y, Size, MidX, MidY, Adjust, P1, P2, Center),
-    draw_triangle(P1, P2, Color, Center, Ctx).
+shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX) :-
+    interpret_canvas_width_term(CanvasWidthTerm, CanvasWidth),
+    shift_canvas_width(CanvasWidth, Size, ShiftX).
 
-edge_offsets(1, _X, Y, _Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
-    P1x is MX - Adj,
-    P1y is Y,
-    P2x is MX + Adj,
-    P2y is Y,
-    Cx is MX,
-    Cy is MY - Adj.
-edge_offsets(2, X, _Y, Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
-    P1x is X + Size,
-    P1y is MY - Adj,
-    P2x is X + Size,
-    P2y is MY + Adj,
-    Cx is MX + Adj,
-    Cy is MY.
-edge_offsets(3, _X, Y, Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
-    P1x is MX - Adj,
-    P1y is Y + Size,
-    P2x is MX + Adj,
-    P2y is Y + Size,
-    Cx is MX,
-    Cy is MY + Adj.
-edge_offsets(4, X, _Y, _Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
-    P1x is X,
-    P1y is MY - Adj,
-    P2x is X,
-    P2y is MY + Adj,
-    Cx is MX - Adj,
-    Cy is MY.
+shift_canvas_width(CanvasWidth, Size, ShiftX) :-
+    ShiftX is -1 * CanvasWidth/(2 * Size) + 2.
+
+interpret_canvas_width_term(CanvasWidthTerm, CanvasWidth) :-
+     number(CanvasWidthTerm)
+      -> CanvasWidthTerm = CanvasWidth
+    ;
+     atom(CanvasWidthTerm)
+      -> atom_codes(CanvasWidthTerm, CanvasWidthTermCodes),
+         append(CanvasWidthCodes, "px", CanvasWidthTermCodes),
+         number_codes(CanvasWidth, CanvasWidthCodes)
+    ;
+     throw(invalid_canvas_width_term(CanvasWidthTerm)).
 
 display_replacement_tile_mark(GridX, GridY, Color, Ctx, Size, ShiftX, ShiftY) :-
     GX is ShiftX + GridX,
@@ -311,15 +314,17 @@ valid:
 */
 
 display_shape_1 :-
-    _Canvas >> [id -:> shape_1, getContext('2d') *:> Ctx],
+    _Canvas >> [id -:> shape_1, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
     get_player_color(1, C1),
     get_player_color(2, C2),
     get_board_tile_size(Size),
-    display_shape_1_invalid(Ctx, C1, C2, Size, -10, -1),
-    display_shape_1_valid(Ctx, C1, C2, Size, -7, -1).
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 3,
+    display_shape_1_invalid(Ctx, C1, C2, Size, ShiftX1, -1),
+    display_shape_1_valid(Ctx, C1, C2, Size, ShiftX2, -1).
 
 display_shape_1_invalid(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('invalid - gap is 1 tile wide.',
+    display_tiles(['invalid - gap is', '1 tile wide.'], 'panel 4.1',
          [0 > -1 - [C1, C1, C2, C2],
           1 > -1 - [C2, C1, C2, C1],
           0 > 0 - [C2, C2, C1, C2],
@@ -328,14 +333,14 @@ display_shape_1_invalid(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
          ], Ctx, Size, ShiftX, ShiftY, separator).
 
 display_shape_1_valid(Ctx, C1, C2, Size, ShiftX, ShiftY) :-
-    display_tiles('valid - gap is 2 tiles wide.',
+    display_tiles(['valid - gap is', '2 tiles wide.'], 'panel 4.2',
          [0 > -1 - [C1, C1, C2, C2],
           0 > 0 - [C2, C2, C1, C2],
           1 > 0 - [C1, C2, C1, C2],
           2 > 0 - [C2, C1, C1, C2],
           3 > 0 - [C1, C2, C1, C1],
           3 > -1 - [C1, C2, C1, C1]
-         ], Ctx, Size, ShiftX, ShiftY).
+         ], Ctx, Size, ShiftX, ShiftY, no_separator).
 
 /*
 Six game displays showing first play, second play, third play with recency constraint and rotation.
@@ -350,15 +355,20 @@ display_build_detail :-
     display_build_detail_b(C1, C2, Size).
 
 display_build_detail_a(C1, C2, Size) :-
-    _Canvas >> [id -:> build_detail_a, getContext('2d') *:> Ctx],
-    display_build_detail_1(Ctx, C1, C2, Size, -10, -1),
-    display_build_detail_2(Ctx, C1, C2, Size, -4, -1),
-    display_build_detail_3(Ctx, C1, C2, Size, 2, -1).
+    _Canvas >> [id -:> build_detail_a, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 6,
+    ShiftX3 is ShiftX2 + 6,
+    display_build_detail_1(Ctx, C1, C2, Size, ShiftX1, -2),
+    display_build_detail_2(Ctx, C1, C2, Size, ShiftX2, -2),
+    display_build_detail_3(Ctx, C1, C2, Size, ShiftX3, -2).
 
 display_build_detail_b(C1, C2, Size) :-
-    _Canvas >> [id -:> build_detail_b, getContext('2d') *:> Ctx],
-    display_build_detail_4(Ctx, C1, C2, Size, -10, -1),
-    display_build_detail_5(Ctx, C1, C2, Size, -4, -1).
+    _Canvas >> [id -:> build_detail_b, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 6,
+    display_build_detail_4(Ctx, C1, C2, Size, ShiftX1, -2),
+    display_build_detail_5(Ctx, C1, C2, Size, ShiftX2, -2).
 
 display_build_detail_1(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     Size2 is Size1 * 0.75,
@@ -372,12 +382,12 @@ display_build_detail_1(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     display_selected_tile_mark(0, -1, Color, Ctx, Size2, ShiftX1, ShiftY1),
     ShiftX2 is ShiftX1 + 2,
     ShiftY2 is ShiftY1,
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 5.1',
         [0 > 0 - selectable(Color)
-        ], Ctx, Size1, ShiftX2, ShiftY2),
+        ], Ctx, Size1, ShiftX2, ShiftY2, no_separator),
     ShiftX3 is ShiftX2 + 2,
     ShiftY3 is ShiftY2,
-    display_tiles('Player 2.',
+    display_tiles('Player 2.', '',
         [0 > -1 - [C2, C2, C2, C2],
          0 > 0 - [C1, C2, C2, C2],
          0 > 1 - [C1, C2, C2, C1]
@@ -394,16 +404,16 @@ display_build_detail_2(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     get_highlight_color(2, Color),
     ShiftX2 is ShiftX1 + 2,
     ShiftY2 is ShiftY1,
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 5.2',
         [0 > -1 - nonselectable(Color),
          -1 > 0 - nonselectable(Color),
          0 > 0 - [C1, C1, C1, C1],
          1 > 0 - nonselectable(Color),
          0 > 1 - selectable(Color)
-        ], Ctx, Size1, ShiftX2, ShiftY2),
+        ], Ctx, Size1, ShiftX2, ShiftY2, no_separator),
     ShiftX3 is ShiftX2 + 2,
     ShiftY3 is ShiftY2,
-    display_tiles('Player 2.',
+    display_tiles('Player 2.', '',
         [0 > -1 - [C2, C2, C2, C2],
          0 > 0 - [C1, C2, C2, C2],
          0 > 1 - [C1, C2, C2, C1]
@@ -422,12 +432,12 @@ display_build_detail_3(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     display_selected_tile_mark(0, 0, Color, Ctx, Size2, ShiftX1, ShiftY1),
     ShiftX2 is ShiftX1 + 2,
     ShiftY2 is ShiftY1,
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 5.3',
         [0 > 0 - [C1, C1, C1, C1],
          -1 > 1 - nonselectable(Color),
          0 > 1 - [C1, C2, C2, C2],
          1 > 1 - nonselectable(Color)
-        ], Ctx, Size1, ShiftX2, ShiftY2),
+        ], Ctx, Size1, ShiftX2, ShiftY2, no_separator),
     ShiftX3 is ShiftX2 + 2,
     ShiftY3 is ShiftY2,
     display_tiles('Player 2.',
@@ -447,15 +457,15 @@ display_build_detail_4(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     display_selected_tile_mark(0, 0, Color, Ctx, Size2, ShiftX1, ShiftY1),
     ShiftX2 is ShiftX1 + 2,
     ShiftY2 is ShiftY1,
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 5.4',
         [0 > 0 - [C1, C1, C1, C1],
          -1 > 1 - selectable(Color),
          0 > 1 - [C1, C2, C2, C2],
          1 > 1 - nonselectable(Color)
-        ], Ctx, Size1, ShiftX2, ShiftY2),
+        ], Ctx, Size1, ShiftX2, ShiftY2, no_separator),
     ShiftX3 is ShiftX2 + 2,
     ShiftY3 is ShiftY2,
-    display_tiles('Player 2.',
+    display_tiles('Player 2.', '',
         [0 > -1 - [C2, C2, C2, C2],
          0 > 1 - [C1, C2, C2, C1]
         ],
@@ -469,11 +479,11 @@ display_build_detail_5(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
         Ctx, Size2, ShiftX1, ShiftY1),
     ShiftX2 is ShiftX1 + 2,
     ShiftY2 is ShiftY1,
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 5.5',
         [0 > 0 - [C1, C1, C1, C1],
          -1 > 1 - [C1, C2, C1, C1],
          0 > 1 - [C1, C2, C2, C2]
-        ], Ctx, Size1, ShiftX2, ShiftY2),
+        ], Ctx, Size1, ShiftX2, ShiftY2, no_separator),
     ShiftX3 is ShiftX2 + 2,
     ShiftY3 is ShiftY2,
     display_tiles('Player 2.',
@@ -498,24 +508,32 @@ display_transform_detail :-
     display_transform_detail_c(C1, C2, Size).
 
 display_transform_detail_a(C1, C2, Size) :-
-    _Canvas >> [id -:> transform_detail_a, getContext('2d') *:> Ctx],
-    display_transform_detail_1(Ctx, C1, C2, Size, -10, -1),
-    display_transform_detail_2(Ctx, C1, C2, Size, -6, -1),
-    display_transform_detail_3(Ctx, C1, C2, Size, 0, -1).
+    _Canvas >> [id -:> transform_detail_a, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 4,
+    ShiftX3 is ShiftX2 + 7,
+    display_transform_detail_1(Ctx, C1, C2, Size, ShiftX1, -2),
+    display_transform_detail_2(Ctx, C1, C2, Size, ShiftX2, -2),
+    display_transform_detail_3(Ctx, C1, C2, Size, ShiftX3, -2).
 
 display_transform_detail_b(C1, C2, Size) :-
-    _Canvas >> [id -:> transform_detail_b, getContext('2d') *:> Ctx],
-    display_transform_detail_4(Ctx, C1, C2, Size, -10, -1),
-    display_transform_detail_5(Ctx, C1, C2, Size, -4, -1),
-    display_transform_detail_6(Ctx, C1, C2, Size, 4, -1).
+    _Canvas >> [id -:> transform_detail_b, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 7,
+    ShiftX3 is ShiftX2 + 9,
+    display_transform_detail_4(Ctx, C1, C2, Size, ShiftX1, -2),
+    display_transform_detail_5(Ctx, C1, C2, Size, ShiftX2, -2),
+    display_transform_detail_6(Ctx, C1, C2, Size, ShiftX3, -2).
 
 display_transform_detail_c(C1, C2, Size) :-
-    _Canvas >> [id -:> transform_detail_c, getContext('2d') *:> Ctx],
-    display_transform_detail_7(Ctx, C1, C2, Size, -10, -1),
-    display_transform_detail_8(Ctx, C1, C2, Size, -3, -1).
+    _Canvas >> [id -:> transform_detail_c, getContext('2d') *:> Ctx, width -:> CanvasWidthTerm],
+    shift_canvas_width_term(CanvasWidthTerm, Size, ShiftX1),
+    ShiftX2 is ShiftX1 + 7,
+    display_transform_detail_7(Ctx, C1, C2, Size, ShiftX1, -1),
+    display_transform_detail_8(Ctx, C1, C2, Size, ShiftX2, -1).
 
 display_transform_detail_1(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
-    display_tiles('Select edge.',
+    display_tiles('Select edge.', 'panel 6.1',
         [-1 > -1 - [C2, C2, C1, C1],
          0 > -1 - [C2, C1, C2, C2],
          1 > -1 - [C2, C2, C1, C1],
@@ -529,7 +547,7 @@ display_transform_detail_1(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
         ],
         Ctx, Size1, ShiftX1, ShiftY1, separator),
     get_highlight_color(1, Color),
-    display_edge_mark([-1 > 0 - 2, 0>0 - 4], Color, Ctx, Size1, ShiftX1, ShiftY1).
+    display_edge_mark([-1 > 0 - 1, 0>0 - 3], Color, Ctx, Size1, ShiftX1, ShiftY1).
 
 display_transform_detail_2(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     Size2 is Size1 * 0.75,
@@ -538,10 +556,10 @@ display_transform_detail_2(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          0 > 0 - [C2, C2, C1, C2]
         ],
         Ctx, Size2, ShiftX1, ShiftY1),
-    ShiftX2 is ShiftX1 + 2,
+    ShiftX2 is ShiftX1 + 3,
     ShiftY2 is ShiftY1,
     get_highlight_color(1, Color),
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 6.2',
         [-1 > -1 - [C2, C2, C1, C1],
          0 > -1 - [C2, C1, C2, C2],
          1 > -1 - [C2, C2, C1, C1],
@@ -553,8 +571,10 @@ display_transform_detail_2(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          1 > 2 - [C2, C2, C2, C2]
         ],
         Ctx, Size1, ShiftX2, ShiftY2, separator),
+    display_replacement_tile_mark(-1, -1, Color, Ctx, Size1, ShiftX2, ShiftY2),
     display_replacement_tile_mark(1, -1, Color, Ctx, Size1, ShiftX2, ShiftY2),
     display_replacement_tile_mark(1, 0, Color, Ctx, Size1, ShiftX2, ShiftY2),
+    display_replacement_tile_mark(0, 1, Color, Ctx, Size1, ShiftX2, ShiftY2),
     display_selected_tile_mark(1, -1, Color, Ctx, Size1, ShiftX2, ShiftY2).
 
 display_transform_detail_3(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
@@ -564,10 +584,10 @@ display_transform_detail_3(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          0 > 0 - [C2, C2, C1, C2]
         ],
         Ctx, Size2, ShiftX1, ShiftY1),
-    ShiftX2 is ShiftX1 + 2,
+    ShiftX2 is ShiftX1 + 3,
     ShiftY2 is ShiftY1,
     get_highlight_color(1, Color),
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 6.3',
         [-1 > -1 - [C2, C2, C1, C1],
          0 > -1 - [C2, C1, C2, C2],
          2 > -1 - [C1, C2, C1, C2],
@@ -578,7 +598,7 @@ display_transform_detail_3(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          1 > 1 - [C1, C2, C2, C1],
          1 > 2 - [C2, C2, C2, C2]
         ],
-        Ctx, Size1, ShiftX2, ShiftY2),
+        Ctx, Size1, ShiftX2, ShiftY2, no_separator),
     display_replacement_tile_mark(1, 0, Color, Ctx, Size1, ShiftX2, ShiftY2),
     display_selected_tile_mark(1, 0, Color, Ctx, Size1, ShiftX2, ShiftY2).
 
@@ -592,9 +612,9 @@ display_transform_detail_4(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     get_highlight_color(1, Color),
     display_replacement_tile_mark(0, 0, Color, Ctx, Size2, ShiftX1, ShiftY1),
     display_selected_tile_mark(0, 0, Color, Ctx, Size2, ShiftX1, ShiftY1),
-    ShiftX2 is ShiftX1 + 2,
+    ShiftX2 is ShiftX1 + 3,
     ShiftY2 is ShiftY1,
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 6.4',
         [-1 > -1 - [C2, C2, C1, C1],
          0 > -1 - [C2, C1, C2, C2],
          1 > -1 - selectable(Color),
@@ -616,9 +636,9 @@ display_transform_detail_5(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     get_highlight_color(1, Color),
     display_replacement_tile_mark(0, -1, Color, Ctx, Size2, ShiftX1, ShiftY1),
     display_selected_tile_mark(0, -1, Color, Ctx, Size2, ShiftX1, ShiftY1),
-    ShiftX2 is ShiftX1 + 2,
+    ShiftX2 is ShiftX1 + 3,
     ShiftY2 is ShiftY1,
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 6.5',
         [-1 > -1 - [C2, C2, C1, C1],
          0 > -1 - [C2, C1, C2, C2],
          1 > -1 - [C2, C2, C1, C2],
@@ -632,12 +652,12 @@ display_transform_detail_5(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
         ],
         Ctx, Size1, ShiftX2, ShiftY2, separator),
     get_highlight_color(2, OtherColor),
-    display_edge_mark1(0, -1, 2, OtherColor, Ctx, Size1, ShiftX2, ShiftY2).
+    display_edge_mark1(0, -1, 1, OtherColor, Ctx, Size1, ShiftX2, ShiftY2).
 
 display_transform_detail_6(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     Size2 is Size1 * 0.75,
     get_highlight_color(2, Color),
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 6.6',
         [-1 > -1 - [C2, C2, C1, C1],
          0 > -1 - selectable(Color),
          1 > -1 - [C2, C2, C1, C2],
@@ -649,7 +669,7 @@ display_transform_detail_6(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          1 > 1 - [C1, C2, C2, C1],
          1 > 2 - [C2, C2, C2, C2]
         ],
-        Ctx, Size1, ShiftX1, ShiftY1),
+        Ctx, Size1, ShiftX1, ShiftY1, no_separator),
     display_replacement_tile_mark(1, 2, Color, Ctx, Size1, ShiftX1, ShiftY1),
     display_selected_tile_mark(1, 2, Color, Ctx, Size1, ShiftX1, ShiftY1),
     ShiftX2 is ShiftX1 + 4,
@@ -662,7 +682,7 @@ display_transform_detail_6(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
 display_transform_detail_7(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
     Size2 is Size1 * 0.75,
     get_highlight_color(2, Color),
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 6.7',
         [-1 > -2 - selectable(Color),
          0 > -2 - selectable(Color),
          1 > -2 - selectable(Color),
@@ -681,17 +701,17 @@ display_transform_detail_7(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          0 > 1 - [C1, C1, C2, C2],
          1 > 1 - [C1, C2, C2, C1]
         ],
-        Ctx, Size1, ShiftX1, ShiftY1),
+        Ctx, Size1, ShiftX1, ShiftY1, no_separator),
     ShiftX2 is ShiftX1 + 4,
     ShiftY2 is ShiftY1,
-    display_tiles('Player 2.',
+    display_tiles('Player 2.', '',
         [0 > -1 - [C2, C1, C2, C2]
         ],
         Ctx, Size2, ShiftX2, ShiftY2, separator),
     display_selected_tile_mark(0, -1, Color, Ctx, Size2, ShiftX2, ShiftY2).
 
 display_transform_detail_8(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
-    display_tiles('Board.',
+    display_tiles('Board.', 'panel 6.8',
         [0 > -2 - [C2, C1, C2, C2],
          -1 > -1 - [C2, C2, C1, C1],
          0 > -1 - [C2, C2, C2, C2],
@@ -703,4 +723,4 @@ display_transform_detail_8(Ctx, C1, C2, Size1, ShiftX1, ShiftY1) :-
          0 > 1 - [C1, C1, C2, C2],
          1 > 1 - [C1, C2, C2, C1]
         ],
-        Ctx, Size1, ShiftX1, ShiftY1).
+        Ctx, Size1, ShiftX1, ShiftY1, no_separator).

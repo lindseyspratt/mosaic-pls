@@ -42,12 +42,14 @@
     rotate_right/2, rotate_left/2, matching_rotations/3, board_hash_key_coords/3,
     tile_colors_match_constraint_colors/2, tile_colors_mismatch_constraint_colors/4,
     edge_neighbor_offset/2, display_spans/2, values/1,
-    data_mode/1]).
+    data_mode/1, use_debugging/1, enable_debugging/0, disable_debugging/0]).
 
 :- reexport(['../proscriptls_sdk/library/undo']).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(library).
+
+:- dynamic(use_debugging/1).
 
 :- initialization(initdyn).
 
@@ -58,6 +60,14 @@ initdyn :-
         ]).
 
 data_mode(undoable).
+
+enable_debugging :-
+    retractall(use_debugging(_)),
+    asserta(use_debugging(true)).
+
+disable_debugging :-
+    retractall(use_debugging(_)),
+    asserta(use_debugging(false)).
 
 % init(2, 4, [a,b,c,d])
 init_model_basics(NOP, TPT, AC) :-

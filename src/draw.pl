@@ -1,6 +1,6 @@
 :- module(draw, [draw_all_tiles/4, draw_all_tiles_no_center/4, draw_all_tile/2, draw_legal_moves/3, clear_location_views/2,
     draw_replacements/2, draw_replacement_tile_mark/2, draw_replacement_tile_mark/5, draw_tile/5, abstract_colors/2, draw_label/4,
-    draw_triangle/5, draw_selected_tile_mark/5, draw_legal_position_with_rotation/5, draw_legal_position/5]).
+    draw_triangle/5, draw_edge_mark/6, draw_selected_tile_mark/5, draw_legal_position_with_rotation/5, draw_legal_position/5]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 :- use_module(model_basics).
@@ -28,6 +28,14 @@ draw_tile(Ctx, Tile) :-
     get_tile_colors(Tile, AbstractColors),
     abstract_colors(AbstractColors, Colors),
     draw_tile(Ctx, Colors, Size, X, Y),
+    (use_debugging(true)
+      -> draw_tile_info(Ctx, Tile, X, Y)
+    ;
+     true
+    ),
+    !. % several predicates in this clause leave choicepoints (needlessly). This cut removes them.
+
+draw_tile_info(Ctx, Tile, X, Y) :-
     get_tile_grid_x(Tile, BX),
     get_tile_grid_y(Tile, BY),
     board_hash_key_coords(BX, BY, Text),
@@ -38,8 +46,7 @@ draw_tile(Ctx, Tile) :-
         fillText(Text, X+5, Y+10),
         fillText(TileAtom, X+20, Y+20),
         restore
-    ],
-    !. % several predicates in this clause leave choicepoints (needlessly). This cut removes them.
+    ].
 
 draw_tile(Ctx, Colors, Size, X, Y) :-
     Corners = [X > Y,X + Size > Y,X + Size > Y + Size, X > Y + Size],
@@ -85,6 +92,42 @@ draw_triangle(P1x > P1y, P2x > P2y, Color, CenterX > CenterY, Ctx) :-
         stroke,
         restore
     ].
+
+draw_edge_mark(X, Y, Edge, Color, Ctx, Size) :-
+    MidX is X + (Size / 2),
+    MidY is Y + (Size / 2),
+    Adjust is Size / 6,
+    edge_offsets(Edge, X, Y, Size, MidX, MidY, Adjust, P1, P2, Center),
+    draw_triangle(P1, P2, Color, Center, Ctx).
+
+edge_offsets(0, _X, Y, _Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
+    P1x is MX - Adj,
+    P1y is Y,
+    P2x is MX + Adj,
+    P2y is Y,
+    Cx is MX,
+    Cy is MY - Adj.
+edge_offsets(1, X, _Y, Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
+    P1x is X + Size,
+    P1y is MY - Adj,
+    P2x is X + Size,
+    P2y is MY + Adj,
+    Cx is MX + Adj,
+    Cy is MY.
+edge_offsets(2, _X, Y, Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
+    P1x is MX - Adj,
+    P1y is Y + Size,
+    P2x is MX + Adj,
+    P2y is Y + Size,
+    Cx is MX,
+    Cy is MY + Adj.
+edge_offsets(3, X, _Y, _Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
+    P1x is X,
+    P1y is MY - Adj,
+    P2x is X,
+    P2y is MY + Adj,
+    Cx is MX - Adj,
+    Cy is MY.
 
 clear_board_rect(Ctx, X, Y, W, H) :-
     Ctx >> [

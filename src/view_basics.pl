@@ -38,8 +38,8 @@ create_view_basics(CanvasID) :-
         BoardWidth is W - 100,
         BoardHeight is H - 100,
         get_number_of_players(NOP),
-        HTS is 96 / NOP + 10,
-        BTS is 132 / NOP + 10,
+        HTS is floor(BoardWidth / (10.5 * NOP) + 10),
+        BTS is floor(BoardWidth / (7.5 * NOP) + 10),
         assert_data(
             vb(W, H, OffsetTop, OffsetLeft, Ctx,
                ['#008800', '#4444FF', '#FFE222', '#FF63D0'], ['#CCFFCC', '#CCCCFF', '#FFEAC4', '#FFCBEA'],

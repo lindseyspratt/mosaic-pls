@@ -60,10 +60,15 @@
         <button class="mosaic-button" id="move_button" onclick="proscriptls ('tiles:agent_select(_).');" disabled="true">
             Move Player Two
         </button>
+        <button class="mosaic-button" id="debug_button" onclick="proscriptls ('tiles:toggle_debugging_and_update_button.');">
+            Enable Debugging
+        </button>
     </div>
 </status2>
 <!--suppress JSUnresolvedLibraryURL -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.8/dist/proscriptls_engine.js"></script>
+<!-- -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.9/dist/proscriptls_engine.js"></script>
+
 <!--
 
 <script type="text/javascript" src="../proscriptls_sdk/dist/proscriptls_engine.js"></script>
@@ -75,10 +80,11 @@
 <script type="text/javascript" src="proscriptls_state_tiles.js"></script>
 
 <console>
-    <!--
+    <!-- -->
 <script type="text/javascript" src="../proscriptls_sdk/terminal/proscriptls_interpreter_terminal.js"></script>
--->
+<!--
 <script type="text/javascript" src="../../proscriptls/terminal/proscriptls_interpreter_terminal.js"></script>
+-->
 <div id="proscriptinterpreter">
 </div>
 </console>

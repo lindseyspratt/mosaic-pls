@@ -4,32 +4,58 @@
     <meta charset="UTF-8">
     <title>Game Description</title>
     <link rel="StyleSheet" href="mosaic.css" type="text/css" media="ALL">
-    <!-- proscriptls interpreter -->
+    <link rel="StyleSheet" href="doc.css" type="text/css" media="ALL">
+    <!-- proscriptls interpreter
     <script src="../proscriptls_sdk/terminal/jquery-3.3.1.js"></script>
     <script src="../proscriptls_sdk/terminal/jquery_terminal.js"></script>
     <link href="../proscriptls_sdk/terminal/jquery_terminal.css" rel="stylesheet"/>
+     -->
 </head>
 <body onload="proscriptls_init ('doc:setup_doc.');">
 <title_canvas>
-    <canvas id="title_canvas" width="1000px" height="200px"></canvas>
+    <canvas id="title_canvas" width="800px" height="200px"></canvas>
 </title_canvas>
 <description>
 <p>
-    In 2 player game get 100 points or more at the end of two of your 'transform' turns in a row.
+    In the 2 player game the you are the winner if you are the first player to get 100 points or more at the end of two of your 'transform' turns in a row.
 </p>
     <p>
 You get points for regions of your color:
 a region spans 2 or more tiles and the score for a region is the square of the number of tiles spanned by that region.
 </p>
-    <canvas id="region_spans" width="1000px" height="200px"></canvas>
+    <div class="example">
+        Panel 1.1 shows a player 2 blue region that spans two tiles for a score of four points.
+        The player 1 green areas do not span any tiles and so do not score any points.
+        Panel 1.2 shows a player 1 green region that spans six tiles for a score of 36 points and a player 2 blue region that spans two tiles for a score of four points.
+    </div>
+    <canvas id="region_spans" width="800px" height="200px"></canvas>
 <p>
     There are two phases of game play: <i>build</i> and <i>transform</i>.
     In the build phase the players build the board.
 </p>
-    <canvas id="build" width="1000px" height="200px"></canvas>
-
+    <div class="example">
+        Panels 2.1 through 2.3 show the first three steps in building the board for a two-player game.
+   </div>
+    <canvas id="build" width="800px" height="170px"></canvas>
+<p>
     In the transform phase the players take turns transforming the board.
-    <canvas id="transform" width="1000px" height="200px"></canvas>
+</p>
+    <div class="example">
+        Panels 3.1 through 3.3 show the three steps in transforming the board for a two-player.
+    </div>
+    <canvas id="transform" width="800px" height="200px"></canvas>
+    <div class="example">
+        In panel 3.1 player two has selected an adjacent pair of tile sides to transform, as indicated by the pale blue diamond.
+        (An adjacent pair of tile sides is called an 'edge'.)
+        To be transformed the selected sides must not be the transforming player's color.
+        After the transformation these sides will have been changed to the transforming player's color and the other sides of those tiles will be as they
+        were at the start.
+        <br><br>
+        In panel 3.2 the selected pair of tiles has been moved to player two's 'hand' to be placed in the board later.
+        Also the tiles that may be used to replace these removed tiles have been marked with pale blue circles.
+        <br><br>
+        In panel 3.3 the replacement tiles have been moved to complete the transformation of the originally selected edge.
+    </div>
 
     <ul>
     <li>
@@ -38,7 +64,11 @@ a region spans 2 or more tiles and the score for a region is the square of the n
         <ul>
             <li>Color constraint: Adjacent tile edge colors must match.</li>
             <li>Shape constraint 1: A tile cannot be placed in the board such that there is a single-tile-sized space with another tile on the other side of that space.
-                <canvas id="shape_1" width="1000px" height="200px"></canvas>
+                <div class="example">
+                    Panel 4.1 shows an invalidly shaped board: the one-tile wide, two-sided gap, or hole, is not allowed in a valid board.
+                    Panel 4.3 shows a validly shaped board: the gap is two tiles wide which is allowed.
+                </div>
+                <canvas id="shape_1" width="800px" height="200px"></canvas>
             </li>
             <li>Shape constraint 2:
     The first tile placed may be any tile in the first player's hand.
@@ -49,9 +79,34 @@ a region spans 2 or more tiles and the score for a region is the square of the n
         (without violating the color and shape constraints) then it must be so placed.</li>
         </ul>
     </li>
-        <canvas id="build_detail_a" width="1000px" height="200px"></canvas>
-        <br>
-        <canvas id="build_detail_b" width="1000px" height="200px"></canvas>
+        <div class="example">
+            Panels 5.1 through 5.5 show the plays made to place the first three tiles on the board.
+        </div>
+        <canvas id="build_detail_a" width="800px" height="170px"></canvas>
+        <div class="example">
+            In panel 5.1 player one has selected a tile in their hand by clicking on the tile indicated by the pale green plus sign.
+            This is the first tile to be placed in the board so any tile may be used.
+            The location available for this tile is indicated by the pale green solid square.
+            When player one clicks on the pale green solid square then the hand tile is moved to the board.
+            <br><br>
+            Panel 5.2 shows the game state after player one completes moving a tile to the board and player two has clicked on the tile with the pale blue plus sign.
+            The possible locations where the selected tile may be placed on the board are indicated by the pale blue empty squares and the pale blue solid square.
+            The solid square location is immediately available as a location to which the selected tile may be moved.
+            Each empty square location requires the selected tile to be rotated one, two, or three times before being in the appropriate orientation for that location.
+            Player two clicks on the the solid square location to move the selected tile to that location.
+            <br><br>
+            Panel 5.3 shows the game state after player two has moved a tile to the board and player one has selected a hand tile as indicated by the pale green plus sign.
+            According to the 'Recency Constraint', if the selected tile can be placed next to the previously placed tile then it must be.
+            In this case the selected can be so placed and the valid locations are indicated by pale green empty squares.
+        </div>
+        <canvas id="build_detail_b" width="800px" height="170px"></canvas>
+        <div class="example">
+            Panel 5.4 shows the game state after player one has clicked a second time on the selected tile in their hand
+            (i.e. the one with the pale green plus sign).
+            This click rotated the selected tile 90 degrees clockwise and changed a location to being valid as indicated by the pale green solid square.
+            <br><br>
+            Panel 5.5 shows the game state after player one has clicked on the valid location, moving a tile from their hand to the board.
+        </div>
         <li>
     <p>Transform:
     A transform turn starts with a player choosing an orthogonally adjacent pair of tiles to be transformed where the adjacent color is *not* that player's color.
@@ -85,25 +140,75 @@ a region spans 2 or more tiles and the score for a region is the square of the n
         This ends the resolving player's turn.
         If there are mismatched tiles or orphaned tiles then the next player becomes the resolving player.
     </p>
-            <canvas id="transform_detail_a" width="1000px" height="300px"></canvas>
-            <br>
-            <canvas id="transform_detail_b" width="1000px" height="300px"></canvas>
-            <br>
-            <canvas id="transform_detail_c" width="1000px" height="300px"></canvas>
+            <div class="example">
+                Panels 6.1 to 6.8 show a transformation of an edge started by player one followed by a mismatch resolution by player two.
+            </div>
+            <canvas id="transform_detail_a" width="800px" height="200px"></canvas>
+            <div class="example">
+                Panel 6.1 shows player one having selected an edge as indicated by the pale green lozenge.
+                <br><br>
+                Panel 6.2 shows the tiles to-be-replaced in the player one's hand, four board tiles marked with pale green circles as replacements for the
+                removed tiles, and one of these tiles also marked with a pale green plus sign as having been selected by player one.
+                <br><br>
+                Panel 6.3 shows a replacement having been made which left a three-sided hole.
+                There is a location indicated in pale green solid square as the target
+                for a second replacement.
+                The one valid replacing tile is indicated by a pale green circle and that tile is selected by player one as
+                indicated by the pale green plus sign.
+            </div>
+            <canvas id="transform_detail_b" width="800px" height="200px"></canvas>
+            <div class="example">
+                Panel 6.4 shows a target location in the hole in the board using a pale green solid square.
+                The one replacement for that hole in player one's hand is indicated by the pale green circle.
+                That replacement is selected by player one as indicated by the pale green plus sign.
+                <br><br>
+                Panel 6.5 shows the mismatched tile side using a pale blue triangle.
+                This mismatch was caused by placing a hand tile in the hole.
+                A pale green solid square indicates a three-sided hole which must be filled from player one's hand.
+                The tile in player one's hand has a pale green circle indicating that it is a valid candidate for replacing
+                the indicated location and a pale green plus sign showing it has been selected by player one.
+                <br><br>
+                Panel 6.6 shows the location where the mismatched tile was using a pale blue solid square.
+                The mismatched tile has been moved to player two's hand.
+                The only valid replacement for the mismatched tile is indicated with a pale blue circle.
+                This tile has been selected by player two as indicated by the pale blue plus sign.
+            </div>
+            <canvas id="transform_detail_c" width="800px" height="200px"></canvas>
+            <div class="example">
+                Panel 6.7 shows the board after the completed replacement of the mismatched tile.
+                Player two has selected the tile in their hand as shown by the pale blue plus sign.
+                The possible locations for the selected tile are shown by the pale blue squares.
+                The solid squares are selectable.
+                The empty squares can be made selectable by rotating the selected hand tile.
+                <br><br>
+                Panel 6.8 shows the board after player two has placed their hand tile in the board (the sole tile
+                on the top row).
+                This completes the transformation round started by player one in panel 6.1.
+                The score has changed in player two's favor.
+                For panel 6.1 the game score is 40 points for player one and 33 points for player two.
+                For panel 6.8 the game score is 40 points for player one and 49 points for player two.
+            </div>
         </li>
     </ul>
 
 </p>
 </description>
 <!--suppress JSUnresolvedLibraryURL -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.8/dist/proscriptls_engine.js"></script>
-<script type="text/javascript" src="proscriptls_state_doc.js"></script>
+<!-- -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.9/dist/proscriptls_engine.js"></script>
 
+<!--
+<script type="text/javascript" src="../proscriptls_sdk/dist/proscriptls_engine.js"></script>
+<script type="text/javascript" src="../../proscriptls/dist/proscriptls_engine.js"></script>
+-->
+<script type="text/javascript" src="proscriptls_state_doc.js"></script>
+<!--
 <console>
     <script type="text/javascript" src="../proscriptls_sdk/terminal/proscriptls_interpreter_terminal.js"></script>
 
     <div id="proscriptinterpreter">
     </div>
 </console>
+-->
 </body>
 </html>
