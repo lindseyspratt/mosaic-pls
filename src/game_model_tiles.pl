@@ -310,10 +310,8 @@ set_selected_edge(Tile1, Tile2) :-
     set_data_selectedEdge(GameModelTilesID, Edge).
 
 tiles_to_edge(Tile1, Tile2, edge(Edge1, Edge2)) :-
-    get_tile_grid_x(Tile1, GridX1),
-    get_tile_grid_y(Tile1, GridY1),
-    get_tile_grid_x(Tile2, GridX2),
-    get_tile_grid_y(Tile2, GridY2),
+    get_board_tile_grid(Tile1, GridX1>GridY1),
+    get_board_tile_grid(Tile2, GridX2>GridY2),
     ((GridX1 > GridX2
      ;
      GridX1 = GridX2,
@@ -567,9 +565,8 @@ find_orphans(Orphans) :-
     coordinates_to_tiles(OrphanCoords, Orphans).
 
 coordinates_to_tiles([], []) :- !.
-coordinates_to_tiles([X>Y|TC], [Tile|TT]) :-
-    get_tile_grid_x(Tile, X),
-    get_tile_grid_y(Tile, Y),
+coordinates_to_tiles([HC|TC], [Tile|TT]) :-
+    get_board_tile_grid(Tile, HC),
     coordinates_to_tiles(TC, TT).
 
 /*

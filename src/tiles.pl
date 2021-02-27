@@ -1,6 +1,6 @@
 :- module(tiles, [display_title/0, setup_game_data/1, start_mosaic_game/1, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3,
-        undo_last_selection/0, agent_select/1, apply_clicks/1,
+        undo_last_selection/0, agent_select/1, apply_clicks/1, steps/1, step_clicks/2, apply_steps/1,
         toggle_auto_play_and_update_button/0, toggle_debugging_and_update_button/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
@@ -22,6 +22,7 @@
 
 :- dynamic(interaction_counter/1).
 :- dynamic(use_auto_play/1).
+:- dynamic(step/3).
 
 dummy_reference :-
     dummy_reference,
@@ -32,7 +33,8 @@ dummy_reference :-
     select_click(_,_,_),
     available_click(_),
     draw_tile_animation1(_,_,_,_,_),
-    unbound_action.
+    unbound_action,
+    step(_,_,_).
 
 display_title :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
@@ -601,6 +603,7 @@ Possible location actions:
     - otherwise, error
 */
 on_click_legal_location(BX, BY, Action) :-
+    writeln(on_click_legal_location(BX, BY, Action)),
     get_selected_tile_id(Tile),
     set_selected_tile_id(none),
     once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
@@ -690,7 +693,8 @@ on_click_legal_location(BX, BY, Action) :-
          )
     ;
     Action = skip(legal_location_click_error(Tile, BX, BY, Phase))
-    ).
+    ),
+    writeln(finished(on_click_legal_location(BX, BY, Action))).
 
 % process_mismatches sets up another hand, shaped locations,
 % and replacement tiles - continuing the resolution sequence.
@@ -746,9 +750,10 @@ restore_tile_original_colors(ID) :-
     get_tile_original_colors(ID, OriginalColors),
     OriginalColors \= none
       -> set_tile_original_colors(ID, none),
-         set_colors(ID, OriginalColors)
+         set_colors(ID, OriginalColors),
+         writeln(restored(ID, OriginalColors))
     ;
-    true.
+    writeln(no_restore(ID)).
 
 point_in_legal_location(BX, BY, X, Y) :-
      wam_duration(Start),
@@ -877,7 +882,7 @@ move_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
 place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     gc,
     writeln(place_tile_on_board_and_draw(Tile, X, Y)),
-    statistics,
+%    statistics,
     wam_duration(Start),
 
 %    get_tile_display_x(Tile, OldDisplayX),
@@ -906,7 +911,7 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
 %    abstract_colors(AbstractColors, Colors),
 
 %    draw_tile_animation(Ctx, Colors, OldDisplayX>OldDisplayY+OldSize, NewDisplayX>NewDisplayY+NewSize),
-    statistics,
+%    statistics,
 
     wam_duration(Mark3),
     center_board,
@@ -915,13 +920,17 @@ place_tile_on_board_and_draw(Ctx, Tile, X, Y) :-
     get_interaction_counter(InteractionCounter),
     reposition_board_loop_delay(InteractionCounter),
 
+%    writeln(place_tile_on_board_and_draw(finished(reposition_board_loop_delay(InteractionCounter)))),
     wam_duration(Mark4),
     incremental_find_shaped_locations(Tile),
+%    writeln(place_tile_on_board_and_draw(finished(incremental_find_shaped_locations(Tile)))),
 
     wam_duration(End),
     !,
     gc,
-    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, End], place_tile_on_board_and_draw).
+    display_spans([Start, Mark1,Mark2, Mark3,  Mark4, End], place_tile_on_board_and_draw),
+    writeln(place_tile_on_board_and_draw(finished)).
+
 
 draw_tile_animation(_Ctx, _Colors, End, End) :-
     !.
@@ -982,8 +991,8 @@ reposition_board_loop(InteractionCounter) :-
     !,
     fail_save(draw_game_tiles_and_locations),
     gc,
-    writeln(reposition_board_loop),
-    statistics,
+%    writeln(reposition_board_loop),
+%    statistics,
     reposition_board_loop_delay(InteractionCounter).
 reposition_board_loop(_InteractionCounter) :-
     true. % calculate_and_display_score.
@@ -1148,13 +1157,14 @@ available_click(reclick(Tile)) :-
 available_click(click_hand_tile(Tile)) :-
     tile_in_active_hand(Tile),
     hand_tile_selectable(Tile),
+    \+ get_selected_tile_id(Tile), % not already selected - it should only be reclicked when already selected.
     get_game_phase(Phase),
     (Phase = build;Phase = rebuild).
 available_click(click_board_tile(Tile)) :-
-    %get_selected_tile_id(none),
     tile_in_board(Tile),
     get_game_phase(replace),
-    tile_in_replacements(Tile).
+    tile_in_replacements(Tile),
+    \+ get_selected_tile_id(Tile). % not already selected - it should only be reclicked when already selected.
 available_click(click_edge(Tile, Edge)) :-
     tile_in_board(Tile),
     get_game_phase(transform),
@@ -1189,7 +1199,8 @@ agent_select(Click) :-
          ask_agent(Click),
          apply_click(Click, Action),
          (Action = skip(_)
-           -> writeln(Action)
+           -> writeln(Action),
+              agent_select_delay
          ;
           complete_select(display),
           agent_select_delay
@@ -1230,6 +1241,64 @@ apply_clicks([click_edge(16,0), click_board_tile(12), click_location(2,1), click
 
 tiles:apply_clicks([click_hand_tile(1), click_location(0,0), click_hand_tile(11), click_location(0,1), click_hand_tile(2), click_location(-1,0), click_hand_tile(12), reclick(12), click_location(1,1), click_hand_tile(3)]).
 
+%Following clicks build a board with tiles 3&5 mismatched and 7&11 mismatched.
+%build board:
+tiles:apply_clicks(
+[click_hand_tile(1),click_location(0,0),click_hand_tile(12),click_location(0,1),click_hand_tile(2),click_location(-1,0),click_hand_tile(15),
+reclick(15),click_hand_tile(9),click_hand_tile(16),click_hand_tile(14),reclick(14),click_hand_tile(10),click_hand_tile(13),click_hand_tile(11),
+reclick(11),click_hand_tile(14),click_location(-1,-1),click_hand_tile(3),reclick(3),reclick(3),reclick(3),click_location(-2,-1),
+click_hand_tile(15),click_location(-2,-2),click_hand_tile(4),reclick(4),click_location(-3,-2),click_hand_tile(13),reclick(13),
+click_location(-3,-3),click_hand_tile(5),click_location(-2,-3),click_hand_tile(10),click_location(-2,-4),click_hand_tile(6),reclick(6),
+reclick(6),reclick(6),click_location(-3,-4),click_hand_tile(11),click_hand_tile(9),reclick(9),click_location(-1,-4),
+click_hand_tile(7),click_location(-1,-5),click_hand_tile(11),reclick(11),click_location(-2,-5),click_hand_tile(8),click_location(-3,-5),
+click_hand_tile(16),reclick(16),click_location(-4,-5)]).
+
+% transform edges.
+tiles:apply_clicks([
+% edge transform: player 1
+click_edge(15,3),
+click_board_tile(1),click_location(-3,-2),
+click_board_tile(3),reclick(3),reclick(3),click_location(-2,-2),
+click_hand_tile(4),reclick(4),click_location(-2,-1),
+click_hand_tile(15),reclick(15),click_location(-2,0),
+
+
+% replace mismatch: player 2
+click_hand_tile(12),click_location(-1,1),
+
+% edge transform: player 2
+click_edge(1,0),
+click_board_tile(4),
+click_board_tile(3),
+click_board_tile(11),
+click_board_tile(12),reclick(12),click_location(-3,-3),
+click_board_tile(4),reclick(4),
+click_board_tile(3),reclick(3),
+click_board_tile(4),click_location(-3,-2),
+click_hand_tile(13),reclick(13),reclick(13),reclick(13),click_location(-2,-1),
+click_hand_tile(1),click_location(0,-5)]
+).
+
+% transform edges, without extra tile selections and rotations.
+tiles:apply_clicks([
+% edge transform: player 1
+click_edge(15,3),
+click_board_tile(1),click_location(-3,-2),
+click_board_tile(3),reclick(3),reclick(3),click_location(-2,-2),
+click_hand_tile(4),reclick(4),click_location(-2,-1),
+click_hand_tile(15),reclick(15),click_location(-2,0),
+
+% replace mismatch: player 2
+click_hand_tile(12),click_location(-1,1),
+
+% edge transform: player 2
+click_edge(1,0),
+click_board_tile(12),reclick(12),click_location(-3,-3),
+click_board_tile(4),click_location(-3,-2),
+click_hand_tile(13),reclick(13),reclick(13),reclick(13),click_location(-2,-1),
+click_hand_tile(1),click_location(0,-5)]
+).
+
 */
 
 apply_clicks([]).
@@ -1247,10 +1316,12 @@ apply_clicks1([H|T]) :-
 apply_click(Click, Action) :-
     get_turn(Turn),
     get_game_phase(Phase),
-    writeln(step(Turn, Phase, apply_click(Click))),
+    writeln(step(Turn, Phase, Click)),
+    assertz(step(Turn, Phase, Click)),
     apply_click1(Click, Action),
     !,
-    gc.
+    gc,
+    writeln(finished(apply_click(Click, Action))).
 
 apply_click1(reclick(Tile), Action) :-
     on_click_selected_tile_rotate(Tile, Action).
@@ -1281,3 +1352,15 @@ position_in_click(click_location(BX,BY), X, Y) :-
 get_location_at_grid_point(Location, BX, BY) :-
     get_location_grid_x(Location, BX),
     get_location_grid_y(Location, BY).
+
+steps(S) :-
+    findall(step(Turn, Phase, Click), step(Turn, Phase, Click), S).
+
+step_clicks([], []).
+step_clicks([step(_, _, Click)|T], [Click|TC]) :-
+    step_clicks(T, TC).
+
+apply_steps(S) :-
+    step_clicks(S, C),
+    apply_clicks(C).
+
