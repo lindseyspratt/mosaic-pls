@@ -535,6 +535,7 @@ on_click_active_hand_tile_select(ID, Action) :-
          once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
          deselect_tile(OldID, Ctx),
          set_selected_tile_id(ID),
+		 initialize_tile_original_colors(ID),	% record the colors at the time ID is selected.
          draw_all_tile(ID, Ctx),
          find_legal_with_rotation_locations(ID),
          find_legal_locations(ID),
@@ -582,6 +583,7 @@ on_click_select_replace_tile(ID, Action) :-
     once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
     deselect_tile(OldID, Ctx),
     set_selected_tile_id(ID),
+    initialize_tile_original_colors(ID),	% record the colors at the time ID is selected.
     find_legal_with_rotation_locations(ID),
     find_legal_locations(ID),
     draw_all_tile(ID, Ctx),
@@ -731,7 +733,7 @@ on_click_tile_rotate(ID, _X, _Y) :-
 
 on_click_selected_tile_rotate(ID, rotate(ID)) :-
     once(_ >> [id -:> canvas, getContext('2d') *:> Ctx]),
-    initialize_tile_original_colors(ID),
+ %   initialize_tile_original_colors(ID),
     tile_rotate_right(ID),
     draw_all_tile(ID, Ctx),
     get_shaped_positions(OldLocations),
@@ -740,11 +742,12 @@ on_click_selected_tile_rotate(ID, rotate(ID)) :-
     draw_locations(Ctx).
 
 initialize_tile_original_colors(ID) :-
-    get_tile_original_colors(ID, none)
-      -> get_tile_colors(ID, OriginalColors),
-         set_tile_original_colors(ID, OriginalColors)
-    ;
-    true.
+    % get_tile_original_colors(ID, none)
+    %   ->
+	  get_tile_colors(ID, OriginalColors),
+      set_tile_original_colors(ID, OriginalColors).
+    % ;
+    % true.
 
 restore_tile_original_colors(ID) :-
     get_tile_original_colors(ID, OriginalColors),
