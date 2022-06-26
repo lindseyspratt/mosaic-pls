@@ -1,7 +1,7 @@
 :- module(tiles, [display_title/0, setup_game_data/1, start_mosaic_game/1, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3,
         undo_last_selection/0, agent_select/1, apply_clicks/1, steps/1, step_clicks/2, apply_steps/1,
-        toggle_auto_play_and_update_button/0, toggle_debugging_and_update_button/0]).
+        toggle_auto_play_and_update_button/0, toggle_debugging_and_update_button/0, toggle_smooth_and_update_button/0]).
 
 :- use_module('../proscriptls_sdk/library/object'). % for >>/2.
 %:- use_module('../proscriptls_sdk/library/data_predicates').
@@ -314,6 +314,24 @@ update_debugging_button :-
     true
       -> _ >> [id -:> debug_button, innerText <:+ "Enable Debugging"],
          Style >*> setProperty(display, none)
+    ).
+
+toggle_smooth :-
+    use_smooth_reposition(_,_)
+      -> disable_smooth_reposition
+    ;
+    enable_smooth_reposition(3,4).
+
+toggle_smooth_and_update_button :-
+    toggle_smooth,
+    update_smooth_button.
+
+update_smooth_button :-
+    (use_smooth_reposition(_,_)
+      -> _ >> [id -:> smooth_button, innerText <:+ "Disable Smooth Reposition"]
+    ;
+    true
+      -> _ >> [id -:> smooth_button, innerText <:+ "Enable Smooth Reposition"]
     ).
 
 

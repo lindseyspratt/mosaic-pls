@@ -5,7 +5,8 @@
     get_translate_x/1, set_translate_x/1, get_translate_y/1, set_translate_y/1,
     get_target_translate_x/1, set_target_translate_x/1, get_target_translate_y/1, set_target_translate_y/1,
     get_top_left_board_tile_coords/4, point_in_board_position/4, update_board_tile_view/1, reposition_board_toward_target_translation/0,
-    game_view_tiles_values/1, game_view_tiles_values/2]).
+    game_view_tiles_values/1, game_view_tiles_values/2,
+	use_smooth_reposition/2, enable_smooth_reposition/2, disable_smooth_reposition/0]).
 
 :- use_module(library).
 :- use_module('../proscriptls_sdk/library/data_predicates').
@@ -16,10 +17,19 @@
 :- use_module(view_basics).
 :- use_module(geometry).
 
+:- dynamic(use_smooth_reposition/2).
+
 :- initialization(initdyn).
 
 initdyn :-
     data_predicate_dynamics([data_predicates(gvt, data, [ephemeral], [translateX, translateY, targetTranslateX, targetTranslateY])]).
+
+enable_smooth_reposition(X,Y) :-
+    retractall(use_smooth_reposition(_,_)),
+    asserta(use_smooth_reposition(X,Y)).
+
+disable_smooth_reposition :-
+    retractall(use_smooth_reposition(_,_)).
 
 create_game_view_tiles :-
     assert_data(gvt(0,0,0,0), 1).
@@ -118,21 +128,23 @@ reposition_board_toward_target_translation :-
     (TX =\= TargetTX; TY =\= TargetTY),
     repo(TX, TY, TargetTX, TargetTY).
 
-repo(_TX, _TY, TargetTX, TargetTY) :-
-%    NewTX is (TX * 3 + TargetTX) / 4,
-%    NewTY is (TY * 3 + TargetTY) / 4,
-%
-%    (abs(NewTX - TargetTX) =< 2
-%      -> FinalTX = TargetTX
-%    ; FinalTX = NewTX
-%    ),
-%    (abs(TY - TargetTY) =< 2
-%      -> FinalTY = TargetTY
-%    ; FinalTY = NewTY
-%    ),
+repo(TX, TY, TargetTX, TargetTY) :-
+	(use_smooth_reposition(A, B)
+   	    -> NewTX is (TX * A + TargetTX) / B,
+           NewTY is (TY * A + TargetTY) / B,
 
-    FinalTX = TargetTX,
-    FinalTY = TargetTY,
+           (abs(NewTX - TargetTX) =< 2
+              -> FinalTX = TargetTX
+           ; FinalTX = NewTX
+           ),
+           (abs(TY - TargetTY) =< 2
+              -> FinalTY = TargetTY
+           ; FinalTY = NewTY
+           )
+    ; 
+	 FinalTX = TargetTX,
+     FinalTY = TargetTY
+	),
 
     set_translate_x(FinalTX),
     set_translate_y(FinalTY),
