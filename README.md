@@ -1,5 +1,5 @@
 # mosaic-pls
-Mosaic game implemented using ProscriptLS
+Mosaic game implemented using ProscriptLS, v 0.1.0.
 
 The game is documented in src/doc.html, which is linked from index.html and src/mosaic.html.
 

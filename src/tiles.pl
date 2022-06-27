@@ -39,6 +39,7 @@ dummy_reference :-
 display_title :-
     _ >> [id -:> canvas, getContext('2d') *:> Ctx],
     letters:display_letters([m,o,s,a,i,c], Ctx, 20, 100, 100, _),
+	letters:display_letters([v,'0',dot,'1',dot,'0'], Ctx, 20, 200, 100, _),
     data_mode(Mode),
     setup_undo_button(Mode),
     gc,
