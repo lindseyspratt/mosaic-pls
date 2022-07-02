@@ -1,4 +1,4 @@
-:- module(tiles, [display_title/0, setup_game_data/1, start_mosaic_game/1, clear_mosaic_game/0, score_delay1/1,
+:- module(tiles, [mosaic_version/5, display_title/0, setup_game_data/1, start_mosaic_game/1, clear_mosaic_game/0, score_delay1/1,
         save_game_stream/0, load_game/0, display_game/0, on_click_tile_rotate/3,
         undo_last_selection/0, agent_select/1, apply_clicks/1, steps/1, step_clicks/2, apply_steps/1,
         toggle_auto_play_and_update_button/0, toggle_debugging_and_update_button/0, toggle_smooth_and_update_button/0]).
@@ -23,6 +23,9 @@
 :- dynamic(interaction_counter/1).
 :- dynamic(use_auto_play/1).
 :- dynamic(step/3).
+
+% mosaic_version(Major, Minor, Patch, Prerelease, Build).
+mosaic_version(0,1,0,none,none).
 
 dummy_reference :-
     dummy_reference,
