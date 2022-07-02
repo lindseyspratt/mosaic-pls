@@ -5,7 +5,8 @@
     get_translate_x/1, set_translate_x/1, get_translate_y/1, set_translate_y/1,
     get_target_translate_x/1, set_target_translate_x/1, get_target_translate_y/1, set_target_translate_y/1,
     get_top_left_board_tile_coords/4, point_in_board_position/4, update_board_tile_view/1, reposition_board_toward_target_translation/0,
-    game_view_tiles_values/1, game_view_tiles_values/2]).
+    game_view_tiles_values/1, game_view_tiles_values/2,
+	use_smooth_reposition/2, enable_smooth_reposition/2, disable_smooth_reposition/0]).
 
 :- use_module(library).
 :- use_module('../proscriptls_sdk/library/data_predicates').
@@ -16,10 +17,19 @@
 :- use_module(view_basics).
 :- use_module(geometry).
 
+:- dynamic(use_smooth_reposition/2).
+
 :- initialization(initdyn).
 
 initdyn :-
     data_predicate_dynamics([data_predicates(gvt, data, [ephemeral], [translateX, translateY, targetTranslateX, targetTranslateY])]).
+
+enable_smooth_reposition(X,Y) :-
+    retractall(use_smooth_reposition(_,_)),
+    asserta(use_smooth_reposition(X,Y)).
+
+disable_smooth_reposition :-
+    retractall(use_smooth_reposition(_,_)).
 
 create_game_view_tiles :-
     assert_data(gvt(0,0,0,0), 1).
@@ -119,17 +129,22 @@ reposition_board_toward_target_translation :-
     repo(TX, TY, TargetTX, TargetTY).
 
 repo(TX, TY, TargetTX, TargetTY) :-
-    NewTX is (TX * 3 + TargetTX) / 4,
-    NewTY is (TY * 3 + TargetTY) / 4,
+	(use_smooth_reposition(A, B)
+   	    -> NewTX is (TX * A + TargetTX) / B,
+           NewTY is (TY * A + TargetTY) / B,
 
-    (abs(NewTX - TargetTX) =< 2
-      -> FinalTX = TargetTX
-    ; FinalTX = NewTX
-    ),
-    (abs(TY - TargetTY) =< 2
-      -> FinalTY = TargetTY
-    ; FinalTY = NewTY
-    ),
+           (abs(NewTX - TargetTX) =< 2
+              -> FinalTX = TargetTX
+           ; FinalTX = NewTX
+           ),
+           (abs(TY - TargetTY) =< 2
+              -> FinalTY = TargetTY
+           ; FinalTY = NewTY
+           )
+    ; 
+	 FinalTX = TargetTX,
+     FinalTY = TargetTY
+	),
 
     set_translate_x(FinalTX),
     set_translate_y(FinalTY),
@@ -143,8 +158,7 @@ repo1([H|T]) :-
     repo1(T).
 
 repo2(Tile) :-
-    get_tile_grid_x(Tile, GridX),
-    get_tile_grid_y(Tile, GridY),
+    get_board_tile_grid(Tile, GridX > GridY),
     get_top_left_board_tile_coords(GridX, GridY, X, Y), % this predicate uses the translate (X/Y) values set in repo/4.
     set_tile_display_x(Tile, X),
     set_tile_display_y(Tile, Y).
@@ -241,8 +255,7 @@ point_in_board_position(GridX, GridY, X, Y) :-
     in_square(X, Y, TX, TY, TileSize).
 
 update_board_tile_view(Tile) :-
-    get_tile_grid_x(Tile, GridX),
-    get_tile_grid_y(Tile, GridY),
+    get_board_tile_grid(Tile, GridX > GridY),
     get_board_tile_size(Size),
     set_tile_size(Tile, Size),
     get_top_left_board_tile_coords(GridX, GridY, ViewX, ViewY),

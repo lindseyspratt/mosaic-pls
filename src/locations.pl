@@ -731,8 +731,7 @@ extendDXDY(DX, DY, C, NewTile) :-
     get_location_grid_y(C, Y),
     TX is X + DX,
     TY is Y + DY,
-    (get_tile_grid_x(Tile, TX),
-     get_tile_grid_y(Tile, TY),
+    (get_board_tile_grid(Tile, TX>TY),
      (Tile \= NewTile
       -> increment_location_neighbors(C, _NewCount),
          ((DX = 0; DY = 0)
@@ -1119,5 +1118,4 @@ location_neighbor_tile(Location, DX>DY, NeighborTile) :-
     get_location_grid_y(Location, LY),
     NX is LX + DX,
     NY is LY + DY,
-    get_tile_grid_x(NeighborTile, NX),
-    get_tile_grid_y(NeighborTile, NY).
+    get_board_tile_grid(NeighborTile, NX>NY).

@@ -32,7 +32,7 @@
     set_colors/2,
     tile_rotate_left/1, tile_rotate_right/1,
     get_tile_original_colors/2, clear_tile_original_colors/1, set_tile_original_colors/2,
-    tile_board_hash_key/2, edge_neighbor_position/3]).
+    tile_board_hash_key/2, edge_neighbor_position/3, get_board_tile_grid/2]).
 
 :- use_module('../proscriptls_sdk/library/data_predicates').
 :- use_module(model_basics).
@@ -142,3 +142,9 @@ edge_neighbor_position(ID, Edge, X > Y) :-
     get_tile_grid_y(ID, GridY),
     X is GridX + PX,
     Y is GridY + PY.
+
+% Tile is at grid coordinates (GridX, GridY) and is in the board (not a hand).
+get_board_tile_grid(ID, GridX > GridY) :-
+    get_tile_grid_x(ID, GridX),
+    get_tile_grid_y(ID, GridY),
+    get_tile_container(ID, board).
