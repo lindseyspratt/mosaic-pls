@@ -2,10 +2,11 @@
 body {
     display: grid;
     grid-template-areas:
-            "game game game game"
-            "status1 waiting score status2"
-            "console console console console";
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+            "status1 game game game status3"
+			"status1 game game game status2"
+			"score game game game waiting"
+            "console console console console console";
+    grid-template-columns: 1fr repeat(3, minmax(333,1fr)) 1fr;
 }
 
 game {
@@ -15,6 +16,7 @@ game {
 
 status1 {
     grid-area: status1;
+	justify-self: left;
 }
 
 waiting {
@@ -26,6 +28,10 @@ score {
 
 status2 {
     grid-area: status2;
+}
+
+status3 {
+    grid-area: status3;
 }
 
 console {
