@@ -29,9 +29,19 @@ letter(a, [sf1-(0>0), c1d-(1>0),sf1-(1>1),c1u-(2>0),c1d-(2>1),c2d-(2>2),c1d-(3>0
 letter(i, [c1r-(0>0), solid2-(0>1), c1l-(0>2)]).
 letter(c, [sb2-(0>0), c1r-(0>1), sf1-(0>2), c1u-(1>0), solid1-(1>1), c1d-(1>2)]).
 letter(v, [solid1-(0>2), sb2-(0>1), sb1-(1>1), sf1-(2>1), sf2-(3>1), sb2-(1>0), sf2-(2>0)]).
-letter('1', [solid2-(0>0), solid2-(0>1), solid2-(0>2)]).
 letter('0', [solid2-(0>0), solid2-(0>1), solid2-(0>2), solid2-(1>0), solid1-(1>1), solid2-(1>2), solid2-(2>0), solid2-(2>1), solid2-(2>2)]).
+letter('1', [solid2-(0>0), solid2-(0>1), solid2-(0>2)]).
+letter('2', [c2r-(0>0), solid1-(0>1), c2r-(0>2), solid2-(1>0), sf1-(1>1), c1d-(1>2), c1u-(2>0), sf2-(2>1), sb1-(2>2)]).
 letter(dot, [solid2-(0>0), solid1-(0>1)]).
+
+/*
+ '2':
+2 c2r    c1d    sb1
+1 solid1 sf1    sf2
+0 c2r    solid2 c1u
+  0      1      2
+
+*/
 
 display_letters([], _Ctx, _Size, _Top, Left, Left).
 display_letters([H|T], Ctx, Size, Top, LeftIn, Left) :-

@@ -131,9 +131,9 @@ edge_offsets(3, X, _Y, _Size, MX, MY, Adj, P1x>P1y, P2x>P2y, Cx > Cy) :-
 
 clear_board_rect(Ctx, X, Y, W, H) :-
     Ctx >> [
-        fillStyle <:+ '#999',
+        fillStyle <:+ '#FFF',
         fillRect(X, Y, W, H),
-        strokeStyle <:+ '#999',
+        strokeStyle <:+ '#FFF',
         stroke
     ].
 

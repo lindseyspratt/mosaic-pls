@@ -1,96 +1,100 @@
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Mosaic</title>
-    <link rel="StyleSheet" href="mosaic.css" type="text/css" media="ALL">
-    <link rel="StyleSheet" href="game.css" type="text/css" media="ALL">
-    <!-- proscriptls interpreter -->
-    <script src="../proscriptls_sdk/terminal/jquery-3.3.1.js"></script>
-    <script src="../proscriptls_sdk/terminal/jquery_terminal.js"></script>
-    <link href="../proscriptls_sdk/terminal/jquery_terminal.css" rel="stylesheet"/>
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>Mosaic</title>
+	<link rel="StyleSheet" href="mosaic.css" type="text/css" media="ALL">
+	<link rel="StyleSheet" href="game.css" type="text/css" media="ALL">
+	<!-- proscriptls interpreter -->
+	<script src="../proscriptls_sdk/terminal/jquery-3.3.1.js"></script>
+	<script src="../proscriptls_sdk/terminal/jquery_terminal.js"></script>
+	<link href="../proscriptls_sdk/terminal/jquery_terminal.css" rel="stylesheet"/>
 
 </head>
 <body onload="proscriptls_init ('tiles:display_title.');">
-<game>
-<canvas id="canvas" width="1000px" height="1000px">
-</canvas>
-</game>
-<status1>
-<div class="mosaic-description">
-    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(2).');">
-        New Two Player Game
-    </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(3).');">
-        New Three Player Game
-    </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(4).');">
-        New Four Player Game
-    </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:save_game_stream.');">
-        Save
-    </button>
-    <button class="mosaic-button" onclick="proscriptls ('tiles:load_game.');">
-        Resume
-    </button>
-    <a href="doc.html">Game Description</a>
-	<br>
-</div>
-</status1>
-<waiting>
-    <div id="waiting"></div>
-</waiting>
-<score>
-<div id="score">
+	<game>
+		<canvas id="canvas" width="1000px" height="800px">
+		</canvas>
+	</game>
+	<status1>
+		<div class="mosaic-description">
+			<button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(2).');">
+				New Two Player Game
+			</button>
+			<button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(3).');">
+				New Three Player Game
+			</button>
+			<button class="mosaic-button" onclick="proscriptls ('tiles:start_mosaic_game(4).');">
+				New Four Player Game
+			</button>
+			<button class="mosaic-button" onclick="proscriptls ('tiles:save_game_stream.');">
+				Save
+			</button>
+			<button class="mosaic-button" onclick="proscriptls ('tiles:load_game.');">
+				Resume
+			</button>
+			<a href="doc.html">Game Description</a>
+			<br>
+		</div>
+	</status1>
+	<waiting>
+		<div id="waiting"></div>
+	</waiting>
+	<score>
+		<div id="score">
 
-</div>
-</score>
-<status2>
-    <div class="mosaic-secondary">
-        <div id="mosaic_player">
-            Player:
-            <canvas id="mosaic_player_canvas" width="30" height="30">
-            </canvas>
-        </div>
-        <div id="mosaic_status">
-        </div>
-        <div id="undo_button">
-        </div>
-        <button class="mosaic-button" id="auto_play_button" onclick="proscriptls ('tiles:toggle_auto_play_and_update_button.');">
-            Disable Auto Play for Player Two
-        </button>
-        <button class="mosaic-button" id="move_button" onclick="proscriptls ('tiles:agent_select(_).');" disabled="true">
-            Move Player Two
-        </button>
-        <button class="mosaic-button" id="debug_button" onclick="proscriptls ('tiles:toggle_debugging_and_update_button.');">
-            Enable Debugging
-        </button>
-        <button class="mosaic-button" id="smooth_button" onclick="proscriptls ('tiles:toggle_smooth_and_update_button.');">
-            Enable Smooth Reposition
-        </button>
-    </div>
-</status2>
-<!--suppress JSUnresolvedLibraryURL -->
-<!-- -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.9/dist/proscriptls_engine.js"></script>
+		</div>
+	</score>
+	<status2>
+		<div class="mosaic-secondary">
+			<div id="mosaic_player">
+				Player:
+				<canvas id="mosaic_player_canvas" width="30" height="30">
+				</canvas>
+			</div>
+			<div id="mosaic_status">
+			</div>
+		</div>
+	</status2>
+	<status3>
+		<div class="mosaic-secondary">
+			<div id="undo_button">
+			</div>
+			<button class="mosaic-button" id="auto_play_button" onclick="proscriptls ('tiles:toggle_auto_play_and_update_button.');">
+				Disable Auto Play for Player Two
+			</button>
+			<button class="mosaic-button" id="move_button" onclick="proscriptls ('tiles:agent_select(_).');" disabled="true">
+				Move Player Two
+			</button>
+			<button class="mosaic-button" id="debug_button" onclick="proscriptls ('tiles:toggle_debugging_and_update_button.');">
+				Enable Debugging
+			</button>
+			<button class="mosaic-button" id="smooth_button" onclick="proscriptls ('tiles:toggle_smooth_and_update_button.');">
+				Enable Smooth Reposition
+			</button>
+		</div>
+	</status3>
+	<!--suppress JSUnresolvedLibraryURL -->
+	<!-- -->
+	<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/lindseyspratt/proscriptls@1.5.9/dist/proscriptls_engine.js"></script>
 
-<!--
+	<!--
 
-<script type="text/javascript" src="../proscriptls_sdk/dist/proscriptls_engine.js"></script>
+	<script type="text/javascript" src="../proscriptls_sdk/dist/proscriptls_engine.js"></script>
 
--->
-<!--
-<script type="text/javascript" src="../../proscriptls/dist/proscriptls_engine.js"></script>
- -->
-<script type="text/javascript" src="proscriptls_state_tiles.js"></script>
+	-->
+	<!--
+	<script type="text/javascript" src="../../proscriptls/dist/proscriptls_engine.js"></script>
+	-->
+	<script type="text/javascript" src="proscriptls_state_tiles.js"></script>
 
-<console>
-    <!-- -->
-<script type="text/javascript" src="../proscriptls_sdk/terminal/proscriptls_interpreter_terminal.js"></script>
-<!--
-<script type="text/javascript" src="../../proscriptls/terminal/proscriptls_interpreter_terminal.js"></script>
--->
-<div id="proscriptinterpreter">
-</div>
-</console>
+	<console>
+		<!-- -->
+		<script type="text/javascript" src="../proscriptls_sdk/terminal/proscriptls_interpreter_terminal.js"></script>
+		<!--
+		<script type="text/javascript" src="../../proscriptls/terminal/proscriptls_interpreter_terminal.js"></script>
+		-->
+		<div id="proscriptinterpreter">
+		</div>
+	</console>
 </body>
 </html>
